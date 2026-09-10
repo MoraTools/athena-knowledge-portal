@@ -54,6 +54,8 @@ El script agrupa `.zip`, `.jar` y `.exe` por carpeta y mantiene la lista privada
 
 La URL pública canónica es `/request-access` y no depende de archivos protegidos. Cloudflare Access debe estar habilitado y verificado para proteger producción y las vistas previas mediante una lista de direcciones IP. La excepción pública debe cubrir `/request-access` y `/request-access.html`. La guía explica cómo solicitar acceso sin publicar el número de WhatsApp.
 
+Use [ALLOWLIST.md](ALLOWLIST.md) to add, remove, or rotate an approved public IP with the Cloudflare MCP. The runbook requires identifiers such as `office` and `jeiser-vargas` without storing real addresses in Git.
+
 ## Impeccable
 
 Impeccable está instalado solo en este proyecto. Verifique la instalación con:
