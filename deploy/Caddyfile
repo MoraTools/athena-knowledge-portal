@@ -1,0 +1,24 @@
+athena.moratechnology.com {
+    request_body {
+        max_size 27MB
+    }
+    handle_path /static/* {
+        root * /opt/athena/staticfiles
+        file_server
+    }
+    handle {
+        reverse_proxy 127.0.0.1:8000 {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+    encode zstd gzip
+}
+
+http://159.203.121.42 {
+    handle /healthz {
+        respond "Athena is running. Use https://athena.moratechnology.com to sign in." 200
+    }
+    handle {
+        redir https://athena.moratechnology.com{uri} permanent
+    }
+}

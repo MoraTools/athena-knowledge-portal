@@ -1,0 +1,28 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+packages:
+  - python3-venv
+  - caddy
+  - ufw
+  - unattended-upgrades
+write_files:
+  - path: /etc/ssh/sshd_config.d/10-athena.conf
+    permissions: '0644'
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin prohibit-password
+  - path: /etc/caddy/Caddyfile
+    permissions: '0644'
+    content: |
+      :80 {
+        respond "Athena deployment in progress." 503
+      }
+runcmd:
+  - [ufw, limit, OpenSSH]
+  - [ufw, allow, '80/tcp']
+  - [ufw, allow, '443/tcp']
+  - [ufw, --force, enable]
+  - [systemctl, restart, ssh]
+  - [systemctl, restart, caddy]

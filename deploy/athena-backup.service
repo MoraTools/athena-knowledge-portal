@@ -1,0 +1,7 @@
+[Unit]
+Description=Back up Athena database and PDFs
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/athena/deploy/backup.py
+UMask=0077

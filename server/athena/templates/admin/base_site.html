@@ -1,0 +1,5 @@
+{% extends 'admin/base.html' %}{% load static %}
+{% block title %}{{ title }} · Athena{% endblock %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'athena/admin.css' %}">{% endblock %}
+{% block branding %}<div id="site-name"><a href="{% url 'admin:index' %}">ATHENA <span>Administración</span></a></div>{% endblock %}
+{% block nav-global %}<a href="/api/openapi.json" class="api-docs-link">API para agentes</a>{% endblock %}

@@ -4,3 +4,8 @@ dist/
 .secrets/
 .tools/
 worker-configuration.d.ts
+.venv/
+data/
+staticfiles/
+__pycache__/
+.impeccable/review/

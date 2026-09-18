@@ -19,6 +19,7 @@ New-Item -ItemType Directory -Force -Path $dist, (Join-Path $dist 'content'), (J
 
 Copy-Item -LiteralPath (Join-Path $project 'src\index.html'), (Join-Path $project 'src\styles.css'), (Join-Path $project 'src\config.js'), (Join-Path $project 'src\app.js'), (Join-Path $project 'src\request-access.html'), (Join-Path $project 'src\_headers') -Destination $dist
 Copy-Item -LiteralPath (Join-Path $project 'node_modules\docsify\lib\docsify.min.js') -Destination (Join-Path $dist 'vendor\docsify.min.js')
+Copy-Item -LiteralPath (Join-Path $project 'node_modules\dompurify\dist\purify.min.js') -Destination (Join-Path $dist 'vendor\purify.min.js')
 Copy-Item -LiteralPath (Join-Path $project 'node_modules\docsify\lib\themes\vue.css') -Destination (Join-Path $dist 'vendor\vue.css')
 $themePath = Join-Path $dist 'vendor\vue.css'
 $themeCss = [IO.File]::ReadAllText($themePath, [Text.Encoding]::UTF8).Replace('#34495e', '#ffb900').Replace('#2c3e50', '#fff')

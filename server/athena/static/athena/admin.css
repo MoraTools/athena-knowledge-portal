@@ -1,0 +1,37 @@
+@font-face { font-family: 'Archivo Narrow'; src: url('/fonts/archivo-narrow-400-700-latin.woff2') format('woff2'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: Cormorant; src: url('/fonts/cormorant-300-700-latin.woff2') format('woff2'); font-weight: 300 700; font-display: swap; }
+:root, html[data-theme='light'], html[data-theme='dark'] {
+  --primary: #ffb900; --secondary: #171717; --accent: #ffb900; --primary-fg: #000;
+  --body-fg: #fff; --body-bg: #080808; --body-quiet-color: #d0d0d0; --body-medium-color: #d0d0d0;
+  --body-loud-color: #fff; --header-color: #fff; --header-branding-color: #ffb900;
+  --header-bg: #101010; --header-link-color: #fff; --breadcrumbs-fg: #fff; --breadcrumbs-link-fg: #ffcf40;
+  --breadcrumbs-bg: #191919; --link-fg: #ffcf40; --link-hover-color: #ffe08a; --link-selected-fg: #ffe08a;
+  --hairline-color: #444; --border-color: #555; --darkened-bg: #171717; --selected-bg: #2a2a2a;
+  --selected-row: #342c18; --button-fg: #000; --button-bg: #ffb900; --button-hover-bg: #ffcf40;
+  --default-button-bg: #ffb900; --default-button-hover-bg: #ffcf40; --close-button-bg: #555;
+  --error-fg: #ffb8ac; --message-success-bg: #18391e; --message-warning-bg: #3d3012; --message-error-bg: #421c19;
+  --font-family-primary: 'Archivo Narrow', Arial, sans-serif;
+  color-scheme: dark;
+}
+body { font-size: 16px; }
+#site-name { font: 700 30px Cormorant, serif; }
+#site-name span { font: 400 17px 'Archivo Narrow', sans-serif; margin-left: .75rem; }
+.api-docs-link { margin: .75rem; }
+.module h2, .module caption { color: #000; }
+input, textarea, select { font-size: 16px; max-width: 100%; caret-color: #ffb900; }
+textarea { width: min(100%, 900px); }
+.aligned .form-row .flex-container { flex-wrap: wrap; }
+.aligned .form-row div { min-width: 0; }
+.help { color: #d0d0d0; }
+.theme-toggle { display: none; }
+::selection { background: #ffb900; color: #000; }
+a { text-underline-offset: .2em; }
+:focus-visible { outline: 3px solid #ffcf40; outline-offset: 3px; }
+ul.messagelist li { overflow-wrap: anywhere; }
+input[type=submit], button, .button { min-height: 44px; }
+@media (max-width: 767px) {
+  #header { gap: .5rem; }
+  .aligned label { width: auto; }
+  textarea { width: 100%; }
+  body .aligned .form-row > div { width: 100%; max-width: 100%; }
+}

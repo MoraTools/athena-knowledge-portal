@@ -1,73 +1,96 @@
 # Athena Knowledge Portal
 
-Portal estático en español para guías, actualizaciones, herramientas y descargas de Automation Anywhere. Los documentos canónicos y los archivos de descarga viven en `C:\Users\superuser\OneDrive\dev\framework`.
+Athena runs on a DigitalOcean VPS with Django, SQLite, Gunicorn, and Caddy.
+The Spanish reader keeps its existing Docsify routes. All knowledge content requires a user account.
 
-## Publicar
+## Production
 
-```powershell
-npm install
-.\deploy.ps1
+- Site: https://athena.moratechnology.com
+- Admin: https://athena.moratechnology.com/admin/
+- Droplet: `600852697`, NYC3, 1 vCPU, 2 GiB RAM, 50 GiB disk, $12/month base price.
+- IPv4: `159.203.121.42`
+- DNS: create an `A` record named `athena` with that address at the existing DNS provider.
+- Caddy obtains and renews HTTPS certificates after DNS resolves to the VPS.
+- Do not change the parent domain's nameservers or other records.
+
+## Users
+
+In **Administración → Usuarios**, add, rename, deactivate, or delete users. Open a user to reset their password.
+Ordinary active users can read published articles. Administrators can manage users and content.
+To make another administrator in the user form, enable **Activo**, **Es staff**, and **Estado de superusuario**.
+The current administrator cannot remove their own administrative access.
+Password changes invalidate other sessions and the user's API keys. Disabling or deleting a user blocks both browser and API access.
+There is no public registration or email password-reset service. Users contact an administrator for recovery.
+
+Initial production credentials are saved outside Git in `.secrets/production-admin.txt` and on the VPS in `/etc/athena/initial-admin.txt`.
+Sign in and change the initial password. Credentials are not written to deployment output.
+
+## Articles
+
+1. Open **Administración → Artículos → Añadir**.
+2. Enter title, summary, author, and optional comma-separated tags. The title creates the address automatically.
+3. Write Markdown in the editor or upload a `.md` file (up to 1 MiB). No metadata header is required.
+4. Optionally attach a PDF (up to 25 MiB). PDF-only articles are also supported.
+5. Save as a draft for review. Enable **Publicado** when ready.
+
+Changes appear in the library and search on the next page load; no build or redeploy is required.
+Open an article to edit, replace or remove its PDF, unpublish it, or delete it.
+**Ver en el sitio** previews saved drafts for editors. Existing article addresses cannot be changed.
+Jeiser Vargas remains the editorial reviewer. OneDrive remains the location for approved package downloads.
+The database is now the source of truth for articles, accounts, keys, and PDFs.
+
+## Agent REST API
+
+See [API.md](API.md). The importable OpenAPI schema is available at `/api/openapi.json`.
+Create a key in **Administración → Claves de API**. Select an owner, scope, and expiry.
+Copy the key when shown; it is stored only as a hash. Delete it to revoke access.
+Use a dedicated account for an agent so password resets and access changes do not affect unrelated integrations.
+
+## Local development
+
+Requires Python 3.12+ and Node.js for preparing the reader assets.
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+npm ci --ignore-scripts
+npm run build
+export ATHENA_SECRET_KEY='replace-with-a-random-local-secret'
+export ATHENA_DEBUG=1
+.venv/bin/python server/manage.py migrate
+.venv/bin/python server/manage.py import_portal
+.venv/bin/python server/manage.py createsuperuser
+.venv/bin/python server/manage.py runserver 127.0.0.1:8765
+npm test
 ```
 
-El build valida los documentos, crea `dist\` y publica solo archivos estáticos en Cloudflare Pages. No usa base de datos, CMS, Pages Functions, Workers ni R2. El costo permitido de Cloudflare es USD 0.
+`dist/` contains the approved migration input and package-link pages. It is intentionally private and excluded from Git.
+Restore it from `.secrets/athena-vps-release.tar.gz` or the VPS before the first build on a fresh checkout.
+`import_portal` is transactional and skips existing slugs. It does not overwrite edits or republish deleted content during normal operation.
+Do not rerun it after deleting imported articles: migration input still contains those old records.
+The original Windows build remains available as `npm run build:legacy`; it is not the production publishing workflow.
+Cloudflare deployment scripts and `ALLOWLIST.md` describe the former hosting setup.
 
-## Agregar o actualizar contenido
+## Deployment and backup
 
-Guarde cada Markdown debajo de `C:\Users\superuser\OneDrive\dev\framework\docs`. La primera línea debe contener metadatos JSON en este formato:
+The application is installed at `/opt/athena`. Its database and PDFs are in `/var/lib/athena/athena.sqlite3`.
+Production secrets are in `/etc/athena/athena.env` (root only). The service runs as the unprivileged `athena` user.
+Only SSH, HTTP, and HTTPS are open. Gunicorn listens on loopback.
 
-```html
-<!-- athena: {"kind":"guide","date":"2026-08-19","author":"Jeiser Vargas","summary":"Descripción breve","tags":["Recorder","Web"],"slug":"ejemplo"} -->
+The initial deployment uses `deploy/cloud-init.yaml`, then runs `deploy/install.sh` after copying the release to `/opt/athena`.
+For updates, back up first, copy the changed code, install pinned requirements, migrate, collect static files, and restart `athena`.
+**Do not run `import_portal` on routine updates.** Preserve `/var/lib/athena` and `/etc/athena`.
+
+```sh
+systemctl status athena caddy
+journalctl -u athena -n 50 --no-pager
+systemctl start athena-backup
+systemctl list-timers athena-backup.timer
 ```
 
-Valores de `kind`: `page`, `guide`, `tool`, `announcement` y `release`. Los perfiles de herramientas también usan `status` con `stable`, `alpha` o `coming-soon`. `url` y `downloadFile` son opcionales. Una guía puede usar `pdf` para asociar el archivo original.
-
-Para agregar un documento:
-
-1. Cree el Markdown con los metadatos y un título `#`.
-2. Guárdelo en `docs`, `docs\tools` o `docs\updates`.
-3. Ejecute `npm run build`.
-4. Revise el resultado y ejecute `.\deploy.ps1`.
-
-Para actualizarlo, edite el mismo archivo y vuelva a publicar. No cambie `slug` si debe conservar la URL. OneDrive conserva la copia de respaldo; `dist\` es un resultado regenerable.
-
-Los PDF menores de 25 MiB se copian al sitio y se abren en otra pestaña. Un PDF con el mismo nombre que un Markdown se asocia automáticamente. También puede declarar otro nombre con `pdf`. Un PDF sin Markdown aparece como guía independiente.
-
-## Descargas de OneDrive
-
-Para crear o actualizar los enlaces aprobados:
-
-```powershell
-.\scripts\sync-onedrive-links.ps1
-.\deploy.ps1
-```
-
-Para rotarlos:
-
-```powershell
-.\scripts\sync-onedrive-links.ps1 -Rotate
-.\deploy.ps1
-```
-
-El script agrupa `.zip`, `.jar` y `.exe` por carpeta y mantiene la lista privada en `.secrets\onedrive-links.json`. No imprima ni confirme ese archivo en Git. Nunca comparta la raíz `framework`, porque contiene documentos que no forman parte de las descargas.
-
-## Acceso
-
-La URL pública canónica es `/request-access` y no depende de archivos protegidos. Cloudflare Access debe estar habilitado y verificado para proteger producción y las vistas previas mediante una lista de direcciones IP. La excepción pública debe cubrir `/request-access` y `/request-access.html`. La guía explica cómo solicitar acceso sin publicar el número de WhatsApp.
-
-Use [ALLOWLIST.md](ALLOWLIST.md) to add, remove, or rotate an approved public IP with the Cloudflare MCP. The runbook requires identifiers such as `office` and `jeiser-vargas` without storing real addresses in Git.
-
-## Impeccable
-
-Impeccable está instalado solo en este proyecto. Verifique la instalación con:
-
-```powershell
-npx -y impeccable check --providers=codex --scope=project
-```
-
-## Navegación por página
-
-Athena crea automáticamente el índice lateral **En esta página** con los títulos `#`, `##` y `###` de cada documento. Use esos niveles en orden y no mantenga un índice manual.
-
-## Búsqueda
-
-El build crea `search-index.json` y la ruta `#/search` a partir de los metadatos, títulos, secciones y texto de los documentos aprobados. Los documentos futuros quedan incluidos automáticamente; no mantenga una lista de rutas ni un índice manual.
+A daily timer creates verified SQLite backups in `/var/backups/athena` and retains 14 days.
+PDFs are inside the database, so a backup includes both article data and attachments.
+Backups on the same VPS do not cover VPS loss. An initial backup is also copied to this workstation's private `.secrets/` directory.
+No paid DigitalOcean backup or other paid add-on is enabled.
+For disaster recovery, retain a separate copy of the database, the release bundle, and `/etc/athena/athena.env`.
+Stop `athena` before restoring a database, set its owner to `athena:athena`, then restart and test sign-in and article/PDF access.

@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Ingresar · Athena{% endblock %}
+{% block content %}
+<h1>El conocimiento del equipo, en un lugar.</h1>
+<p>Ingrese con su cuenta de Athena para consultar guías, herramientas y actualizaciones.</p>
+<form method="post" class="account-form">
+  {% csrf_token %}{{ form.non_field_errors }}
+  <label for="id_username">Usuario</label>{{ form.username }}{{ form.username.errors }}
+  <label for="id_password">Contraseña</label>{{ form.password }}{{ form.password.errors }}
+  <input type="hidden" name="next" value="{{ next }}">
+  <button type="submit">Ingresar a Athena</button>
+</form>
+<p class="account-help">Si necesita una cuenta o perdió su contraseña, solicite ayuda al administrador de Athena.</p>
+{% endblock %}

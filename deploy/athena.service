@@ -1,0 +1,21 @@
+[Unit]
+Description=Athena Knowledge Portal
+After=network.target
+
+[Service]
+User=athena
+Group=athena
+WorkingDirectory=/opt/athena/server
+EnvironmentFile=/etc/athena/athena.env
+ExecStart=/opt/athena/.venv/bin/gunicorn athena.wsgi:application --bind 127.0.0.1:8000 --workers 2 --timeout 60 --max-requests 1000 --max-requests-jitter 100 --access-logfile -
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/athena
+
+[Install]
+WantedBy=multi-user.target

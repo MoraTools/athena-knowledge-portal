@@ -1,0 +1,727 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Athena management API",
+    "version": "1.1.0",
+    "description": "Private knowledge base. Create a scoped key in /admin/athena/apikey/. Keys expire after 90 days by default and are revoked when the owning user is disabled, removed, or has their password reset. Browser cookies are not accepted by the API."
+  },
+  "servers": [
+    {
+      "url": "https://athena.moratechnology.com"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/articles/": {
+      "get": {
+        "operationId": "list_articles",
+        "summary": "List articles",
+        "responses": {
+          "200": {
+            "description": "JSON {count, offset, limit, results}. Default limit 50, maximum 100."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "create_articles",
+        "summary": "Create article",
+        "responses": {
+          "201": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/articles/{slug}/": {
+      "get": {
+        "operationId": "get_article",
+        "summary": "Get article",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "ETag": {
+                "description": "Version for If-Match on updates and deletes.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "update_article",
+        "summary": "Update article",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exact ETag returned by the latest GET, including double quotes. Prevents overwriting newer changes."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_article",
+        "summary": "Delete article",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exact ETag returned by the latest GET, including double quotes. Prevents overwriting newer changes."
+          }
+        ]
+      }
+    },
+    "/api/v1/users/": {
+      "get": {
+        "operationId": "list_users",
+        "summary": "List users",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "description": "Requires admin scope and a superuser account."
+      },
+      "post": {
+        "operationId": "create_users",
+        "summary": "Create user",
+        "responses": {
+          "201": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserInput"
+              }
+            }
+          }
+        },
+        "description": "Requires admin scope and a superuser account."
+      }
+    },
+    "/api/v1/users/{user_id}/": {
+      "get": {
+        "operationId": "get_user",
+        "summary": "Get user",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "update_user",
+        "summary": "Update user",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_user",
+        "summary": "Delete user",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/articles/{slug}/pdf/": {
+      "post": {
+        "operationId": "upload_pdf",
+        "summary": "Attach PDF (25 MiB) or replace Markdown (1 MiB)",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exact ETag returned by the latest GET, including double quotes. Prevents overwriting newer changes."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "download_pdf",
+        "summary": "Download an article PDF",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/articles/{slug}/markdown/": {
+      "post": {
+        "operationId": "upload_markdown",
+        "summary": "Attach PDF (25 MiB) or replace Markdown (1 MiB)",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exact ETag returned by the latest GET, including double quotes. Prevents overwriting newer changes."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "ArticleInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string",
+            "description": "Markdown, at most 1 MiB. Required unless the article already has a PDF."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "",
+              "stable",
+              "alpha",
+              "coming-soon"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "download_file": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "guide",
+              "tool",
+              "announcement",
+              "release"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "published": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "UserInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "writeOnly": true,
+            "minLength": 12
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "admin": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

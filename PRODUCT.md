@@ -15,18 +15,20 @@ The portal is Spanish-first. Project collaboration and implementation notes can 
 
 ## Content model
 
-Markdown files are the canonical authored content. Athena supports pages, guides, tools, announcements, releases, downloads, and PDF-only guide records. OneDrive remains the source and backup location for approved documents and shared packages.
+Markdown remains the authored content format. The VPS database is the source of truth for articles and attached PDFs. Athena supports pages, guides, tools, announcements, releases, downloads, and PDF-only guide records. OneDrive retains approved package downloads; imported documents are managed in Athena.
 
 Existing article routes must remain stable.
 
 ## Technical constraints
 
-- Static Docsify site deployed to Cloudflare Pages.
+- Docsify reader served by Django on a DigitalOcean VPS in NYC3; $12/month base Droplet budget.
 - Cloudflare cost ceiling: USD 0.
-- No Workers, Functions, R2, database, CMS, or metered Cloudflare feature.
+- No Workers, Functions, R2, or metered Cloudflare feature. Django and SQLite provide accounts, article management, and REST access on the VPS.
 - Prefer native browser features and existing project code over new dependencies.
-- Build-time generation is allowed for indexes, catalogs, validation, and routes.
-- Search and filtering must work entirely in the browser from static assets.
+- Article lists and indexes are generated from published database records at request time. Existing approved package catalogs are preserved.
+- Search and filtering run in the browser using the authenticated search index.
+- Admins can add/remove users, rename accounts, reset passwords, edit/upload Markdown and PDFs, and publish drafts.
+- Agents use scoped, expiring bearer keys and the documented REST API.
 
 ## Experience principles
 

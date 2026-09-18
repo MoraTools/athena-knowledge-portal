@@ -1,14 +1,17 @@
 {
   "name": "athena-knowledge-portal",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pwsh -NoProfile -NonInteractive -File scripts/build.ps1",
-    "test": "pwsh -NoProfile -NonInteractive -File scripts/test-build.ps1"
+    "build": "python3 scripts/build-vps.py",
+    "test": "ATHENA_SECRET_KEY=local-test-only-secret ATHENA_DEBUG=1 .venv/bin/python server/manage.py test athena && node scripts/test-search.mjs",
+    "build:legacy": "pwsh -NoProfile -NonInteractive -File scripts/build.ps1",
+    "test:legacy": "pwsh -NoProfile -NonInteractive -File scripts/test-build.ps1"
   },
   "devDependencies": {
     "docsify": "5.0.0",
+    "dompurify": "3.4.15",
     "wrangler": "4.123.0"
   }
 }
