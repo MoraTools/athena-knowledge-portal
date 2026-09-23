@@ -1,21 +1,16 @@
 /* Portal sidebar in the admin; rules copied from the reader (src/styles.css and Docsify's vue.css). */
-@font-face { font-family: 'Courier Prime'; src: url('/fonts/courier-prime-700-latin.woff2') format('woff2'); font-weight: 700; font-display: swap; }
-:root {
-  --text: #fff; --muted: #d0d0d0; --accent: #ffb900; --surface-2: #191919; --sidebar-width: 280px;
-  --font-display: "Sigurd Variable", Cormorant, "Times New Roman", serif;
-  --font-mono: "Courier Prime", "Cascadia Code", ui-monospace, monospace;
-}
+/* Tokens and fonts come from admin.css. */
 .sidebar {
   position: fixed; top: 0; bottom: 0; left: 0; z-index: 20; width: var(--sidebar-width); overflow-y: auto;
   box-sizing: border-box; padding: 1.6rem 1.2rem; background: #080808; color: var(--text);
-  border-right: 1px solid #191919; font-family: "Rules Variable", "Archivo Narrow", "Arial Narrow", Arial, sans-serif;
+  border-right: 1px solid var(--surface-2); font-family: "Rules Variable", var(--font-ui);
 }
 .sidebar .brand {
   display: flex; flex-direction: column; margin: 1.4rem auto 2rem; color: var(--text); text-decoration: none;
   line-height: .8; text-align: center; letter-spacing: .12em;
 }
 .sidebar .brand span { font: 700 32px/1 var(--font-display); }
-.sidebar .brand small { margin: .55rem 0 0; color: var(--accent); font: 700 11px/1 var(--font-mono); letter-spacing: .22em; }
+.sidebar .brand small { margin: .55rem 0 0; color: var(--gold); font: 700 11px/1 var(--font-mono); letter-spacing: .22em; }
 .sidebar-nav { padding-bottom: 40px; }
 .sidebar-nav ul { margin: 0 0 0 15px; padding: 0; }
 .sidebar-nav li { list-style: none; margin: 6px 0; padding: 0; font-size: 18px; line-height: 36px; }
@@ -23,10 +18,10 @@
   display: block; overflow: hidden; color: var(--muted); font-size: 14px; font-weight: 700; letter-spacing: .05em;
   text-overflow: ellipsis; text-transform: uppercase; text-decoration: none; white-space: nowrap;
 }
-.sidebar-nav li a:hover, .sidebar-nav li a:focus { color: var(--accent); text-decoration: underline; }
-.sidebar-nav li.active > a { border-right: 2px solid; color: var(--accent); font-weight: 600; }
+.sidebar-nav li a:hover, .sidebar-nav li a:focus { color: var(--gold); text-decoration: underline; }
+.sidebar-nav li.active > a { border-right: 2px solid; color: var(--gold); font-weight: 600; }
 .sidebar-nav h2 {
-  margin: 1.6rem 0 .4rem 15px; padding: 0; background: none; color: var(--accent);
+  margin: 1.6rem 0 .4rem 15px; padding: 0; background: none; color: var(--gold);
   font: 700 11px/1 var(--font-mono); letter-spacing: .22em; text-transform: uppercase;
 }
 .sidebar-toggle { display: none; }
@@ -41,7 +36,7 @@
     position: fixed; bottom: 1rem; left: 1rem; z-index: 30; display: block; width: 44px; height: 44px; padding: 13px;
     border: 0; border-radius: 0; background: var(--surface-2); cursor: pointer;
   }
-  .sidebar-toggle span { display: block; width: 18px; height: 2px; margin-bottom: 4px; background: var(--accent); }
+  .sidebar-toggle span { display: block; width: 18px; height: 2px; margin-bottom: 4px; background: var(--gold); }
 }
 @media (prefers-reduced-motion: reduce) {
   .sidebar { transition: none; }

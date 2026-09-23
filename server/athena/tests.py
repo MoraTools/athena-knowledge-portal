@@ -204,9 +204,29 @@ class PortalTests(TestCase):
                             '<li class="active"><a href="/admin/athena/article/" aria-current="page">Artículos</a>')
         self.assertNotContains(self.client.get('/admin/auth/user/add/?_popup=1'), 'portal-sidebar')
 
+    def test_changelist_uses_text_pills(self):
+        Article.objects.create(title='Draft', slug='draft', summary='Draft', author='Author')
+        self.client.force_login(self.admin)
+        response = self.client.get('/admin/athena/article/')
+        self.assertContains(response, '<span class="pill gold">Publicado</span>')
+        self.assertContains(response, '<span class="pill off">Borrador</span>')
+        self.assertNotContains(response, 'icon-yes.svg')
+        self.assertNotContains(response, 'icon-no.svg')
+        self.assertContains(response, '<title>Artículos · Athena</title>')
+
     def test_relative_last_login(self):
         now = timezone.now()
         for delta, text in [(timedelta(minutes=20), 'hace 20 min'), (timedelta(hours=2), 'hace 2 h'),
                             (timedelta(days=1, hours=3), 'ayer'), (timedelta(days=40), 'hace 40 días')]:
             self.assertEqual(since(now - delta, now), text)
         self.assertEqual(since(None, now), 'nunca')
+
+
+class RobotsTests(TestCase):
+    def test_site_is_not_indexable(self):
+        response = self.client.get('/robots.txt')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Disallow: /', response.content)
+        self.assertEqual(response['X-Robots-Tag'], 'noindex, nofollow, noarchive')
+        self.assertEqual(self.client.get('/accounts/login/')['X-Robots-Tag'], 'noindex, nofollow, noarchive')
+

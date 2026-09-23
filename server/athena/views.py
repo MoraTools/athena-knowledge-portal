@@ -114,6 +114,10 @@ def sidebar_links(user):
             for label, href in re.findall(r'^\s*[-*]\s*\[([^\]]+)\]\(([^\s)]+)', sidebar_markdown(user), re.M)]
 
 
+def robots(request):
+    return HttpResponse('User-agent: *\nDisallow: /\n', content_type='text/plain; charset=utf-8')
+
+
 def static_portal(request, path='index.html'):
     # An explicit allowlist prevents serving a database, source file, or a removed article.
     assets = path.startswith(('fonts/', 'assets/', 'vendor/')) or path in ('styles.css', 'app.js', 'config.js')

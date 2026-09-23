@@ -42,6 +42,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 LANGUAGE_CODE = 'es'
+FORMAT_MODULE_PATH = ['athena.formats']
 TIME_ZONE = 'America/Lima'
 USE_TZ = True
 STATIC_URL = '/static/'

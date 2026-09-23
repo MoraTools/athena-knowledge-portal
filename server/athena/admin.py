@@ -8,7 +8,7 @@ from django.http import Http404
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
-from django.utils import timezone
+from django.utils import formats, timezone
 from django.utils.html import format_html
 
 from .forms import ArticleForm, DirectoryUserCreationForm, DirectoryUserForm, SafeUserChangeForm
@@ -42,10 +42,23 @@ def pill(user):
     return 'Admin' if user.is_staff and user.is_superuser else 'Lector'
 
 
+def flag(value, yes, no):
+    # Text pills replace Django's boolean icons; same markup as the directory pills.
+    return format_html('<span class="pill {}">{}</span>', 'gold' if value else 'off', yes if value else no)
+
+
 @admin.register(User)
 class AthenaUserAdmin(UserAdmin):
     form = SafeUserChangeForm
-    list_display = ['username', 'email', 'is_active', 'is_superuser', 'last_login']
+    list_display = ['username', 'email', 'active', 'superuser', 'last_login']
+
+    @admin.display(description='Activa', ordering='is_active')
+    def active(self, obj):
+        return flag(obj.is_active, 'Activa', 'Inactiva')
+
+    @admin.display(description='Admin', ordering='is_superuser')
+    def superuser(self, obj):
+        return flag(obj.is_superuser, 'Admin', 'Lector')
 
     def has_module_permission(self, request):
         return request.user.is_superuser
@@ -113,7 +126,7 @@ class AthenaUserAdmin(UserAdmin):
 @admin.register(Article)
 class ArticleAdmin(admin.ModelAdmin):
     form = ArticleForm
-    list_display = ['title', 'kind', 'published', 'author', 'date', 'updated_at']
+    list_display = ['title', 'kind', 'state', 'author', 'date', 'last_updated']
     list_filter = ['published', 'kind']
     search_fields = ['title', 'summary', 'author', 'body']
     prepopulated_fields = {'slug': ('title',)}
@@ -126,15 +139,30 @@ class ArticleAdmin(admin.ModelAdmin):
     ]
     save_on_top = True
 
+    @admin.display(description='Estado', ordering='published')
+    def state(self, obj):
+        return flag(obj.published, 'Publicado', 'Borrador')
+
+    def changelist_view(self, request, extra_context=None):
+        return super().changelist_view(request, {'title': 'Artículos', **(extra_context or {})})
+
+    def add_view(self, request, form_url='', extra_context=None):
+        return super().add_view(request, form_url, {'title': 'Nuevo artículo', **(extra_context or {})})
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        article = self.get_object(request, object_id)
+        title = f'Editar artículo · {article.title}' if article else 'Editar artículo'
+        return super().change_view(request, object_id, form_url, {'title': title, 'subtitle': None, **(extra_context or {})})
+
     def get_prepopulated_fields(self, request, obj=None):
         return {} if obj else self.prepopulated_fields
 
     def get_changeform_initial_data(self, request):
         return {'author': request.user.get_full_name() or request.user.username}
 
-    @admin.display(description='Última modificación')
+    @admin.display(description='Última modificación', ordering='updated_at')
     def last_updated(self, obj):
-        return obj.updated_at or 'Sin guardar'
+        return formats.localize(timezone.localtime(obj.updated_at)) if obj.updated_at else 'Sin guardar'
 
     @admin.display(description='PDF actual')
     def current_pdf(self, obj):
@@ -145,8 +173,12 @@ class ArticleAdmin(admin.ModelAdmin):
 
 @admin.register(ApiKey)
 class ApiKeyAdmin(admin.ModelAdmin):
-    list_display = ['name', 'user', 'scope', 'expires_at', 'created_at']
+    list_display = ['name', 'user', 'scope', 'expires_at', 'created']
     fields = ['name', 'user', 'scope', 'expires_at']
+
+    @admin.display(description='Creada', ordering='created_at')
+    def created(self, obj):
+        return obj.created_at
 
     def has_module_permission(self, request):
         return request.user.is_superuser
@@ -161,8 +193,17 @@ class ApiKeyAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         return ['user', 'scope'] if obj else []
 
+    def changelist_view(self, request, extra_context=None):
+        return super().changelist_view(request, {'title': 'Claves de API', **(extra_context or {})})
+
+    def add_view(self, request, form_url='', extra_context=None):
+        return super().add_view(request, form_url, {'title': 'Nueva clave de API', **(extra_context or {})})
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        return super().change_view(request, object_id, form_url, {'title': 'Editar clave de API', **(extra_context or {})})
+
     def save_model(self, request, obj, form, change):
         raw = obj.issue() if not change else None
         super().save_model(request, obj, form, change)
         if raw:
-            messages.warning(request, f'Copie esta clave ahora. No se mostrará otra vez: {raw}')
+            messages.warning(request, format_html('Copie esta clave ahora. No se mostrará otra vez: <code class="secret">{}</code>', raw))

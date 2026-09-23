@@ -38,6 +38,8 @@ class AccessMiddleware:
         if not path.startswith(('/static/', '/assets/', '/fonts/', '/vendor/')):
             patch_cache_control(response, private=True, no_store=True)
         # Docsify needs inline styles, but article scripts and remote scripts stay blocked.
+        # Private portal: never let search engines index or cache any page, including the login page.
+        response.headers.setdefault('X-Robots-Tag', 'noindex, nofollow, noarchive')
         response.headers.setdefault('Content-Security-Policy', (
             "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: https:; font-src 'self'; connect-src 'self'; "

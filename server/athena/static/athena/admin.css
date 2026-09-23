@@ -1,37 +1,383 @@
+/* Athena admin system. Tokens are defined once here; the sidebar and the directory consume them. */
 @font-face { font-family: 'Archivo Narrow'; src: url('/fonts/archivo-narrow-400-700-latin.woff2') format('woff2'); font-weight: 400 700; font-display: swap; }
 @font-face { font-family: Cormorant; src: url('/fonts/cormorant-300-700-latin.woff2') format('woff2'); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: 'Courier Prime'; src: url('/fonts/courier-prime-400-latin.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Courier Prime'; src: url('/fonts/courier-prime-700-latin.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+
 :root, html[data-theme='light'], html[data-theme='dark'] {
-  --primary: #ffb900; --secondary: #171717; --accent: #ffb900; --primary-fg: #000;
-  --body-fg: #fff; --body-bg: #080808; --body-quiet-color: #d0d0d0; --body-medium-color: #d0d0d0;
-  --body-loud-color: #fff; --header-color: #fff; --header-branding-color: #ffb900;
-  --header-bg: #101010; --header-link-color: #fff; --breadcrumbs-fg: #fff; --breadcrumbs-link-fg: #ffcf40;
-  --breadcrumbs-bg: #191919; --link-fg: #ffcf40; --link-hover-color: #ffe08a; --link-selected-fg: #ffe08a;
-  --hairline-color: #444; --border-color: #555; --darkened-bg: #171717; --selected-bg: #2a2a2a;
-  --selected-row: #342c18; --button-fg: #000; --button-bg: #ffb900; --button-hover-bg: #ffcf40;
-  --default-button-bg: #ffb900; --default-button-hover-bg: #ffcf40; --close-button-bg: #555;
-  --error-fg: #ffb8ac; --message-success-bg: #18391e; --message-warning-bg: #3d3012; --message-error-bg: #421c19;
-  --font-family-primary: 'Archivo Narrow', Arial, sans-serif;
+  --bg: #000; --surface: #101010; --surface-2: #191919; --line: #2a2a2a; --line-strong: #555;
+  --text: #fff; --muted: #d0d0d0; --quiet: #8f8f8f; --gold: #ffb900; --gold-soft: #ffcf40; --gold-ink: #1a1400;
+  --code: #ffe08a; --error: #ffb8ac; --danger-line: #6b3a33; --row-hover: #151515; --row-selected: #342c18;
+  --success-bg: #18391e; --warning-bg: #3d3012; --error-bg: #421c19;
+  --font-ui: 'Archivo Narrow', Arial, sans-serif;
+  --font-display: 'Sigurd Variable', Cormorant, Georgia, serif;
+  --font-mono: 'Courier Prime', 'Courier New', monospace;
+  --control-height: 44px; --radius: 4px; --sidebar-width: 280px;
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23ffcf40' stroke-width='1.6'/%3E%3C/svg%3E");
+
+  /* Django's own variables, mapped onto the tokens. */
+  --primary: var(--gold); --secondary: var(--surface-2); --accent: var(--gold); --primary-fg: var(--gold-ink);
+  --body-fg: var(--text); --body-bg: var(--bg); --body-quiet-color: var(--quiet); --body-medium-color: var(--muted);
+  --body-loud-color: var(--text); --header-color: var(--text); --header-branding-color: var(--gold);
+  --header-bg: var(--surface-2); --header-link-color: var(--text); --breadcrumbs-fg: var(--muted);
+  --breadcrumbs-link-fg: var(--gold-soft); --breadcrumbs-bg: var(--bg); --link-fg: var(--gold-soft);
+  --link-hover-color: var(--code); --link-selected-fg: var(--gold); --hairline-color: var(--line);
+  --border-color: var(--line-strong); --darkened-bg: var(--surface); --selected-bg: var(--surface-2);
+  --selected-row: var(--row-selected); --button-fg: var(--gold-ink); --button-bg: var(--gold);
+  --button-hover-bg: var(--gold-soft); --default-button-bg: var(--gold); --default-button-hover-bg: var(--gold-soft);
+  --close-button-bg: transparent; --close-button-hover-bg: transparent; --delete-button-bg: transparent;
+  --delete-button-hover-bg: transparent; --object-tools-fg: var(--gold-soft); --object-tools-bg: transparent;
+  --object-tools-hover-bg: transparent; --error-fg: var(--error); --message-success-bg: var(--success-bg);
+  --message-warning-bg: var(--warning-bg); --message-error-bg: var(--error-bg);
+  --font-family-primary: var(--font-ui); --font-family-monospace: var(--font-mono);
   color-scheme: dark;
 }
-body { font-size: 16px; }
-#site-name { font: 700 30px Cormorant, serif; }
-#site-name span { font: 400 17px 'Archivo Narrow', sans-serif; margin-left: .75rem; }
-.api-docs-link { margin: .75rem; }
-.module h2, .module caption { color: #000; }
-input, textarea, select { font-size: 16px; max-width: 100%; caret-color: #ffb900; }
-textarea { width: min(100%, 900px); }
-.aligned .form-row .flex-container { flex-wrap: wrap; }
-.aligned .form-row div { min-width: 0; }
-.help { color: #d0d0d0; }
-.theme-toggle { display: none; }
-::selection { background: #ffb900; color: #000; }
+
+/* Base */
+html { scrollbar-color: var(--line-strong) var(--bg); }
+body { background: var(--bg); color: var(--text); font: 16px/1.5 var(--font-ui); }
+::selection { background: var(--gold); color: #000; }
 a { text-underline-offset: .2em; }
-:focus-visible { outline: 3px solid #ffcf40; outline-offset: 3px; }
-ul.messagelist li { overflow-wrap: anywhere; }
-input[type=submit], button, .button { min-height: 44px; }
+a:link, a:visited { color: var(--gold-soft); }
+a:hover, a:focus { color: var(--code); }
+:focus-visible { outline: 3px solid var(--gold-soft); outline-offset: 3px; }
+li, dt, dd, td, th, p, .form-row, label { font-size: 16px; line-height: 1.5; }
+code, pre, kbd { font-family: var(--font-mono); color: var(--code); font-size: 14px; }
+.skip-to-content-link { color: var(--gold-soft); }
+
+/* Label voice: Courier Prime 13px uppercase, the same as the sidebar and the directory. */
+div.breadcrumbs, thead th, .module h2, .module caption, .inline-group h2, fieldset .fieldset-heading,
+.aligned label, .login .form-row label, #changelist-filter h2, #changelist-filter h3, #changelist-filter summary,
+#changelist .actions label, #changelist .actions .action-counter, #changelist .actions .all, #changelist .actions .question,
+#changelist .actions .clear, .paginator, #toolbar .quiet, .pill, .mini.quiet, #user-tools .user-chip,
+#recent-actions-module h3, #recent-actions-module .mini, #change-history tbody th,
+#changelist td.field-date, #changelist td.field-last_updated, #changelist td.field-expires_at, #changelist td.field-created, #changelist td.field-last_login {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 400; letter-spacing: .06em; text-transform: uppercase;
+}
+
+/* Header */
+#header {
+  gap: 12px 24px; flex-wrap: wrap; padding: 16px 40px; background: var(--surface); color: var(--text);
+  border-bottom: 1px solid var(--line);
+}
+#site-name { margin: 0; font: 700 30px/1 Cormorant, serif; color: var(--gold); }
+#site-name a:link, #site-name a:visited { color: var(--gold); text-decoration: none; }
+#site-name span { font: 400 17px var(--font-ui); margin-left: .75rem; color: var(--muted); }
+#header #user-tools {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; float: none; margin: 0;
+  font: inherit; letter-spacing: normal; text-transform: none; line-height: 1;
+}
+#user-tools .user-chip { color: var(--quiet); margin-right: 4px; }
+#header #logout-form { display: contents; }
+
+/* Breadcrumbs */
+div.breadcrumbs { padding: 14px 40px; background: var(--bg); color: var(--muted); border-bottom: 1px solid var(--line); }
+div.breadcrumbs a:link, div.breadcrumbs a:visited { color: var(--gold-soft); }
+div.breadcrumbs a:hover, div.breadcrumbs a:focus { color: var(--code); }
+
+/* Page title */
+#content { padding: 32px 40px; }
+#content h1 { margin: 0 0 24px; font: 500 34px/44px var(--font-display); color: var(--text); overflow-wrap: anywhere; }
+#content > h2 { margin: -12px 0 24px; font: 400 18px var(--font-ui); color: var(--muted); }
+
+/* Controls: one height, radius, border, type size and weight. */
+.button, a.button, form .button, input[type=submit], input[type=button], .submit-row a.deletelink, .submit-row a.closelink,
+.object-tools a:link, .object-tools a:visited, #changelist .actions .button, #toolbar form input[type=submit],
+.delete-confirmation form .cancel-link, .delete-confirmation form input[type=submit],
+.paginator a:link, .paginator a:visited, .paginator .this-page, #header #user-tools .button, #logout-form button {
+  box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: var(--control-height); min-height: var(--control-height); margin: 0; padding: 0 16px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius); background: transparent; box-shadow: none;
+  color: var(--gold-soft); font: 700 13px/1 var(--font-ui); letter-spacing: .04em; text-transform: uppercase;
+  text-decoration: none; white-space: nowrap; cursor: pointer; vertical-align: middle;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+/* Secondary hover and focus keep a transparent fill; only the border turns gold. */
+.button:hover, .button:focus, .button:active, input[type=submit]:hover, input[type=submit]:focus, input[type=submit]:active,
+input[type=button]:hover, input[type=button]:focus, .submit-row a.closelink:hover, .submit-row a.closelink:focus,
+.object-tools a:hover, .object-tools a:focus, #changelist .actions .button:hover, #changelist .actions .button:focus,
+#toolbar form input[type=submit]:hover, #toolbar form input[type=submit]:focus,
+.delete-confirmation form .cancel-link:hover, .delete-confirmation form .cancel-link:focus,
+.paginator a:hover, .paginator a:focus, #header #user-tools .button:hover, #header #user-tools .button:focus {
+  background: transparent; border-color: var(--gold); color: var(--gold-soft); text-decoration: none; margin: 0;
+}
+/* Primary: default submit, Añadir, login. */
+.button.default, input[type=submit].default, .submit-row input.default, .login .submit-row input[type=submit],
+.object-tools a.addlink:link, .object-tools a.addlink:visited {
+  background: var(--gold); border-color: var(--gold); color: var(--gold-ink); font-weight: 700;
+}
+.button.default:hover, .button.default:focus, input[type=submit].default:hover, input[type=submit].default:focus,
+.submit-row input.default:hover, .submit-row input.default:focus, .login .submit-row input[type=submit]:hover,
+.login .submit-row input[type=submit]:focus, .object-tools a.addlink:hover, .object-tools a.addlink:focus {
+  background: var(--gold-soft); border-color: var(--gold-soft); color: var(--gold-ink);
+}
+/* Danger: Eliminar and the delete confirmation. */
+.submit-row a.deletelink:link, .submit-row a.deletelink:visited, .delete-confirmation form input[type=submit] {
+  height: var(--control-height); padding: 0 16px; background: transparent; border-color: var(--danger-line); color: var(--error);
+}
+.submit-row a.deletelink:hover, .submit-row a.deletelink:focus, .delete-confirmation form input[type=submit]:hover,
+.delete-confirmation form input[type=submit]:focus { background: transparent; border-color: var(--error); color: var(--error); }
+.button[disabled], input[type=submit][disabled], input[type=button][disabled], button[disabled],
+input[disabled], select[disabled], textarea[disabled] { opacity: .5; cursor: not-allowed; }
+/* Django icon sprites on links are replaced by text. */
+.addlink, .changelink, .viewlink, .inlineviewlink, .deletelink, .hidelink, .inlinechangelink { background-image: none; padding-left: 0; }
+.object-tools a.addlink, .object-tools a.viewsitelink { background-image: none; padding: 0 16px; }
+
+/* Inputs */
+input:not([type]), input[type=text], input[type=password], input[type=email], input[type=url], input[type=number],
+input[type=tel], input[type=search], input[type=date], input[type=time], .vTextField, select, textarea,
+.form-row input[type=text], .form-row input[type=password], .form-row input[type=email], .form-row input[type=url],
+.form-row input[type=number], .form-row input[type=tel], .form-row .vTextField, .form-row select, .form-row textarea {
+  box-sizing: border-box; min-height: var(--control-height); max-width: 100%; margin: 0; padding: 0 12px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius); background-color: var(--bg); color: var(--text);
+  font: 16px var(--font-ui); caret-color: var(--gold); vertical-align: middle;
+}
+input:not([type]):focus, input[type=text]:focus, input[type=password]:focus, input[type=email]:focus, input[type=url]:focus,
+input[type=number]:focus, input[type=search]:focus, .vTextField:focus, select:focus, textarea:focus { border-color: var(--gold); }
+input::placeholder, textarea::placeholder { color: var(--quiet); opacity: 1; }
+textarea, .form-row textarea { width: min(100%, 900px); padding: 10px 12px; line-height: 1.5; }
+select, .form-row select {
+  height: var(--control-height); padding-right: 40px; appearance: none; cursor: pointer;
+  background: var(--bg) var(--chevron) no-repeat right 14px center / 12px 8px;
+}
+select[multiple] { height: auto; padding: 8px; background-image: none; }
+input[type=checkbox], input[type=radio] { width: 18px; height: 18px; margin: 0; accent-color: var(--gold); vertical-align: middle; cursor: pointer; }
+input[type=file] { max-width: 100%; color: var(--muted); font: 16px var(--font-ui); }
+input[type=file]::file-selector-button {
+  height: var(--control-height); margin-right: 12px; padding: 0 16px; border: 1px solid var(--line-strong);
+  border-radius: var(--radius); background: transparent; color: var(--gold-soft);
+  font: 700 13px var(--font-ui); letter-spacing: .04em; text-transform: uppercase; cursor: pointer;
+}
+input[type=file]::file-selector-button:hover { border-color: var(--gold); }
+.errors input, .errors select, .errors textarea { border-color: var(--error); }
+
+/* Messages and errors */
+ul.messagelist { padding: 24px 40px 0; }
+ul.messagelist li, ul.messagelist li.warning, ul.messagelist li.error {
+  margin: 0 0 12px; padding: 12px 16px; border-radius: var(--radius); background-image: none;
+  color: var(--text); font-size: 16px; line-height: 1.5; overflow-wrap: anywhere;
+}
+ul.messagelist li { background-color: var(--success-bg); }
+ul.messagelist li.warning { background-color: var(--warning-bg); }
+ul.messagelist li.error { background-color: var(--error-bg); }
+ul.messagelist code.secret { display: block; margin-top: 8px; font-size: 16px; color: var(--code); user-select: all; overflow-wrap: anywhere; }
+.errornote {
+  margin: 0 0 16px; padding: 12px 16px; border: 1px solid var(--danger-line); border-radius: var(--radius);
+  background: var(--error-bg); color: var(--error); font-size: 16px; font-weight: 400;
+}
+ul.errorlist { margin: 0 0 8px; padding: 0; background: transparent; color: var(--error); }
+ul.errorlist li { font-size: 14px; }
+.help, p.help, form p.help, div.help, form div.help, div.help li { color: var(--quiet); font: 14px/1.5 var(--font-ui); }
+
+/* Modules and fieldsets */
+.module { background: var(--surface); border: 1px solid var(--line); }
+#content-main .module, #content-related .module { margin-bottom: 24px; }
+.module h2, .module caption, .inline-group h2, fieldset.module h2.fieldset-heading {
+  margin: 0; padding: 12px 16px; background: var(--surface-2); color: var(--muted); border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.module caption a:link, .module caption a:visited, .module h2 a:link, .module h2 a:visited { color: var(--muted); }
+.module caption a:hover, .module caption a:focus { color: var(--gold-soft); }
+fieldset.module { padding: 0; border-top: 1px solid var(--line); }
+:not(.inline-related) .collapse summary {
+  display: flex; align-items: center; gap: 12px; min-height: var(--control-height); padding: 0 16px; margin: 0;
+  border: 0; background: var(--surface-2); color: var(--muted); list-style: none;
+}
+.collapse summary::-webkit-details-marker { display: none; }
+.collapse summary::before, #changelist-filter details > summary::before {
+  content: ''; width: 12px; height: 8px; flex: none; background: var(--chevron) no-repeat center / 12px 8px; transform: rotate(-90deg);
+}
+.collapse details[open] > summary::before, #changelist-filter details[open] > summary::before { transform: none; }
+.collapse summary .fieldset-heading { padding: 0; border: 0; background: none; color: var(--muted); }
+.form-row { padding: 16px; border-bottom: 1px solid var(--line); font-size: 16px; }
+.aligned label { padding: 14px 16px 0 0; width: 180px; min-width: 180px; color: var(--muted); }
+.aligned label.required { color: var(--text); }
+.aligned .vCheckboxLabel, .aligned .checkbox-row label { padding: 0 0 0 8px; width: auto; min-width: 0; }
+.aligned .checkbox-row { display: flex; align-items: center; min-height: var(--control-height); }
+.aligned label + div.readonly, .aligned label + p { padding: 10px 0; font-size: 16px; }
+.aligned .form-row .flex-container { flex-wrap: wrap; align-items: flex-start; }
+.aligned .form-row div { min-width: 0; }
+form .aligned div.help, form .aligned p.help { margin-left: 196px; padding-left: 0; }
+form .aligned div.checkbox-row + div.help { margin-left: 196px; }
+
+/* Date, time and related-object widgets: Django's icons are drawn through a gold mask. */
+.datetimeshortcuts { margin-left: 12px; font-size: 16px; color: var(--quiet); }
+.datetimeshortcuts .date-icon, .datetimeshortcuts .clock-icon { background: var(--gold-soft); mask: url('/static/admin/img/icon-calendar.svg') 0 0 / 24px auto no-repeat; }
+.datetimeshortcuts .clock-icon { mask-image: url('/static/admin/img/icon-clock.svg'); }
+p.datetime { color: var(--muted); font-size: 16px; }
+p.datetime input { margin: 4px 0; }
+.related-widget-wrapper { gap: 8px; align-items: center; }
+a.related-widget-wrapper-link { display: inline-flex; align-items: center; justify-content: center; width: var(--control-height); height: var(--control-height); box-sizing: border-box; border: 1px solid var(--line-strong); border-radius: var(--radius); opacity: 1; filter: none; }
+a.related-widget-wrapper-link:hover { border-color: var(--gold); }
+a.related-widget-wrapper-link:not(:link) { opacity: .5; }
+a.related-widget-wrapper-link img { width: 16px; height: 16px; opacity: 0; }
+a.related-widget-wrapper-link::before { content: ''; position: absolute; width: 16px; height: 16px; background: var(--gold-soft); mask: var(--icon) center / 16px no-repeat; }
+a.related-widget-wrapper-link { position: relative; }
+a.add-related { --icon: url('/static/admin/img/icon-addlink.svg'); }
+a.change-related { --icon: url('/static/admin/img/icon-changelink.svg'); }
+a.view-related { --icon: url('/static/admin/img/icon-viewlink.svg'); }
+a.delete-related { --icon: url('/static/admin/img/icon-deletelink.svg'); }
+.calendarbox, .clockbox { background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0, 0, 0, .6); }
+.calendar table { background: var(--surface); }
+.calendarbox .calendar caption, .calendarbox h2, .clockbox h2 { padding: 8px 32px; border: 0; text-align: center; background: var(--surface-2); color: var(--muted); font: 13px var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
+.calendar th { background: var(--surface); color: var(--quiet); border-bottom-color: var(--line); font-family: var(--font-mono); }
+.calendar td { border-top-color: var(--line); }
+.calendar td.nonday { background: var(--surface-2); }
+.calendar td a, .timelist a { color: var(--muted); font-size: 14px; }
+.calendar td a:hover, .calendar td a:focus, .timelist a:hover, .timelist a:focus, .calendar td.selected a { background: var(--gold); color: var(--gold-ink); }
+.calendar td.today a { color: var(--gold); font-weight: 700; }
+.calendarbox .calendarnav-previous, .calendarbox .calendarnav-next { background: var(--gold-soft); mask: url('/static/admin/img/calendar-icons.svg') 0 0 no-repeat; }
+.calendarbox .calendarnav-next { mask-position: 0 -15px; }
+.calendar-shortcuts { background: var(--surface); color: var(--quiet); border-top-color: var(--line); font-size: 14px; line-height: 1.5; }
+.calendar-cancel { background: var(--surface-2); border-top-color: var(--line); font-size: 14px; }
+.calendar-cancel a:link, .calendar-cancel a:visited { color: var(--gold-soft); }
+
+/* Submit row */
+.submit-row {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 0 0 24px; padding: 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 0;
+}
+.submit-row a.deletelink { margin-left: auto; }
+
+/* Object tools sit beside the page title. */
+.object-tools { float: right; display: flex; gap: 12px; margin: -68px 0 0; padding: 0; font-size: 13px; }
+.object-tools li { float: none; height: auto; margin: 0; padding: 0; list-style: none; }
+
+/* Pills: shared by changelist booleans and the directory. */
+.pill { display: inline-block; padding: 2px 8px; border: 1px solid var(--line-strong); color: var(--muted); font-size: 12px; line-height: 1.5; white-space: nowrap; }
+.pill.gold { border-color: var(--gold); color: var(--gold); }
+.pill.off { border-style: dashed; color: var(--quiet); }
+
+/* Tables */
+table { border-color: var(--line); }
+td, th { padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; line-height: 1.5; }
+tbody th { font-weight: 400; }
+thead th, tfoot td, #changelist table thead th {
+  background: var(--surface-2); color: var(--quiet); border-top: 0; border-bottom: 1px solid var(--line); line-height: 1.5;
+}
+thead th { padding: 12px 16px; }
+thead th a:link, thead th a:visited { color: var(--quiet); }
+thead th a:hover, thead th a:focus { color: var(--gold-soft); }
+thead th.sorted { background: #222; }
+thead th.sorted .text a, thead th.sorted .text span { color: var(--muted); }
+table thead th .text span, table thead th .text a { padding: 12px 16px; }
+table thead th .text a:hover, table thead th .text a:focus { background: transparent; }
+table thead th.sorted .sortoptions { padding: 15px 12px 0 0; }
+table thead th.sorted .sortoptions a { background: var(--gold-soft); mask: url('/static/admin/img/sorting-icons.svg') 0 0 / 14px auto no-repeat; }
+table thead th.sorted .sortoptions a.ascending { mask-position: 0 -28px; }
+table thead th.sorted .sortoptions a.descending { mask-position: 0 -56px; }
+table thead th.sorted .sortoptions a.sortremove { background: none; mask: none; }
+table thead th.sorted .sortoptions a.sortremove:after { color: var(--quiet); }
+tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { background: transparent; }
+#changelist tbody tr:hover, #change-history tbody tr:hover, .module tbody tr:hover { background: var(--row-hover); }
+#changelist tbody tr.selected, #changelist tbody tr:has(.action-select:checked) { background: var(--row-selected); }
+#changelist table thead th.action-checkbox-column, #changelist table tbody td.action-checkbox { width: 18px; padding: 12px 16px; text-align: left; }
+#changelist table thead th.action-checkbox-column .text span { padding: 0; }
+#changelist table input { vertical-align: middle; }
+#changelist-form .results { border: 1px solid var(--line); }
+.results table { margin: 0; }
+#change-history table { border: 1px solid var(--line); }
+#change-history tbody th { width: 12em; color: var(--quiet); }
+#changelist td.field-date, #changelist td.field-last_updated, #changelist td.field-expires_at, #changelist td.field-created, #changelist td.field-last_login { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Changelist toolbar, actions and pagination */
+#changelist.module { background: transparent; border: 0; }
+#changelist .changelist-form-container { min-width: 0; }
+#changelist-form .results { scrollbar-color: var(--line-strong) var(--surface); }
+#toolbar { margin: 0 0 16px; padding: 0; background: transparent; border: 0; color: var(--quiet); }
+#changelist-search > div { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; max-width: none; }
+#toolbar form #searchbar, #toolbar #searchbar { width: 320px; max-width: 100%; height: var(--control-height); margin: 0; padding: 0 12px; font-size: 16px; }
+#changelist-search > div > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#toolbar .quiet { color: var(--quiet); margin: 0; }
+#changelist .actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 0 0 16px; background: transparent; color: var(--quiet); line-height: 1.5;
+}
+#changelist .actions label { display: inline-flex; align-items: center; gap: 12px; color: var(--muted); }
+#changelist .actions select { height: var(--control-height); margin: 0; font-size: 16px; }
+#changelist .actions span.all, #changelist .actions span.action-counter, #changelist .actions span.clear,
+#changelist .actions span.question { margin: 0; font-size: 13px; color: var(--quiet); }
+.paginator, #changelist .paginator, #change-history .paginator {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 16px 0; margin: 0;
+  border: 0; background: transparent; color: var(--quiet); line-height: 1.5; overflow: visible;
+}
+.paginator a:link, .paginator a:visited, .paginator .this-page { min-width: var(--control-height); padding: 0 12px; font-family: var(--font-mono); font-weight: 400; }
+.paginator .this-page { border-color: var(--gold); color: var(--gold); cursor: default; }
+.paginator a.showall:link, .paginator a.showall:visited { border-color: var(--line-strong); }
+.paginator .end { margin-right: 0; }
+
+/* Filter column */
+#changelist-filter {
+  flex: 0 0 240px; margin: 0 0 0 24px; background: var(--surface); border: 1px solid var(--line); color: var(--muted);
+}
+#changelist-filter h2 { margin: 0 0 8px; padding: 12px 16px; background: var(--surface-2); color: var(--muted); border-bottom: 1px solid var(--line); }
+#changelist-filter h3, #changelist-filter details summary { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; padding: 8px 16px; color: var(--quiet); }
+#changelist-filter details summary > * { margin: 0; padding: 0; }
+#changelist-filter ul { margin: 0; padding: 0 16px 12px; border-bottom: 1px solid var(--line); }
+#changelist-filter li { margin: 0; padding: 0; list-style: none; }
+#changelist-filter li a:link, #changelist-filter li a:visited { display: flex; align-items: center; min-height: 36px; color: var(--muted); text-decoration: none; }
+#changelist-filter li a:hover, #changelist-filter li a:focus { color: var(--gold-soft); }
+#changelist-filter li.selected { margin: 0; padding: 0; border: 0; }
+#changelist-filter li.selected a:link, #changelist-filter li.selected a:visited { color: var(--gold); text-decoration: underline; }
+#changelist-filter #changelist-filter-extra-actions { margin: 0; padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 16px; }
+#changelist-filter #changelist-filter-extra-actions h3 { margin: 0; padding: 0; }
+#changelist-filter #changelist-filter-extra-actions a.hidelink { padding: 0; }
+
+/* Dashboard and recent actions */
+.dashboard #content { width: auto; max-width: 1100px; }
+.dashboard .module table td, .dashboard .module table th { padding: 12px 16px; }
+.dashboard .module table td a { white-space: nowrap; }
+#content-related { background: transparent; }
+#content-related .module h2 { padding: 12px 16px; margin: 0; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); }
+#content-related h3 { margin: 16px 0 8px; padding: 0 16px; color: var(--quiet); }
+#content-related .actionlist { margin: 0 16px 16px; }
+#content-related .actionlist li { padding-left: 0; line-height: 1.4; }
+#content-related .actionlist li .mini { display: block; color: var(--quiet); font-size: 12px; }
+#content-related p { padding: 0 16px; color: var(--quiet); }
+
+/* Delete confirmation */
+.delete-confirmation #content h2 { margin: 24px 0 8px; font: 13px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.delete-confirmation #content ul { padding-left: 1.2em; }
+.delete-confirmation #content ul li { list-style: square; }
+.delete-confirmation form div { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.delete-confirmation form .cancel-link { margin: 0; line-height: 1; }
+
+/* Login */
+.login { background: var(--bg); }
+.login #container { background: var(--surface); border: 1px solid var(--line); border-radius: 0; }
+.login #header { justify-content: center; padding: 20px; }
+.login #content { padding: 24px; }
+.login .form-row { padding: 8px 0; border: 0; }
+.login .form-row label { color: var(--muted); line-height: 2; }
+.login .form-row #id_username, .login .form-row #id_password { padding: 0 12px; }
+.login .submit-row { display: block; padding: 16px 0 0; background: transparent; border: 0; }
+.login .submit-row input[type=submit] { width: 100%; }
+
+/* Popups have no header or sidebar. */
+.popup #content { padding: 24px 16px; }
+
+@media (max-width: 1024px) {
+  #header, div.breadcrumbs, ul.messagelist { padding-left: 24px; padding-right: 24px; }
+  #content { padding: 24px; }
+}
 @media (max-width: 767px) {
-  #header { gap: .5rem; }
-  .aligned label { width: auto; }
+  #header, div.breadcrumbs, ul.messagelist { padding-left: 16px; padding-right: 16px; }
+  #header { flex-direction: column; align-items: stretch; }
+  #content { padding: 24px 16px 80px; }
+  /* The user tools wrap under the wordmark as a grid of buttons that fit. */
+  #header #user-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; justify-content: stretch; }
+  #user-tools .user-chip { grid-column: 1 / -1; margin: 0; }
+  #header #user-tools .button { height: 40px; min-height: 40px; padding: 0 8px; }
+  .object-tools { float: none; margin: 0 0 16px; overflow: visible; }
+  .object-tools li + li { margin-left: 0; }
+  .aligned label { width: auto; min-width: 0; padding: 0 0 8px; }
+  form .aligned div.help, form .aligned p.help, form .aligned div.checkbox-row + div.help { margin-left: 0; }
   textarea { width: 100%; }
   body .aligned .form-row > div { width: 100%; max-width: 100%; }
+  .form-row { padding: 16px 12px; }
+  .submit-row { flex-direction: column; align-items: stretch; padding: 12px; }
+  .submit-row a.deletelink { margin-left: 0; }
+  #changelist-filter { margin: 24px 0 0; }
+  #toolbar form #searchbar, #toolbar #searchbar { flex: 1 1 0; width: auto; min-width: 0; }
+  #changelist .actions label { flex: 1 1 0; min-width: 0; }
+  #changelist .actions select { flex: 1 1 0; width: auto; min-width: 0; }
 }

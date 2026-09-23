@@ -1,5 +1,5 @@
 {% extends 'admin/base_site.html' %}{% load static %}
-{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'athena/admin-directory.css' %}">{% endblock %}
+{% block responsive %}{{ block.super }}<link rel="stylesheet" href="{% static 'athena/admin-directory.css' %}">{% endblock %}
 {% block extrahead %}{{ block.super }}<script src="{% static 'athena/admin-directory.js' %}" defer></script>{% endblock %}
 {% block bodyclass %}{{ block.super }} directory-page{% endblock %}
 {% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Inicio</a> &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a> &rsaquo; {{ opts.verbose_name_plural|capfirst }}</div>{% endblock %}
@@ -46,7 +46,7 @@
       </fieldset>
     </div>
     <div class="bar">
-      <button type="submit">Guardar</button>
+      <button class="button default" type="submit">Guardar</button>
       {% if selected %}
       <a class="button ghost" href="{% url 'admin:auth_user_password_change' selected.pk %}">Restablecer contraseña</a>
       <a class="link" href="{% url 'admin:athena_apikey_changelist' %}?user__id__exact={{ selected.pk }}">{{ api_keys }} clave{{ api_keys|pluralize:'s' }} de API</a>

@@ -1,7 +1,16 @@
 {% extends 'admin/base.html' %}{% load static athena_nav %}
 {% block title %}{{ title }} · Athena{% endblock %}
-{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'athena/admin.css' %}"><link rel="stylesheet" href="{% static 'athena/admin-sidebar.css' %}">{% endblock %}
-{% block extrahead %}{{ block.super }}<script src="{% static 'athena/admin-sidebar.js' %}" defer></script>{% endblock %}
+{% block extrahead %}{{ block.super }}<link rel="icon" href="/assets/favicon.svg"><meta name="robots" content="noindex, nofollow"><script src="{% static 'athena/admin-sidebar.js' %}" defer></script>{% endblock %}
+{# Loaded after Django's responsive.css so the Athena system wins at equal specificity. #}
+{% block responsive %}{{ block.super }}<link rel="stylesheet" href="{% static 'athena/admin.css' %}"><link rel="stylesheet" href="{% static 'athena/admin-sidebar.css' %}">{% endblock %}
 {% block branding %}<div id="site-name"><a href="{% url 'admin:index' %}">ATHENA <span>Administración</span></a></div>{% endblock %}
-{% block nav-global %}<a href="/api/openapi.json" class="api-docs-link">API para agentes</a>{% endblock %}
+{% block usertools %}{% if has_permission %}
+<div id="user-tools">
+  <span class="user-chip">{% firstof user.get_short_name user.get_username %}</span>
+  {% if site_url %}<a class="button" href="{{ site_url }}">Ver el sitio</a>{% endif %}
+  <a class="button" href="/api/openapi.json">API para agentes</a>
+  {% if user.has_usable_password %}<a class="button" href="{% url 'admin:password_change' %}">Cambiar contraseña</a>{% endif %}
+  <form id="logout-form" method="post" action="{% url 'admin:logout' %}">{% csrf_token %}<button class="button" type="submit">Cerrar sesión</button></form>
+</div>
+{% endif %}{% endblock %}
 {% block nav-sidebar %}{% portal_sidebar %}{% endblock %}
