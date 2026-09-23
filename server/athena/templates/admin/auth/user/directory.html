@@ -1,0 +1,62 @@
+{% extends 'admin/base_site.html' %}{% load static %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'athena/admin-directory.css' %}">{% endblock %}
+{% block extrahead %}{{ block.super }}<script src="{% static 'athena/admin-directory.js' %}" defer></script>{% endblock %}
+{% block bodyclass %}{{ block.super }} directory-page{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Inicio</a> &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a> &rsaquo; {{ opts.verbose_name_plural|capfirst }}</div>{% endblock %}
+{% block content %}
+<div class="directory">
+  <div class="directory-list">
+    <div class="directory-search">
+      <label class="visually-hidden" for="directory-q">Buscar usuario</label>
+      <input id="directory-q" type="search" placeholder="Buscar usuario…" autocomplete="off">
+    </div>
+    <ul>
+      {% for user, seen, role in users %}
+      <li data-search="{{ user.username }} {{ user.get_full_name }} {{ user.email }}"><a href="?user={{ user.pk }}"{% if user.pk == selected.pk %} aria-current="true"{% endif %}>{{ user.username }}<small>{{ seen }}</small><span class="pill{% if role == 'Admin' %} gold{% elif role == 'Inactivo' %} off{% endif %}">{{ role }}</span></a></li>
+      {% endfor %}
+    </ul>
+    <p class="directory-empty" hidden>Sin coincidencias.</p>
+    <a class="button ghost directory-add" href="?new=1"{% if not selected %} aria-current="page"{% endif %}>+ Nuevo usuario</a>
+  </div>
+  <form class="directory-panel" method="post" action="{% if selected %}?user={{ selected.pk }}{% else %}?new=1{% endif %}" novalidate>{% csrf_token %}
+    <header>
+      {% if selected %}
+      <h2>{{ form.initial.username }}</h2>
+      <span class="mono">alta {{ selected.date_joined|date:'d/m/Y' }} · sesión {% if selected.last_login %}{{ selected.last_login|date:'d/m/Y H:i' }}{% else %}nunca{% endif %}</span>
+      {% else %}
+      <h2>Nuevo usuario</h2>
+      {% endif %}
+    </header>
+    <div class="compact">
+      <div class="full"><label class="label" for="{{ form.username.id_for_label }}">Nombre de usuario</label>{{ form.username }}{{ form.username.errors }}</div>
+      {% if not selected %}
+      <div><label class="label" for="{{ form.password1.id_for_label }}">Contraseña</label>{{ form.password1 }}{{ form.password1.errors }}<div class="help" id="{{ form.password1.auto_id }}_helptext">{{ form.password1.help_text|safe }}</div></div>
+      <div><label class="label" for="{{ form.password2.id_for_label }}">Confirmar contraseña</label>{{ form.password2 }}{{ form.password2.errors }}<div class="help" id="{{ form.password2.auto_id }}_helptext">{{ form.password2.help_text|safe }}</div></div>
+      {% endif %}
+      <div><label class="label" for="{{ form.first_name.id_for_label }}">Nombre</label>{{ form.first_name }}{{ form.first_name.errors }}</div>
+      <div><label class="label" for="{{ form.last_name.id_for_label }}">Apellidos</label>{{ form.last_name }}{{ form.last_name.errors }}</div>
+      <div class="full"><label class="label" for="{{ form.email.id_for_label }}">Correo electrónico</label>{{ form.email }}{{ form.email.errors }}</div>
+      <fieldset class="full">
+        <legend class="label">Acceso</legend>
+        <div class="chips">
+          {% for radio in form.role %}<label class="chip">{{ radio.tag }}{{ radio.choice_label }}</label>{% endfor %}
+          <label class="chip chip-apart">{{ form.is_active }}Activa</label>
+        </div>
+        {{ form.role.errors }}{{ form.is_active.errors }}{{ form.non_field_errors }}
+      </fieldset>
+    </div>
+    <div class="bar">
+      <button type="submit">Guardar</button>
+      {% if selected %}
+      <a class="button ghost" href="{% url 'admin:auth_user_password_change' selected.pk %}">Restablecer contraseña</a>
+      <a class="link" href="{% url 'admin:athena_apikey_changelist' %}?user__id__exact={{ selected.pk }}">{{ api_keys }} clave{{ api_keys|pluralize:'s' }} de API</a>
+      {% if selected.pk == request.user.pk %}
+      <span class="link danger" aria-disabled="true" title="No puedes eliminar tu propia cuenta">Eliminar</span>
+      {% else %}
+      <a class="link danger" href="{% url 'admin:auth_user_delete' selected.pk %}">Eliminar</a>
+      {% endif %}
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

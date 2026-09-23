@@ -1,10 +1,17 @@
 from django.contrib import admin, messages
+from django.contrib.admin.options import IS_POPUP_VAR
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Group, User
+from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.http import Http404
+from django.shortcuts import redirect
+from django.template.response import TemplateResponse
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
-from .forms import ArticleForm, SafeUserChangeForm
+from .forms import ArticleForm, DirectoryUserCreationForm, DirectoryUserForm, SafeUserChangeForm
 from .models import ApiKey, Article
 
 admin.site.site_header = 'Athena · Administración'
@@ -13,6 +20,26 @@ admin.site.index_title = 'Administrar conocimiento y acceso'
 admin.site.site_url = '/'
 admin.site.unregister(Group)
 admin.site.unregister(User)
+
+
+def since(moment, now):
+    if not moment:
+        return 'nunca'
+    minutes = int((now - moment).total_seconds() // 60)
+    if minutes < 1:
+        return 'ahora'
+    if minutes < 60:
+        return f'hace {minutes} min'
+    if minutes < 24 * 60:
+        return f'hace {minutes // 60} h'
+    days = minutes // (24 * 60)
+    return 'ayer' if days == 1 else f'hace {days} días'
+
+
+def pill(user):
+    if not user.is_active:
+        return 'Inactivo'
+    return 'Admin' if user.is_staff and user.is_superuser else 'Lector'
 
 
 @admin.register(User)
@@ -39,6 +66,48 @@ class AthenaUserAdmin(UserAdmin):
         form = super().get_form(request, obj, **kwargs)
         form.actor = request.user
         return form
+
+    # The directory replaces the change and add pages; Django's native pages remain for related-field popups.
+    def is_popup(self, request):
+        return IS_POPUP_VAR in request.GET or IS_POPUP_VAR in request.POST
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        if self.is_popup(request):
+            return super().change_view(request, object_id, form_url, extra_context)
+        return redirect(reverse('admin:auth_user_changelist') + f'?user={object_id}')
+
+    def add_view(self, request, form_url='', extra_context=None):
+        if self.is_popup(request):
+            return super().add_view(request, form_url, extra_context)
+        return redirect(reverse('admin:auth_user_changelist') + '?new=1')
+
+    def changelist_view(self, request, extra_context=None):
+        if not self.has_view_permission(request):
+            raise PermissionDenied
+        creating = 'new' in request.GET
+        selected = None if creating else self.get_object(request, request.GET.get('user', request.user.pk))
+        if not creating and selected is None:
+            raise Http404
+        form_class = DirectoryUserCreationForm if creating else DirectoryUserForm
+        if request.method == 'POST':
+            form = form_class(request.POST, instance=selected, actor=request.user)
+            with transaction.atomic():
+                saved = form.save() if form.is_valid() else None
+            if saved:
+                message = self.construct_change_message(request, form, None, creating)
+                (self.log_addition if creating else self.log_change)(request, saved, message)
+                messages.success(request, 'Usuario guardado.')
+                return redirect(request.path + f'?user={saved.pk}')
+        else:
+            form = form_class(instance=selected, actor=request.user)
+        now = timezone.now()
+        # ponytail: whole user list in one page; paginate or search server-side past a few hundred accounts.
+        users = [(user, since(user.last_login, now), pill(user)) for user in User.objects.order_by('username')]
+        return TemplateResponse(request, 'admin/auth/user/directory.html', {
+            **self.admin_site.each_context(request), **(extra_context or {}),
+            'title': 'Directorio', 'opts': self.opts, 'form': form, 'selected': selected, 'users': users,
+            'api_keys': ApiKey.objects.filter(user=selected).count() if selected else 0,
+        })
 
 
 @admin.register(Article)

@@ -17,7 +17,7 @@ The Spanish reader keeps its existing Docsify routes. All knowledge content requ
 
 In **Administración → Usuarios**, add, rename, deactivate, or delete users. Open a user to reset their password.
 Ordinary active users can read published articles. Administrators can manage users and content.
-To make another administrator in the user form, enable **Activo**, **Es staff**, and **Estado de superusuario**.
+The user directory shows every account on the left and the selected account on the right. Choose **Administrador** or **Lector** under *Acceso*; **Activa** controls whether the account can sign in.
 The current administrator cannot remove their own administrative access.
 Password changes invalidate other sessions and the user's API keys. Disabling or deleting a user blocks both browser and API access.
 There is no public registration or email password-reset service. Users contact an administrator for recovery.

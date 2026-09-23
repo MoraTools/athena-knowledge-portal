@@ -6,6 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
+from .admin import since
 from .forms import ArticleForm
 from .models import ApiKey, Article, LoginAttempt
 
@@ -46,7 +47,7 @@ class PortalTests(TestCase):
         self.assertFalse(any(x.get('title') == 'First guide' for x in self.client.get('/search-index.json').json()))
         self.client.force_login(self.admin)
         self.assertContains(self.client.get('/content/first-guide.md'), 'Borrador')
-        for path in ['/admin/', '/admin/auth/user/add/', '/admin/athena/article/add/',
+        for path in ['/admin/', '/admin/auth/user/', '/admin/auth/user/add/?_popup=1', '/admin/athena/article/add/',
                      f'/admin/athena/article/{self.article.pk}/change/', '/admin/athena/apikey/add/']:
             self.assertEqual(self.client.get(path).status_code, 200, path)
 
@@ -132,3 +133,61 @@ class PortalTests(TestCase):
             self.assertEqual(self.client.post('/api/v1/articles/', bad, content_type='application/json', **headers).status_code, 400)
         self.client.force_login(self.admin)
         self.assertContains(self.client.get('/admin/'), 'athena/admin.css')
+
+    def test_user_directory(self):
+        url = '/admin/auth/user/'
+        self.client.force_login(self.reader)
+        self.assertEqual(self.client.get(url).status_code, 302)
+        User.objects.create_user('staff', password='Staff-Example-7215!', is_staff=True)
+        self.client.force_login(User.objects.get(username='staff'))
+        self.assertEqual(self.client.get(url).status_code, 403)
+
+        self.client.force_login(self.admin)
+        response = self.client.get(url)
+        self.assertContains(response, 'administrator<small>ahora</small><span class="pill gold">Admin</span>')
+        self.assertContains(response, 'reader<small>ahora</small><span class="pill">Lector</span>')
+        self.assertContains(response, 'title="No puedes eliminar tu propia cuenta"')
+        self.assertNotContains(response, f'/admin/auth/user/{self.admin.pk}/delete/')
+        self.assertRedirects(self.client.get(f'/admin/auth/user/{self.reader.pk}/change/'), f'{url}?user={self.reader.pk}')
+        self.assertRedirects(self.client.get('/admin/auth/user/add/'), f'{url}?new=1')
+
+        self.reader.email = 'reader@example.com'
+        self.reader.save()
+        response = self.client.get(f'{url}?user={self.reader.pk}')
+        self.assertContains(response, 'value="reader@example.com"')
+        self.assertContains(response, f'href="?user={self.reader.pk}" aria-current="true"')
+        self.assertContains(response, f'/admin/auth/user/{self.reader.pk}/delete/')
+        self.assertContains(response, f'/admin/auth/user/{self.reader.pk}/password/')
+        self.assertContains(response, '0 claves de API')
+        self.assertEqual(self.client.get(f'{url}?user=999').status_code, 404)
+
+        data = {'username': 'reader2', 'first_name': 'Ana', 'last_name': '', 'email': '', 'role': 'admin', 'is_active': 'on'}
+        response = self.client.post(f'{url}?user={self.reader.pk}', data, follow=True)
+        self.assertRedirects(response, f'{url}?user={self.reader.pk}')
+        self.assertContains(response, 'Usuario guardado.')
+        self.reader.refresh_from_db()
+        self.assertEqual((self.reader.username, self.reader.is_staff, self.reader.is_superuser), ('reader2', True, True))
+
+        data = {'username': 'administrator', 'role': 'reader', 'is_active': 'on'}
+        response = self.client.post(f'{url}?user={self.admin.pk}', data)
+        self.assertContains(response, 'No puede quitar su propio acceso de administrador.')
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_superuser)
+
+        data = {'username': 'nueva', 'password1': 'Fresh-Reader-Pass-8824!', 'password2': 'mismatch',
+                'role': 'reader', 'is_active': 'on'}
+        self.assertEqual(self.client.post(f'{url}?new=1', data).status_code, 200)
+        data['password2'] = data['password1']
+        response = self.client.post(f'{url}?new=1', data)
+        created = User.objects.get(username='nueva')
+        self.assertRedirects(response, f'{url}?user={created.pk}')
+        self.assertFalse(created.is_staff or created.is_superuser)
+        self.assertTrue(Client().login(username='nueva', password='Fresh-Reader-Pass-8824!'))
+        self.assertEqual(self.client.get(f'/admin/athena/apikey/?user__id__exact={created.pk}').status_code, 200)
+
+    def test_relative_last_login(self):
+        now = timezone.now()
+        for delta, text in [(timedelta(minutes=20), 'hace 20 min'), (timedelta(hours=2), 'hace 2 h'),
+                            (timedelta(days=1, hours=3), 'ayer'), (timedelta(days=40), 'hace 40 días')]:
+            self.assertEqual(since(now - delta, now), text)
+        self.assertEqual(since(None, now), 'nunca')

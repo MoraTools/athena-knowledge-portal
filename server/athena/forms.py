@@ -2,7 +2,7 @@ import json
 import re
 
 from django import forms
-from django.contrib.auth.forms import UserChangeForm
+from django.contrib.auth.forms import UserChangeForm, UserCreationForm, UsernameField
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
@@ -81,3 +81,36 @@ class SafeUserChangeForm(UserChangeForm):
             protect_admin(original, actor=self.actor, active=data.get('is_active', False),
                           admin=data.get('is_superuser', False) and data.get('is_staff', False))
         return data
+
+
+class DirectoryUserForm(forms.ModelForm):
+    role = forms.ChoiceField(label='Acceso', choices=[('admin', 'Administrador'), ('reader', 'Lector')],
+                             widget=forms.RadioSelect)
+
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email', 'is_active']
+        field_classes = {'username': UsernameField}
+
+    def __init__(self, *args, actor, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.actor = actor
+        self.initial.setdefault('role', 'admin' if self.instance.is_staff and self.instance.is_superuser else 'reader')
+        for name in ['first_name', 'last_name', 'email']:
+            self.fields[name].widget.attrs['placeholder'] = 'Opcional'
+        self.fields['username'].help_text = self.fields['is_active'].help_text = ''
+
+    def clean(self):
+        data = super().clean()
+        if self.instance.pk:
+            protect_admin(User.objects.get(pk=self.instance.pk), actor=self.actor,
+                          active=data.get('is_active', False), admin=data.get('role') == 'admin')
+        return data
+
+    def save(self, commit=True):
+        self.instance.is_staff = self.instance.is_superuser = self.cleaned_data['role'] == 'admin'
+        return super().save(commit)
+
+
+class DirectoryUserCreationForm(DirectoryUserForm, UserCreationForm):
+    pass

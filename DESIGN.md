@@ -3,7 +3,7 @@
 ## Scope
 
 Preserve the existing Spanish knowledge reader and its black-and-gold identity.
-Account screens use the same fonts and colors. Administration uses Django's native forms, lists, and controls.
+Account screens use the same fonts and colors. Administration uses Django's native forms, lists, and controls, except the user directory (`admin/auth/user/`), a single list-plus-panel screen built on the same tokens.
 
 ## Tokens
 
