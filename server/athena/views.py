@@ -92,6 +92,28 @@ def api_schema(request):
     return FileResponse((settings.BASE_DIR / 'server/openapi.json').open('rb'), content_type='application/json')
 
 
+_sidebar_cache = (None, '')
+
+
+def sidebar_markdown(user):
+    """The reader's Docsify sidebar; the admin renders the same items through sidebar_links."""
+    global _sidebar_cache
+    file = settings.BASE_DIR / 'dist/_sidebar.md'
+    mtime = file.stat().st_mtime
+    if _sidebar_cache[0] != mtime:
+        _sidebar_cache = (mtime, file.read_text(encoding='utf-8-sig'))
+    text = _sidebar_cache[1] + '\n- [Mi cuenta](/accounts/profile/ ":ignore")\n'
+    if user.is_staff:
+        text += '- [Administrar Athena](/admin/ ":ignore")\n'
+    return text
+
+
+def sidebar_links(user):
+    """(label, href) pairs; Docsify routes a /page.md link to /#/page."""
+    return [(label, '/#' + href[:-3] if href.endswith('.md') else href)
+            for label, href in re.findall(r'^\s*[-*]\s*\[([^\]]+)\]\(([^\s)]+)', sidebar_markdown(user), re.M)]
+
+
 def static_portal(request, path='index.html'):
     # An explicit allowlist prevents serving a database, source file, or a removed article.
     assets = path.startswith(('fonts/', 'assets/', 'vendor/')) or path in ('styles.css', 'app.js', 'config.js')
@@ -113,8 +135,5 @@ def static_portal(request, path='index.html'):
     if '..' in Path(path).parts or not file.resolve().is_relative_to(root) or not file.is_file():
         raise Http404
     if path == '_sidebar.md':
-        text = file.read_text(encoding='utf-8-sig') + '\n- [Mi cuenta](/accounts/profile/ ":ignore")\n'
-        if request.user.is_staff:
-            text += '- [Administrar Athena](/admin/ ":ignore")\n'
-        return HttpResponse(text, content_type='text/markdown; charset=utf-8')
+        return HttpResponse(sidebar_markdown(request.user), content_type='text/markdown; charset=utf-8')
     return FileResponse(file.open('rb'), content_type=mimetypes.guess_type(file)[0] or 'application/octet-stream')

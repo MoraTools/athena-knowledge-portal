@@ -1,0 +1,13 @@
+<button class="sidebar-toggle" type="button" aria-controls="portal-sidebar" aria-expanded="false" aria-label="Mostrar navegación"><span></span><span></span><span></span></button>
+<aside id="portal-sidebar" class="sidebar" aria-label="Navegación del portal">
+  <a class="brand" href="/" aria-label="Athena, inicio"><span>ATHENA</span><small>KNOWLEDGE PORTAL</small></a>
+  <nav class="sidebar-nav" aria-label="Portal">
+    <ul>{% for label, href, active in links %}
+      <li{% if active %} class="active"{% endif %}><a href="{{ href }}"{% if active %} aria-current="true"{% endif %}>{{ label }}</a></li>{% endfor %}
+    </ul>
+    {% if sections %}<h2 id="portal-sidebar-admin">Administrar</h2>
+    <ul aria-labelledby="portal-sidebar-admin">{% for label, href, active in sections %}
+      <li{% if active %} class="active"{% endif %}><a href="{{ href }}"{% if active %} aria-current="page"{% endif %}>{{ label }}</a></li>{% endfor %}
+    </ul>{% endif %}
+  </nav>
+</aside>

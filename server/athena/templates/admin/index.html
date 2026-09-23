@@ -1,2 +1,2 @@
-{% extends 'admin/index.html' %}
-{% block nav-sidebar %}{% if not is_popup and is_nav_sidebar_enabled %}{% include 'admin/nav_sidebar.html' %}{% endif %}{% endblock %}
+{% extends 'admin/index.html' %}{% load athena_nav %}
+{% block nav-sidebar %}{% portal_sidebar %}{% endblock %}

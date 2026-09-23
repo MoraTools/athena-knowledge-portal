@@ -185,6 +185,25 @@ class PortalTests(TestCase):
         self.assertTrue(Client().login(username='nueva', password='Fresh-Reader-Pass-8824!'))
         self.assertEqual(self.client.get(f'/admin/athena/apikey/?user__id__exact={created.pk}').status_code, 200)
 
+    def test_portal_sidebar(self):
+        self.client.force_login(self.reader)
+        sidebar = self.client.get('/_sidebar.md').content.decode()
+        self.assertIn('[Mi cuenta](/accounts/profile/', sidebar)
+        self.assertNotIn('Administrar Athena', sidebar)
+        self.client.force_login(self.admin)
+        self.assertIn('[Administrar Athena](/admin/', self.client.get('/_sidebar.md').content.decode())
+        reader_links = ['<a href="/">Inicio</a>', '<a href="/#/guides">Guías</a>', '<a href="/#/content/contributing">Contribuir</a>',
+                        '<a href="/accounts/profile/">Mi cuenta</a>', '<li class="active"><a href="/admin/" aria-current="true">Administrar Athena</a>']
+        for path in ['/admin/', '/admin/auth/user/']:
+            response = self.client.get(path)
+            self.assertNotContains(response, 'id="nav-sidebar"')
+            for link in reader_links + ['<h2 id="portal-sidebar-admin">Administrar</h2>', '>Artículos</a>', '>Claves de API</a>']:
+                self.assertContains(response, link, html=False)
+        self.assertContains(response, '<li class="active"><a href="/admin/auth/user/" aria-current="page">Usuarios</a>')
+        self.assertContains(self.client.get('/admin/athena/article/add/'),
+                            '<li class="active"><a href="/admin/athena/article/" aria-current="page">Artículos</a>')
+        self.assertNotContains(self.client.get('/admin/auth/user/add/?_popup=1'), 'portal-sidebar')
+
     def test_relative_last_login(self):
         now = timezone.now()
         for delta, text in [(timedelta(minutes=20), 'hace 20 min'), (timedelta(hours=2), 'hace 2 h'),
