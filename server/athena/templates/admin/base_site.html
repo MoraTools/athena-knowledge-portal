@@ -8,7 +8,7 @@
 <div id="user-tools">
   <span class="user-chip">{% firstof user.get_short_name user.get_username %}</span>
   {% if site_url %}<a class="button" href="{{ site_url }}">Ver el sitio</a>{% endif %}
-  <a class="button" href="/api/openapi.json">API para agentes</a>
+  <a class="button" href="/api.md">API para agentes</a>
   {% if user.has_usable_password %}<a class="button" href="{% url 'admin:password_change' %}">Cambiar contraseña</a>{% endif %}
   <form id="logout-form" method="post" action="{% url 'admin:logout' %}">{% csrf_token %}<button class="button" type="submit">Cerrar sesión</button></form>
 </div>
