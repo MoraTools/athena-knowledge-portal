@@ -134,3 +134,24 @@ table{display:table!important;width:100%;border-collapse:collapse}th,td{border:0
 @media (min-width:1200px){body.has-page-tree .content{right:240px}.page-tree{position:fixed;top:2rem;right:1rem;z-index:5;width:220px;max-height:calc(100vh - 4rem);margin:0;overflow:auto;background:transparent}.page-tree summary{cursor:default}}
 @media (max-width:768px){.brand span{font-size:27px}.access-label{font-size:9px}.markdown-section{padding:2rem 1.1rem 5rem}.hero{grid-template-columns:1fr;min-height:0}.hero-copy{padding:2rem}.hero img{min-height:260px;max-height:360px;grid-row:1}.portal-grid,.library-grid,.library-controls{grid-template-columns:1fr}.catalog-item{grid-template-columns:1fr}.contribute-note{align-items:flex-start;flex-direction:column}.sidebar{top:0}.sidebar-toggle{top:10px;bottom:auto;left:10px;background:var(--surface-2)}body.home-view .sidebar-toggle{top:10px}.search .input-wrap{grid-template-columns:1fr}.search-result{grid-template-columns:1fr;gap:.65rem}.search-toolbar{align-items:stretch;flex-direction:column}.search-toolbar select{width:100%}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+
+/* Actualizaciones: one post per row on a dated rail */
+.timeline-intro{color:var(--muted);margin:0 0 1.5rem}
+.timeline,.timeline ol{list-style:none;margin:0;padding:0}
+.markdown-section .timeline-month>h2{margin:2.2rem 0 1rem;padding-left:calc(var(--rail) + 1.25rem);font:700 12px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.timeline{--rail:64px}
+.timeline-post{position:relative;display:grid;grid-template-columns:var(--rail) minmax(0,1fr);gap:1.25rem;padding:0 0 1.5rem}
+.timeline-post::before{content:"";position:absolute;left:calc(var(--rail) / 2);top:0;bottom:0;width:1px;background:#2a2a2a}
+.timeline-post:last-child::before{bottom:auto;height:2.4rem}
+.timeline-post time{position:relative;z-index:1;align-self:start;display:flex;flex-direction:column;align-items:center;width:var(--rail);padding:.55rem 0;background:var(--bg);color:var(--text)}
+.timeline-post time .day{font:700 1.6rem/1 var(--font-display)}
+.timeline-post time .mon{margin-top:.2rem;font:700 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.timeline-card{margin:0;border:1px solid #1f1f1f}
+.timeline-card .post-meta{display:block;color:var(--muted);font:12px/1.4 var(--font-mono);letter-spacing:.04em;text-transform:uppercase}
+.timeline-card h2{margin:.5rem 0 .4rem}
+.timeline-card h2 a{text-decoration:none}
+.timeline-card h2 a:hover{color:var(--accent)}
+.post-actions{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:1rem 0 0}
+.post-link{display:inline-block;padding:.55rem .8rem;border:1px solid var(--accent);color:var(--accent)!important;font-weight:700;text-decoration:none}
+.post-link:hover{background:var(--surface-2)}
+@media (max-width:768px){.timeline{--rail:52px}.timeline-post{gap:.8rem}.timeline-month>h2{padding-left:0}.timeline-card{padding:1.1rem}}
