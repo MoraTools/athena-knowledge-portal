@@ -268,6 +268,15 @@ class PortalTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         return form.save()
 
+    def test_admin_index_lists_last_activity(self):
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get('/admin/'), 'Todavía no hay actividad')
+        self.client.post('/admin/auth/user/?user=%s' % self.reader.pk,
+                         {'username': 'reader', 'role': 'reader', 'edits': [], 'is_active': 'on', 'email': 'r@example.com'})
+        page = self.client.get('/admin/')
+        self.assertContains(page, 'Última actividad')
+        self.assertContains(page, '<strong>administrator</strong> editó usuario · ahora')
+
     def test_partial_admin_cannot_escalate(self):
         manager = self.directory_admin('manager', ['users'])
         self.client.force_login(manager)

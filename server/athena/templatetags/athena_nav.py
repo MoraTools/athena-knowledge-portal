@@ -1,8 +1,15 @@
 from django import template
+from django.utils import timezone
 
+from ..admin import since as _since
 from ..views import sidebar_links
 
 register = template.Library()
+
+
+@register.filter
+def since(moment):
+    return _since(moment, timezone.now())
 
 
 @register.inclusion_tag('admin/portal_sidebar.html', takes_context=True)

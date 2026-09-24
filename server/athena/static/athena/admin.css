@@ -51,8 +51,7 @@ code, pre, kbd { font-family: var(--font-mono); color: var(--code); font-size: 1
 /* Label voice: Courier Prime 13px uppercase, the same as the sidebar and the directory. */
 div.breadcrumbs, thead th, .module h2, .module caption, .inline-group h2, fieldset .fieldset-heading,
 .aligned label, .login .form-row label, #changelist-filter h2, #changelist-filter h3, #changelist-filter summary,
-.bulk-count, .paginator, #toolbar .quiet, .pill, .mini.quiet, #user-tools .user-chip,
-#recent-actions-module h3, #recent-actions-module .mini, #change-history tbody th,
+.bulk-count, .paginator, #toolbar .quiet, .pill, #user-tools .user-chip, #change-history tbody th,
 #changelist td.field-date, #changelist td.field-last_updated, #changelist td.field-expires_at, #changelist td.field-created, #changelist td.field-last_login {
   font-family: var(--font-mono); font-size: 13px; font-weight: 400; letter-spacing: .06em; text-transform: uppercase;
 }
@@ -374,8 +373,9 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: v
 #content-related .module h2 { padding: 12px 16px; margin: 0; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); }
 #content-related h3 { margin: 16px 0 8px; padding: 0 16px; color: var(--quiet); }
 #content-related .actionlist { margin: 0 16px 16px; }
-#content-related .actionlist li { padding-left: 0; line-height: 1.4; }
-#content-related .actionlist li .mini { display: block; color: var(--quiet); font-size: 12px; }
+#content-related .actionlist li { padding-left: 0; line-height: 1.4; margin-bottom: 10px; }
+#content-related .actionlist li .mini { display: block; color: var(--quiet); font-size: 13px; }
+#content-related .actionlist li .mini strong { color: var(--muted); font-weight: 600; }
 #content-related p { padding: 0 16px; color: var(--quiet); }
 
 /* Delete confirmation */

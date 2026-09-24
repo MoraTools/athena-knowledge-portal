@@ -1,2 +1,23 @@
-{% extends 'admin/index.html' %}{% load athena_nav %}
+{% extends 'admin/index.html' %}{% load athena_nav log %}
 {% block nav-sidebar %}{% portal_sidebar %}{% endblock %}
+{% block sidebar %}
+<div id="content-related">
+  <div class="module" id="recent-actions-module">
+    <h2>Última actividad</h2>
+    {% get_admin_log 15 as admin_log %}
+    {% if not admin_log %}
+    <p>Todavía no hay actividad.</p>
+    {% else %}
+    <ul class="actionlist">
+    {% for entry in admin_log %}
+      <li class="{% if entry.is_addition %}addlink{% elif entry.is_change %}changelink{% else %}deletelink{% endif %}">
+        {% if entry.is_deletion or not entry.get_admin_url %}{{ entry.object_repr }}{% else %}<a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>{% endif %}
+        <span class="mini quiet"><strong>{{ entry.user.get_username }}</strong> {% if entry.is_addition %}creó{% elif entry.is_change %}editó{% else %}eliminó{% endif %} {{ entry.content_type.name|default:'un elemento' }} · {{ entry.action_time|since }}</span>
+        {% if entry.is_change and entry.change_message %}<span class="mini quiet">{{ entry.get_change_message }}</span>{% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
