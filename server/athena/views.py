@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.defaultfilters import filesizeformat
+from django.urls import reverse
 from django.utils.html import escape, strip_tags
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
@@ -65,6 +66,10 @@ def article_markdown(request, slug):
         body = '> **Borrador.** Solo visible para editores.\n\n' + body
     if article.pdf_name:
         body += f'\n\n[Abrir PDF original](/pdf/{article.slug}.pdf)\n'
+    if request.user.has_perm('athena.change_article'):
+        # Raw HTML so Docsify leaves the href alone; the reader moves the link next to "Copiar página".
+        edit = reverse('admin:athena_article_change', args=[article.pk])
+        body += f'\n\n<div class="article-edit"><a href="{edit}">Editar artículo</a></div>\n'
     return HttpResponse(body, content_type='text/markdown; charset=utf-8')
 
 

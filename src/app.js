@@ -564,6 +564,26 @@ function buildPdfViewer() {
   link.closest('p').replaceWith(viewer);
 }
 
+// Editors get an "Editar artículo" link at the end of the article; it belongs beside "Copiar página".
+function placeEditLink() {
+  const holder = document.querySelector('.markdown-section .article-edit');
+  const actions = document.querySelector('.markdown-section .article-actions');
+  if (!holder || !actions) return;
+  const link = holder.querySelector('a');
+  link.className = 'copy-page copy-page--ghost';
+  const label = document.createElement('span');
+  label.textContent = link.textContent;
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', 'M4 20h4L19 9l-4-4L4 16v4Zm9-13 4 4');
+  icon.append(path);
+  link.replaceChildren(icon, label);
+  actions.prepend(link);
+  holder.remove();
+}
+
 function syncView() {
   const { path } = getRouteState();
   document.body.classList.toggle('home-view', path === '/');
@@ -574,6 +594,7 @@ function syncView() {
   filterDownloads();
   buildPageTree();
   buildPdfViewer();
+  placeEditLink();
   if (path === '/search') renderSearchPage();
 }
 
@@ -588,7 +609,8 @@ document.addEventListener('click', async (event) => {
     const route = getRouteState().path;
     const response = await fetch(route.endsWith('.md') ? route : route + '.md');
     if (!response.ok) throw new Error('Article request failed: ' + response.status);
-    await navigator.clipboard.writeText(await response.text());
+    const text = (await response.text()).replace(/\n*<div class="article-edit">.*<\/div>\n?$/, '\n');
+    await navigator.clipboard.writeText(text);
     copyButton.classList.add('copied');
     label.textContent = 'Copiado';
     setTimeout(() => {

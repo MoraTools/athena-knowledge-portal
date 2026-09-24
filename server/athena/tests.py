@@ -268,6 +268,13 @@ class PortalTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         return form.save()
 
+    def test_article_edit_link_for_editors(self):
+        self.client.force_login(self.reader)
+        self.assertNotContains(self.client.get('/content/first-guide.md'), 'article-edit')
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get('/content/first-guide.md'),
+                            f'<div class="article-edit"><a href="/admin/athena/article/{self.article.pk}/change/">')
+
     def test_admin_index_lists_last_activity(self):
         self.client.force_login(self.admin)
         self.assertContains(self.client.get('/admin/'), 'Todavía no hay actividad')
