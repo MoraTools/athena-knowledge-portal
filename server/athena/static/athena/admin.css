@@ -279,6 +279,8 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 #change-history table { border: 1px solid var(--line); }
 #change-history tbody th { width: 12em; color: var(--quiet); }
 #changelist td.field-date, #changelist td.field-last_updated, #changelist td.field-expires_at, #changelist td.field-created, #changelist td.field-last_login { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* Download titles are often long file names without spaces; let them wrap instead of widening the table. */
+.model-download #changelist th.field-title { min-width: 16ch; overflow-wrap: anywhere; }
 
 /* Changelist toolbar, actions and pagination */
 #changelist.module { background: transparent; border: 0; }

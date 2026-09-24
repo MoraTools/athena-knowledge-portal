@@ -35,6 +35,8 @@ DATA_DIR = Path(os.environ.get('ATHENA_DATA_DIR', BASE_DIR / 'data'))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': DATA_DIR / 'athena.sqlite3',
                          'OPTIONS': {'timeout': 20, 'transaction_mode': 'IMMEDIATE'}}}
+# Downloads live here and are served only through the signed-in /downloads/<slug> view, never as MEDIA_URL.
+MEDIA_ROOT = DATA_DIR / 'media'
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 12}},
@@ -64,5 +66,7 @@ SECURE_HSTS_PRELOAD = not DEBUG
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'same-origin'
 X_FRAME_OPTIONS = 'DENY'
+# Limits non-file request data only. Uploaded files above FILE_UPLOAD_MAX_MEMORY_SIZE stream to
+# temporary files, so large downloads are limited by the proxy (deploy/Caddyfile), not here.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 27 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024

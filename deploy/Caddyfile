@@ -1,5 +1,11 @@
 athena.moratechnology.com {
-    request_body {
+    # Download uploads (admin form and API) may be large; everything else keeps the small limit.
+    @big path /admin/* /api/*
+    @small not path /admin/* /api/*
+    request_body @big {
+        max_size 512MB
+    }
+    request_body @small {
         max_size 27MB
     }
     handle_path /static/* {

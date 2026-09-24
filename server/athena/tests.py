@@ -1,14 +1,20 @@
+import hashlib
+import io
 import json
+import tempfile
 from datetime import timedelta
+from pathlib import Path
 
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
 from .admin import since
 from .forms import ArticleForm
-from .models import ApiKey, Article, LoginAttempt
+from .models import ApiKey, Article, Download, LoginAttempt
 
 
 @override_settings(SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False)
@@ -55,9 +61,31 @@ class PortalTests(TestCase):
         strict = Client(enforce_csrf_checks=True)
         self.assertEqual(strict.post('/accounts/login/', {'username': 'reader', 'password': 'wrong'}).status_code, 403)
         LoginAttempt.objects.all().delete()
-        for _ in range(10):
+        for path in ['/accounts/login/', '/admin/login/']:
+            LoginAttempt.objects.all().delete()
+            for _ in range(5):
+                self.assertEqual(self.client.post(path, {'username': 'missing', 'password': 'wrong'}).status_code, 200)
+            response = self.client.post(path, {'username': 'missing', 'password': 'wrong'})
+            self.assertContains(response, 'Demasiados intentos. Intente de nuevo en 15 minutos.', status_code=429)
+            self.assertContains(response, 'name="username"', status_code=429)  # The styled login form, not bare text.
+            self.assertEqual(response['Retry-After'], '900')
+        # The correct password is refused while locked.
+        response = self.client.post('/accounts/login/', {'username': 'reader', 'password': 'Reader-Example-9348!'})
+        self.assertEqual(response.status_code, 429)
+        # The next lockout for the same keys doubles.
+        LoginAttempt.objects.update(locked_until=timezone.now() - timedelta(seconds=1))
+        for _ in range(5):
             self.assertEqual(self.client.post('/accounts/login/', {'username': 'missing', 'password': 'wrong'}).status_code, 200)
-        self.assertEqual(self.client.post('/accounts/login/', {'username': 'missing', 'password': 'wrong'}).status_code, 429)
+        self.assertContains(self.client.post('/accounts/login/', {'username': 'missing', 'password': 'x'}),
+                            'Intente de nuevo en 30 minutos.', status_code=429)
+        self.assertEqual(LoginAttempt.objects.filter(lockouts=2).count(), 2)  # The IP and the username.
+        # Success clears the count and the lock but remembers earlier lockouts; old rows expire after a day.
+        LoginAttempt.objects.update(locked_until=None, count=3)
+        self.assertEqual(self.client.post('/accounts/login/', {'username': 'reader', 'password': 'Reader-Example-9348!'}).status_code, 302)
+        self.assertTrue(LoginAttempt.objects.filter(count=0, locked_until=None, lockouts=2).exists())
+        LoginAttempt.objects.update(started_at=timezone.now() - timedelta(hours=25))
+        self.client.post('/accounts/login/', {'username': 'other', 'password': 'wrong'})
+        self.assertEqual(set(LoginAttempt.objects.values_list('lockouts', flat=True)), {0})
 
     def test_api_permissions_and_revocation(self):
         self.client.force_login(self.admin)
@@ -220,6 +248,126 @@ class PortalTests(TestCase):
                             (timedelta(days=1, hours=3), 'ayer'), (timedelta(days=40), 'hace 40 días')]:
             self.assertEqual(since(now - delta, now), text)
         self.assertEqual(since(None, now), 'nunca')
+
+
+@override_settings(SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False)
+class DownloadTests(TestCase):
+    def setUp(self):
+        self.enterContext(override_settings(MEDIA_ROOT=self.enterContext(tempfile.TemporaryDirectory())))
+        self.admin = User.objects.create_superuser('administrator', password='Correct-Horse-Example-483!')
+        self.reader = User.objects.create_user('reader', password='Reader-Example-9348!')
+        self.data = b'PK\x03\x04 framework bytes' * 1000
+        self.item = Download.objects.create(title='Framework actual', section='framework',
+                                            file=ContentFile(self.data, name='Plantilla A360+2024.zip'))
+
+    def key(self, user, scope):
+        key = ApiKey(user=user, scope=scope, name='test')
+        raw = key.issue()
+        key.save()
+        return {'HTTP_AUTHORIZATION': 'Bearer ' + raw}
+
+    def test_download_requires_login_and_streams_the_file(self):
+        self.assertEqual((self.item.slug, self.item.filename, self.item.size), ('plantilla-a3602024-zip', 'Plantilla A360+2024.zip', len(self.data)))
+        url = '/downloads/' + self.item.slug
+        self.assertEqual(self.client.get(url).status_code, 302)
+        self.client.force_login(self.reader)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(int(response['Content-Length']), len(self.data))
+        self.assertEqual(b''.join(response.streaming_content), self.data)
+        self.assertIn('attachment', response['Content-Disposition'])
+        self.assertIn('Plantilla A360+2024.zip', response['Content-Disposition'])
+        self.assertIn('no-store', response['Cache-Control'])
+        self.assertEqual(response['X-Robots-Tag'], 'noindex, nofollow, noarchive')
+        self.assertEqual(self.item.sha256, hashlib.sha256(self.data).hexdigest())
+        self.item.published = False
+        self.item.save()
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.assertEqual(self.client.get('/downloads/missing').status_code, 404)
+        # A second file with the same name gets its own slug.
+        again = Download.objects.create(title='Copia', file=ContentFile(b'x', name='Plantilla A360+2024.zip'))
+        self.assertEqual(again.slug, 'plantilla-a3602024-zip-2')
+
+    def test_import_downloads_maps_folders_and_is_idempotent(self):
+        source = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        for name in ['Export.CORE.zip', 'packages/Tool-1.0.jar', 'Ejercicios/ACME.zip', 'versiones anteriores/Old.zip',
+                     'unknown/skip.zip', '.hidden/secret.zip']:
+            (source / name).parent.mkdir(parents=True, exist_ok=True)
+            (source / name).write_bytes(name.encode())
+        out = io.StringIO()
+        call_command('import_downloads', str(source), stdout=out, stderr=io.StringIO())
+        self.assertIn('4 added, 0 already present, 1 ignored.', out.getvalue())
+        sections = dict(Download.objects.exclude(pk=self.item.pk).values_list('title', 'section'))
+        self.assertEqual(sections, {'Export.CORE.zip': 'framework', 'Tool-1.0.jar': 'packages',
+                                    'ACME.zip': 'exercises', 'Old.zip': 'previous'})
+        self.assertEqual(Download.objects.get(title='Old.zip').file.read(), b'versiones anteriores/Old.zip')
+        out = io.StringIO()
+        call_command('import_downloads', str(source), stdout=out, stderr=io.StringIO())
+        self.assertIn('0 added, 4 already present, 1 ignored.', out.getvalue())
+        self.assertEqual(Download.objects.count(), 5)
+
+    def test_downloads_page_search_and_navigation(self):
+        Download.objects.create(title='Versión 2025', section='previous', file=ContentFile(b'old', name='old.zip'))
+        Download.objects.create(title='Oculto', section='packages', published=False, file=ContentFile(b'h', name='hidden.jar'))
+        self.assertEqual(self.client.get('/downloads.md').status_code, 302)
+        self.client.force_login(self.reader)
+        page = self.client.get('/downloads.md').content.decode()
+        self.assertTrue(page.startswith('# Descargas\n\nArchivos aprobados. Solo para usuarios de Athena.'))
+        self.assertIn('## Framework', page)
+        self.assertIn('## Versiones anteriores', page)
+        self.assertNotIn('## Paquetes', page)  # Empty sections are omitted; unpublished files are hidden.
+        self.assertNotIn('Oculto', page)
+        self.assertIn(f'<a class="download-link" href="/downloads/{self.item.slug}" download>', page)
+        self.assertIn('<code>Plantilla A360+2024.zip</code>', page)
+        self.assertLess(page.index('## Framework'), page.index('## Versiones anteriores'))
+        self.assertIn('<details class="download-archive"><summary>Mostrar 1 archivo</summary>', page)
+        self.assertNotIn('target=', page)
+        for old in ['/archive.md', '/packages.md']:
+            self.assertRedirects(self.client.get(old), '/downloads.md', fetch_redirect_response=False)
+        sidebar = self.client.get('/_sidebar.md').content.decode()
+        self.assertIn('[Descargas](/downloads.md)', sidebar)
+        self.assertNotIn('Archivo', sidebar)
+        entries = [e for e in self.client.get('/search-index.json').json() if e['kind'] == 'download']
+        self.assertEqual([(e['title'], e['section'], e['route']) for e in entries],
+                         [('Framework actual', 'Framework', '/downloads/' + self.item.slug),
+                          ('Versión 2025', 'Versiones anteriores', '/downloads/old-zip')])
+
+    def test_download_admin_pages(self):
+        self.client.force_login(self.admin)
+        response = self.client.get('/admin/athena/download/')
+        self.assertContains(response, '<span class="pill">Framework</span>')
+        self.assertContains(response, '<title>Descargas · Athena</title>')
+        self.assertEqual(self.client.get('/admin/athena/download/add/').status_code, 200)
+        self.assertContains(self.client.get(f'/admin/athena/download/{self.item.pk}/change/'), self.item.sha256)
+        response = self.client.post('/admin/athena/download/add/', {
+            'title': 'Paquete', 'section': 'packages', 'note': '', 'published': 'on',
+            'file': SimpleUploadedFile('Tool 2.0.jar', b'jar bytes')})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Download.objects.get(title='Paquete').filename, 'Tool 2.0.jar')
+
+    def test_download_api_scopes(self):
+        url = '/api/v1/downloads/'
+        read = self.key(self.reader, 'read')
+        Download.objects.create(title='Oculto', published=False, file=ContentFile(b'h', name='hidden.jar'))
+        self.assertEqual([d['title'] for d in self.client.get(url, **read).json()['results']], ['Framework actual'])
+        upload = {'title': 'Nuevo', 'section': 'packages', 'file': SimpleUploadedFile('new.jar', b'new bytes')}
+        self.assertEqual(self.client.post(url, upload, **read).status_code, 403)
+        self.assertEqual(self.client.post(url, upload, **self.key(self.reader, 'articles')).status_code, 403)
+        write = self.key(self.admin, 'articles')
+        upload['file'].seek(0)
+        self.assertEqual(self.client.post(url, {**upload, 'extra': 'x'}, **write).status_code, 400)
+        upload['file'].seek(0)
+        response = self.client.post(url, upload, **write)
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(response.json()['url'], '/downloads/new-jar')
+        self.assertEqual(response.json()['size'], 9)
+        self.assertEqual(len(self.client.get(url, **write).json()['results']), 3)
+        self.assertEqual(self.client.delete(url + 'new-jar/', **read).status_code, 403)
+        path = Download.objects.get(slug='new-jar').file.path
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(self.client.delete(url + 'new-jar/', **write).status_code, 204)
+        self.assertFalse(Path(path).exists())
+        self.assertEqual(self.client.delete(url + 'new-jar/', **write).status_code, 404)
 
 
 class RobotsTests(TestCase):

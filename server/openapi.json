@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Athena management API",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Private knowledge base. Create a scoped key in /admin/athena/apikey/. Keys expire after 90 days by default and are revoked when the owning user is disabled, removed, or has their password reset. Browser cookies are not accepted by the API."
   },
   "servers": [
@@ -257,6 +257,141 @@
               "type": "string"
             },
             "description": "Exact ETag returned by the latest GET, including double quotes. Prevents overwriting newer changes."
+          }
+        ]
+      }
+    },
+    "/api/v1/downloads/": {
+      "get": {
+        "operationId": "list_downloads",
+        "summary": "List downloads",
+        "description": "Read scope lists published files; keys with the articles or admin scope and download permissions also see hidden files.",
+        "responses": {
+          "200": {
+            "description": "JSON {results}: slug, title, section, filename, size, sha256, note, published, created_at, url (signed-in browser download)."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        }
+      },
+      "post": {
+        "operationId": "upload_download",
+        "summary": "Upload a download (articles or admin scope)",
+        "responses": {
+          "201": {
+            "description": "The created download."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "title",
+                  "section",
+                  "file"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "section": {
+                    "type": "string",
+                    "enum": [
+                      "framework",
+                      "packages",
+                      "exercises",
+                      "previous"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 300
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Up to 512 MB through the proxy. The original file name is kept."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/downloads/{slug}/": {
+      "delete": {
+        "operationId": "delete_download",
+        "summary": "Delete a download and its file (articles or admin scope)",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Missing or stale If-Match"
+          }
+        },
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ]
       }

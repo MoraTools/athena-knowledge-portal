@@ -12,9 +12,9 @@ A disabled/deleted owner or a password reset also invalidates their keys.
 
 | Scope | Access |
 | --- | --- |
-| `read` | Read published articles and their PDFs |
-| `articles` | Article operations allowed by the owner's Django permissions |
-| `admin` | Article operations plus user management, if the owner is a superuser |
+| `read` | Read published articles, their PDFs, and the published download list |
+| `articles` | Article and download operations allowed by the owner's Django permissions |
+| `admin` | Article and download operations plus user management, if the owner is a superuser |
 
 A scope never grants more authority than its owner has. A key owned by an ordinary reader cannot publish articles.
 
@@ -30,6 +30,9 @@ A scope never grants more authority than its owner has. A key owned by an ordina
 | POST | `/articles/{slug}/markdown/` | Replace body from multipart field `file`; requires `If-Match` |
 | POST | `/articles/{slug}/pdf/` | Attach or replace PDF from multipart field `file`; requires `If-Match` |
 | GET | `/articles/{slug}/pdf/` | Download PDF |
+| GET | `/downloads/` | List downloads; `read` sees published files only |
+| POST | `/downloads/` | Upload a file from multipart fields `title`, `section`, `file`, optional `note` |
+| DELETE | `/downloads/{slug}/` | Remove a download and its stored file |
 | GET, POST | `/users/` | List or create users; admin scope only |
 | GET, PATCH, DELETE | `/users/{id}/` | Read, rename, reset password, deactivate, promote, or remove user |
 
@@ -38,6 +41,8 @@ Tags are an array of strings. Tools require `status`: `stable`, `alpha`, or `com
 Article slugs remain fixed after creation. Optional fields: `url` (HTTPS), `download_file`.
 Uploads accept UTF-8 `.md` up to 1 MiB and `.pdf` up to 25 MiB.
 Create a draft with a short body before uploading attachments through the API.
+Download sections: `framework`, `packages`, `exercises`, `previous`. Uploads are published at once and keep the original file name.
+The proxy accepts up to 512 MB on `/api/`. Each result has `size`, `sha256`, and `url`; the `url` works only in a signed-in browser session.
 
 ## Examples
 
@@ -68,6 +73,12 @@ The response returns a new ETag. Use that value for the next edit or upload.
 curl --fail-with-body https://athena.moratechnology.com/api/v1/articles/recorder-guide/pdf/ \
   -H "Authorization: Bearer $ATHENA_API_KEY" \
   -H "If-Match: $ATHENA_ETAG" -F 'file=@guide.pdf'
+```
+
+```sh
+curl --fail-with-body https://athena.moratechnology.com/api/v1/downloads/ \
+  -H "Authorization: Bearer $ATHENA_API_KEY" \
+  -F 'title=Framework 2026-07' -F 'section=framework' -F 'file=@Export.CORE_FRAMEWORK.zip'
 ```
 
 Create a user with `username` and a password of at least 12 characters.

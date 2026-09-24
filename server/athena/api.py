@@ -7,14 +7,14 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.forms.models import model_to_dict
+from django.forms.models import model_to_dict, modelform_factory
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from .forms import ArticleForm, protect_admin
-from .models import ApiKey, Article
+from .models import ApiKey, Article, Download
 
 
 def api(view):
@@ -62,8 +62,8 @@ def method_not_allowed(methods):
     return JsonResponse({'error': 'Method not allowed.'}, status=405, headers={'Allow': methods})
 
 
-def can_edit(request, action):
-    return request.api_key.scope in ('articles', 'admin') and request.user.has_perm(f'athena.{action}_article')
+def can_edit(request, action, model='article'):
+    return request.api_key.scope in ('articles', 'admin') and request.user.has_perm(f'athena.{action}_{model}')
 
 
 def article_data(article, detail=True):
@@ -160,6 +160,37 @@ def article_upload(request, slug, kind):
             return JsonResponse({'error': 'Send the current article ETag in If-Match.'}, status=412)
         article = article_form({}, article, {f'{kind}_file': request.FILES['file']}).save()
         return JsonResponse(article_data(article), headers={'ETag': f'"{article.updated_at.isoformat()}"'})
+
+
+def download_data(item):
+    return {'slug': item.slug, 'title': item.title, 'section': item.section, 'filename': item.filename,
+            'size': item.size, 'sha256': item.sha256, 'note': item.note, 'published': item.published,
+            'created_at': item.created_at.isoformat(), 'url': '/downloads/' + item.slug}
+
+
+DownloadForm = modelform_factory(Download, fields=['title', 'section', 'file', 'note'])
+
+
+@api
+def downloads(request, slug=None):
+    if request.method == 'GET' and not slug:
+        query = Download.objects.all() if can_edit(request, 'change', 'download') else Download.objects.filter(published=True)
+        return JsonResponse({'results': [download_data(item) for item in query]})
+    if request.method == 'POST' and not slug:
+        if not can_edit(request, 'add', 'download'):
+            return denied()
+        if set(request.POST) - {'title', 'section', 'note'}:
+            raise ValidationError('Unknown fields. Send title, section, optional note, and file.')
+        form = DownloadForm(request.POST, request.FILES)
+        if not form.is_valid():
+            raise ValidationError({field: list(errors) for field, errors in form.errors.items()})
+        return JsonResponse(download_data(form.save()), status=201)
+    if request.method == 'DELETE' and slug:
+        if not can_edit(request, 'delete', 'download'):
+            return denied()
+        get_object_or_404(Download, slug=slug).delete()
+        return HttpResponse(status=204)
+    return method_not_allowed('DELETE' if slug else 'GET, POST')
 
 
 def user_data(user):

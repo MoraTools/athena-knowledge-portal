@@ -36,8 +36,34 @@ Sign in and change the initial password. Credentials are not written to deployme
 Changes appear in the library and search on the next page load; no build or redeploy is required.
 Open an article to edit, replace or remove its PDF, unpublish it, or delete it.
 **Ver en el sitio** previews saved drafts for editors. Existing article addresses cannot be changed.
-Jeiser Vargas remains the editorial reviewer. OneDrive remains the location for approved package downloads.
-The database is now the source of truth for articles, accounts, keys, and PDFs.
+Jeiser Vargas remains the editorial reviewer.
+The database is now the source of truth for articles, accounts, keys, PDFs, and the download list.
+
+## Downloads
+
+Approved files are stored on the VPS and only signed-in users can download them. OneDrive is no longer used for downloads.
+The reader's **Descargas** page lists them in sections: Framework, Paquetes, Ejercicios, and Versiones anteriores (collapsed). The former Archivo page redirects there.
+
+1. Open **Administración → Descargas → Añadir**.
+2. Enter a title, choose the section, and select the file. The original file name is kept. Optionally add a short note.
+3. Save. Athena records the size and SHA-256 checksum. Clear **Publicado** to hide a file without deleting it.
+
+Deleting a download also deletes its file. Uploads of up to 512 MB pass the proxy on `/admin/` and `/api/`; agents can use the API (see [API.md](API.md)).
+Files are in `/var/lib/athena/media/downloads/`. To load a folder tree once, copy it to the VPS and run:
+
+```sh
+sudo sh -c 'set -a; . /etc/athena/athena.env; cd /opt/athena && .venv/bin/python server/manage.py import_downloads /path/to/folder && chown -R athena:athena /var/lib/athena'
+```
+
+Files at the top level go to Framework; the `packages`, `ejercicios`, and `versiones anteriores` folders go to their sections. Other folders are reported and ignored.
+The command skips files whose address already exists, so it is safe to run again. Two files with the same name import only once.
+
+## Sign-in protection
+
+Five failed sign-ins within 15 minutes, for the same username or from the same address, lock sign-in for 15 minutes.
+Each further lockout within a day doubles the wait (30, 60 minutes, and so on, up to 24 hours).
+The sign-in page shows the remaining wait. A successful sign-in clears the failure count; lockout history expires after 24 quiet hours.
+This applies to `/accounts/login/` and `/admin/login/`. An administrator cannot unlock an account early from the admin.
 
 ## Agent REST API
 
@@ -64,7 +90,7 @@ export ATHENA_DEBUG=1
 npm test
 ```
 
-`dist/` contains the approved migration input and package-link pages. It is intentionally private and excluded from Git.
+`dist/` contains the approved migration input and the reader's static pages. It is intentionally private and excluded from Git.
 Restore it from `.secrets/athena-vps-release.tar.gz` or the VPS before the first build on a fresh checkout.
 `import_portal` is transactional and skips existing slugs. It does not overwrite edits or republish deleted content during normal operation.
 Do not rerun it after deleting imported articles: migration input still contains those old records.
@@ -73,7 +99,7 @@ Cloudflare deployment scripts and `ALLOWLIST.md` describe the former hosting set
 
 ## Deployment and backup
 
-The application is installed at `/opt/athena`. Its database and PDFs are in `/var/lib/athena/athena.sqlite3`.
+The application is installed at `/opt/athena`. Its database and PDFs are in `/var/lib/athena/athena.sqlite3`; download files are in `/var/lib/athena/media/`.
 Production secrets are in `/etc/athena/athena.env` (root only). The service runs as the unprivileged `athena` user.
 Only SSH, HTTP, and HTTPS are open. Gunicorn listens on loopback.
 
@@ -90,7 +116,9 @@ systemctl list-timers athena-backup.timer
 
 A daily timer creates verified SQLite backups in `/var/backups/athena` and retains 14 days.
 PDFs are inside the database, so a backup includes both article data and attachments.
+The same run mirrors download files to `/var/backups/athena/media/` with `rsync -a --delete`. The mirror has no history: a file deleted in the admin leaves the mirror on the next run.
 Backups on the same VPS do not cover VPS loss. An initial backup is also copied to this workstation's private `.secrets/` directory.
 No paid DigitalOcean backup or other paid add-on is enabled.
-For disaster recovery, retain a separate copy of the database, the release bundle, and `/etc/athena/athena.env`.
+For disaster recovery, retain a separate copy of the database, the download files, the release bundle, and `/etc/athena/athena.env`.
 Stop `athena` before restoring a database, set its owner to `athena:athena`, then restart and test sign-in and article/PDF access.
+To restore downloads, copy `/var/backups/athena/media/` back to `/var/lib/athena/media/` with the same owner.

@@ -8,11 +8,12 @@ from django.http import Http404
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
+from django.template.defaultfilters import filesizeformat
 from django.utils import formats, timezone
 from django.utils.html import format_html
 
 from .forms import ArticleForm, DirectoryUserCreationForm, DirectoryUserForm, SafeUserChangeForm
-from .models import ApiKey, Article
+from .models import ApiKey, Article, Download
 
 admin.site.site_header = 'Athena · Administración'
 admin.site.site_title = 'Athena'
@@ -169,6 +170,36 @@ class ArticleAdmin(admin.ModelAdmin):
         if obj.pdf_name:
             return format_html('<a href="/pdf/{}.pdf" target="_blank" rel="noopener">{}</a>', obj.slug, obj.pdf_name)
         return 'Sin PDF adjunto.'
+
+
+@admin.register(Download)
+class DownloadAdmin(admin.ModelAdmin):
+    list_display = ['title', 'section_pill', 'human_size', 'created']
+    list_filter = ['section', 'published']
+    search_fields = ['title', 'slug']
+    fields = ['title', 'section', 'file', 'note', 'published', 'human_size', 'sha256', 'created']
+    readonly_fields = ['human_size', 'sha256', 'created']
+
+    @admin.display(description='Sección', ordering='section')
+    def section_pill(self, obj):
+        return format_html('<span class="pill">{}</span>', obj.get_section_display())
+
+    @admin.display(description='Tamaño', ordering='size')
+    def human_size(self, obj):
+        return filesizeformat(obj.size) if obj.pk else 'Se calcula al guardar'
+
+    @admin.display(description='Creado', ordering='created_at')
+    def created(self, obj):
+        return formats.localize(timezone.localtime(obj.created_at)) if obj.created_at else 'Sin guardar'
+
+    def changelist_view(self, request, extra_context=None):
+        return super().changelist_view(request, {'title': 'Descargas', **(extra_context or {})})
+
+    def add_view(self, request, form_url='', extra_context=None):
+        return super().add_view(request, form_url, {'title': 'Nueva descarga', **(extra_context or {})})
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        return super().change_view(request, object_id, form_url, {'title': 'Editar descarga', 'subtitle': None, **(extra_context or {})})
 
 
 @admin.register(ApiKey)

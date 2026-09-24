@@ -11,7 +11,7 @@
 <p class="tag-list">{% for tag in article.tags %}<span>{{ tag }}</span>{% endfor %}</p>
 {% if article.pdf_name %}<p><a class="pdf-link" href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a></p>{% endif %}
 {% if article.url %}<p><a href="{{ article.url }}" target="_blank" rel="noreferrer">Sitio oficial</a></p>{% endif %}
-{% if article.download_file %}<p><a href="#/packages">Descarga aprobada</a></p>{% endif %}
+{% if article.download_file %}<p><a href="#/downloads">Descarga aprobada</a></p>{% endif %}
 </article>{% empty %}<p>Todavía no hay artículos publicados en esta sección.</p>{% endfor %}
 </div>
 {% if section == 'guides' %}<p class="library-empty" hidden>No hay guías que coincidan con estos filtros.</p>{% endif %}

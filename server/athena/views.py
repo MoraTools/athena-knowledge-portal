@@ -1,4 +1,3 @@
-import json
 import mimetypes
 import re
 from html import unescape
@@ -8,9 +7,10 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.template.defaultfilters import filesizeformat
 from django.utils.html import escape, strip_tags
 
-from .models import Article
+from .models import Article, Download
 
 
 def visible_articles(user):
@@ -38,11 +38,20 @@ def search_entry(article):
     }
 
 
+def download_entry(download):
+    section = download.get_section_display()
+    return {
+        'title': download.title, 'kind': 'download', 'section': section,
+        'summary': f'Archivo aprobado de {filesizeformat(download.size)} en {section}.',
+        'author': '', 'date': '', 'tags': [section, Path(download.filename).suffix.lstrip('.').upper()],
+        'route': '/downloads/' + download.slug, 'pdf': '', 'text': f'{download.filename} {download.note}', 'headings': [],
+    }
+
+
 @login_required
 def search_index(request):
-    legacy = json.loads((settings.BASE_DIR / 'dist/search-index.json').read_text(encoding='utf-8-sig'))
-    downloads = [entry for entry in legacy if entry['kind'] == 'download']
-    return JsonResponse([search_entry(a) for a in Article.objects.filter(published=True).defer('pdf')] + downloads, safe=False)
+    return JsonResponse([search_entry(a) for a in Article.objects.filter(published=True).defer('pdf')]
+                        + [download_entry(d) for d in Download.objects.filter(published=True)], safe=False)
 
 
 @login_required
@@ -67,6 +76,25 @@ def pdf(request, slug):
         'Content-Disposition': f'inline; filename="{article.slug}.pdf"',
         'Content-Security-Policy': "sandbox; default-src 'none'",
     })
+
+
+@login_required
+def download(request, slug):
+    item = get_object_or_404(Download, slug=slug, published=True)
+    try:
+        file = open(item.file.path, 'rb')
+    except FileNotFoundError:
+        raise Http404
+    # FileResponse sets Content-Length and lets Gunicorn stream the file through wsgi.file_wrapper.
+    return FileResponse(file, as_attachment=True, filename=item.filename)
+
+
+@login_required
+def downloads_page(request):
+    published = Download.objects.filter(published=True)
+    sections = [(key, label, [d for d in published if d.section == key]) for key, label in Download.SECTIONS]
+    return render(request, 'downloads.md', {'sections': [s for s in sections if s[2]]},
+                  content_type='text/markdown; charset=utf-8')
 
 
 @login_required
@@ -101,7 +129,9 @@ def sidebar_markdown(user):
     file = settings.BASE_DIR / 'dist/_sidebar.md'
     mtime = file.stat().st_mtime
     if _sidebar_cache[0] != mtime:
-        _sidebar_cache = (mtime, file.read_text(encoding='utf-8-sig'))
+        # Archivo is now the "Versiones anteriores" section of Descargas.
+        text = re.sub(r'^[ \t]*[-*][ \t]*\[Archivo\]\([^)]*\)[ \t]*\n?', '', file.read_text(encoding='utf-8-sig'), flags=re.M)
+        _sidebar_cache = (mtime, text.rstrip())
     text = _sidebar_cache[1] + '\n- [Mi cuenta](/accounts/profile/ ":ignore")\n'
     if user.is_staff:
         text += '- [Administrar Athena](/admin/ ":ignore")\n'
@@ -130,8 +160,7 @@ def static_portal(request, path='index.html'):
         else:
             file = settings.BASE_DIR / 'src' / path
     else:
-        allowed = {'index.html', 'README.md', '_sidebar.md', 'search.md', 'downloads.md',
-                   'framework.md', 'packages.md', 'exercises.md', 'archive.md', 'catalog.json'}
+        allowed = {'index.html', 'README.md', '_sidebar.md', 'search.md', 'catalog.json'}
         if path not in allowed:
             raise Http404
         file = settings.BASE_DIR / ('src' if path == 'index.html' else 'dist') / path
