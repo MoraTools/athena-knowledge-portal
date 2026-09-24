@@ -54,14 +54,14 @@ Button text is Archivo Narrow 700 at 13px, uppercase, 0.04em tracking.
 
 One width rule for the reader, the account pages and the admin: `--content-max` is 1320px (reader and admin `:root`).
 Content starts at the left content edge beside the portal rail and fills the space up to `--content-max`. Above a 1600px viewport it is centred in the space beside the rail, which stays fixed on the left.
-Prose paragraphs, lists and quotes keep a 72ch measure. Cards, timelines, grids, tables and the downloads catalog fill the content width.
+Prose, cards, timelines, grids, tables and the downloads catalog all fill the content width; only `--content-max` (1320px, centred above 1600px) bounds them.
 `.library-grid` uses `repeat(auto-fill, minmax(360px, 1fr))`, so a full-width content area shows 3 columns.
 No page scrolls horizontally from 375px to 2560px; a table that is too wide scrolls inside its own container.
 `.markdown-section` pads `--space-4 --space-4 --space-5`; at 768px and below `--space-3 --space-2 --space-4`.
 At 1200px and above, article headings appear in a fixed right-hand page tree.
 At 768px and below, reader grids, search results, controls, and catalog entries use one column.
 Guías and Descargas share one filter panel (`library-controls`): a search field and a select, 44px high, with a live result count.
-Actualizaciones cards pad `--space-4` (`--space-3` at 768px and below), with the meta line above a 2rem title, a 17px/1.6 summary at 62ch, and the date badge centred on the first line of the title.
+Actualizaciones cards pad `--space-4` (`--space-3` at 768px and below), with the meta line above a 2rem title, a 17px/1.6 summary, and the date badge centred on the first line of the title.
 
 Mi cuenta shows the username, a role and last-session line, then Sesión and Mis claves de API side by side (1:2) above 1100px and stacked below; administrators also get an Administración row of shortcuts.
 The password pages pad like `.markdown-section`; their form is at most 40rem wide.
