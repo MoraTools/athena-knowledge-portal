@@ -1,0 +1,16 @@
+{% extends 'admin/base_site.html' %}{% load static %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Inicio</a> &rsaquo; <a href="{% url 'admin:athena_apikey_changelist' %}">Claves de API</a> &rsaquo; {{ original.name }}</div>{% endblock %}
+{% block content %}
+<div class="key-created">
+  <p class="key-warning">Copie la clave ahora. Athena guarda solo su hash y <strong>no volverá a mostrarla</strong>.</p>
+  <dl>
+    <dt>Clave de API · {{ original.name }} · {{ original.get_scope_display }} · vence {{ original.expires_at|date:'d/m/Y' }}</dt>
+    <dd><code class="secret" id="raw-key">{{ raw }}</code></dd>
+    <dt>Configurar en la terminal</dt>
+    <dd><code class="secret">export ATHENA_API_KEY={{ raw }}</code></dd>
+    <dt>Comprobar acceso</dt>
+    <dd><code class="secret">curl -H "Authorization: Bearer $ATHENA_API_KEY" https://{{ host }}/api/v1/me/</code></dd>
+  </dl>
+  <p class="key-actions"><a class="button default" href="{% url 'admin:athena_apikey_changelist' %}">Ya la copié</a><a class="button" href="/api/docs/">Documentación de la API</a></p>
+</div>
+{% endblock %}

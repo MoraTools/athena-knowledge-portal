@@ -236,11 +236,16 @@ class ApiKeyAdmin(admin.ModelAdmin):
         return super().change_view(request, object_id, form_url, {'title': 'Editar clave de API', **(extra_context or {})})
 
     def save_model(self, request, obj, form, change):
-        raw = obj.issue() if not change else None
+        if not change:
+            request._athena_raw_key = obj.issue()
         super().save_model(request, obj, form, change)
-        if raw:
-            messages.warning(request, format_html(
-                'Copie esta clave ahora. No se mostrará otra vez: <code class="secret">{}</code>'
-                '<code class="secret">export ATHENA_API_KEY={}</code>'
-                '<code class="secret">curl -H "Authorization: Bearer $ATHENA_API_KEY" https://{}/api/v1/me/</code>'
-                '<a href="/api/docs/">Documentación de la API</a>', raw, raw, request.get_host()))
+
+    def response_add(self, request, obj, post_url_continue=None):
+        # The raw key exists only in this request: show it on its own page instead of a dismissable message.
+        raw = getattr(request, '_athena_raw_key', None)
+        if not raw:
+            return super().response_add(request, obj, post_url_continue)
+        return TemplateResponse(request, 'admin/athena/apikey/created.html', {
+            **self.admin_site.each_context(request), 'title': 'Clave creada', 'opts': self.opts, 'original': obj,
+            'raw': raw, 'host': request.get_host(),
+        })

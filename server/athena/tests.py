@@ -144,6 +144,7 @@ class PortalTests(TestCase):
         self.assertContains(self.client.get('/admin/athena/apikey/'), 'Verifique una clave con <code>GET /api/v1/me/</code>')
         response = self.client.post('/admin/athena/apikey/add/', {
             'name': 'agent', 'user': self.admin.pk, 'scope': 'admin', 'expires_at_0': '2099-01-01', 'expires_at_1': '00:00:00'}, follow=True)
+        self.assertContains(response, 'Clave creada')
         self.assertContains(response, 'export ATHENA_API_KEY=athena_')
         self.assertContains(response, 'curl -H "Authorization: Bearer $ATHENA_API_KEY" https://testserver/api/v1/me/')
 
