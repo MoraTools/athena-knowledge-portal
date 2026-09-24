@@ -1,13 +1,15 @@
-<button class="sidebar-toggle" type="button" aria-controls="portal-sidebar" aria-expanded="false" aria-label="Mostrar navegación"><span></span><span></span><span></span></button>
-<aside id="portal-sidebar" class="sidebar" aria-label="Navegación del portal">
-  <a class="brand" href="/" aria-label="Athena, inicio"><span>ATHENA</span><small>KNOWLEDGE PORTAL</small></a>
-  <nav class="sidebar-nav" aria-label="Portal">
-    <ul>{% for label, href, active in links %}
-      <li{% if active %} class="active"{% endif %}><a href="{{ href }}"{% if active %} aria-current="true"{% endif %}>{{ label }}</a></li>{% endfor %}
-    </ul>
-    {% if sections %}<h2 id="portal-sidebar-admin">Administrar</h2>
-    <ul aria-labelledby="portal-sidebar-admin">{% for label, href, active in sections %}
-      <li{% if active %} class="active"{% endif %}><a href="{{ href }}"{% if active %} aria-current="page"{% endif %}>{{ label }}</a></li>{% endfor %}
-    </ul>{% endif %}
-  </nav>
+<aside id="rail" class="rail" aria-label="Navegación del portal">
+  <div class="rail-inner">
+    <a class="rail-brand" href="/" aria-label="Athena, inicio"><span>ATHENA</span><small>KNOWLEDGE PORTAL</small></a>
+    <nav class="rail-nav" aria-label="Portal">{% for group, links in groups %}
+      <div class="rail-group">
+        <h2 class="rail-group-label" id="rail-group-{{ forloop.counter }}">{{ group }}</h2>
+        <ul aria-labelledby="rail-group-{{ forloop.counter }}">{% for label, href, current in links %}
+          <li><a class="rail-item" href="{{ href }}"{% if current %} aria-current="page"{% endif %}><span class="rail-label">{{ label }}</span></a></li>{% endfor %}
+        </ul>
+      </div>{% endfor %}
+    </nav>
+    <button class="rail-toggle" type="button" aria-controls="rail" data-icon="collapse"><span class="rail-label">Contraer</span></button>
+  </div>
 </aside>
+<button class="rail-reveal" type="button" aria-controls="rail" aria-label="Mostrar la navegación" data-icon="menu"></button>

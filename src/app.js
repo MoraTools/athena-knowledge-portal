@@ -104,6 +104,87 @@ function filterGuides() {
   if (empty) empty.hidden = visible !== 0;
 }
 
+function filterDownloads() {
+  const input = document.querySelector('#download-filter');
+  if (!input) return;
+  const query = normalize(input.value);
+  const section = document.querySelector('#download-section')?.value || '';
+  let visible = 0;
+  document.querySelectorAll('.download-section').forEach((block) => {
+    let shown = 0;
+    block.querySelectorAll('.catalog-item').forEach((item) => {
+      item.hidden = !((!query || normalize(item.dataset.search || '').includes(query)) && (!section || block.dataset.section === section));
+      if (!item.hidden) shown += 1;
+    });
+    block.hidden = shown === 0;
+    // Versiones anteriores opens when a match is inside it.
+    const archive = block.querySelector('.download-archive');
+    if (archive && (query || section)) archive.open = shown > 0;
+    visible += shown;
+  });
+  const count = document.querySelector('#download-count');
+  const empty = document.querySelector('.download-empty');
+  if (count) count.textContent = visible + ' ' + (visible === 1 ? 'archivo' : 'archivos');
+  if (empty) empty.hidden = visible !== 0;
+}
+
+let railPromise;
+
+// The portal rail comes from /_sidebar.md: "- Group" lines, then indented "- [Label](href)" links.
+function buildRail() {
+  const nav = document.querySelector('.rail-nav');
+  if (!nav || railPromise) return railPromise;
+  railPromise = fetch('/_sidebar.md', { credentials: 'same-origin' })
+    .then((response) => (response.ok ? response.text() : Promise.reject(new Error('Sidebar request failed: ' + response.status))))
+    .then((markdown) => {
+      let list;
+      markdown.split('\n').forEach((line) => {
+        const link = line.match(/^\s+[-*]\s*\[([^\]]+)\]\(([^\s)]+)/);
+        if (link && list) {
+          const [, label, href] = link;
+          const item = document.createElement('a');
+          item.className = 'rail-item';
+          item.href = href === '/' ? '#/' : href.endsWith('.md') ? '#' + href.slice(0, -3) : href;
+          const text = document.createElement('span');
+          text.className = 'rail-label';
+          text.textContent = label;
+          item.append(text);
+          const entry = document.createElement('li');
+          entry.append(item);
+          list.append(entry);
+        } else if (line.startsWith('- ')) {
+          const group = document.createElement('div');
+          group.className = 'rail-group';
+          const heading = document.createElement('h2');
+          heading.className = 'rail-group-label';
+          heading.id = 'rail-group-' + (nav.children.length + 1);
+          heading.textContent = line.slice(2).trim();
+          list = document.createElement('ul');
+          list.setAttribute('aria-labelledby', heading.id);
+          group.append(heading, list);
+          nav.append(group);
+        }
+      });
+      window.athenaRail?.decorate(nav);
+      markRail();
+    })
+    .catch(() => {
+      railPromise = null;
+    });
+  return railPromise;
+}
+
+function markRail() {
+  const { path } = getRouteState();
+  document.querySelectorAll('.rail-nav .rail-item').forEach((item) => {
+    const href = item.getAttribute('href');
+    const route = href.startsWith('#') ? href.slice(1) : '';
+    const current = route && (route === '/' ? path === '/' : path === route || path.startsWith(route + '/'));
+    if (current) item.setAttribute('aria-current', 'page');
+    else item.removeAttribute('aria-current');
+  });
+}
+
 function docsifyHeadingIds(pageTitle, headings) {
   const seen = new Map();
   return [{ title: pageTitle, level: 1 }, ...headings].map((heading) => {
@@ -432,7 +513,7 @@ function placeSearch() {
   const { path, params } = getRouteState();
   const home = path === '/';
   const searchPage = path === '/search';
-  const appName = document.querySelector('.sidebar .app-name');
+  const railSlot = document.querySelector('.rail-search-slot');
   const homeSlot = document.querySelector('#home-search-slot');
   const pageSlot = document.querySelector('#search-page-slot');
 
@@ -443,8 +524,8 @@ function placeSearch() {
   } else if (home && homeSlot) {
     if (search.parentElement !== homeSlot) homeSlot.append(search);
     placed = true;
-  } else if (!home && !searchPage && appName) {
-    if (appName.nextElementSibling !== search) appName.after(search);
+  } else if (!home && !searchPage && railSlot) {
+    if (search.parentElement !== railSlot) railSlot.append(search);
     placed = true;
   }
 
@@ -456,16 +537,11 @@ function placeSearch() {
 function syncView() {
   const { path } = getRouteState();
   document.body.classList.toggle('home-view', path === '/');
-
-  const headerBrand = document.querySelector('#brand-source .brand');
-  const appName = document.querySelector('.sidebar .app-name');
-  const sidebarBrand = appName?.querySelector('a');
-  if (headerBrand && sidebarBrand && !sidebarBrand.classList.contains('brand')) {
-    sidebarBrand.replaceWith(headerBrand.cloneNode(true));
-  }
-
+  buildRail();
+  markRail();
   placeSearch();
   filterGuides();
+  filterDownloads();
   buildPageTree();
   if (path === '/search') renderSearchPage();
 }
@@ -510,6 +586,7 @@ document.addEventListener('submit', (event) => {
 
 document.addEventListener('input', (event) => {
   if (event.target.matches('#guide-filter')) filterGuides();
+  if (event.target.matches('#download-filter')) filterDownloads();
   if (event.target.matches('#athena-search-input') && getRouteState().path === '/search') {
     const type = document.querySelector('#athena-search-type')?.value || '';
     replaceSearchUrl(event.target.value, type);
@@ -519,6 +596,7 @@ document.addEventListener('input', (event) => {
 
 document.addEventListener('change', (event) => {
   if (event.target.matches('#guide-tag')) filterGuides();
+  if (event.target.matches('#download-section')) filterDownloads();
   if (event.target.matches('#athena-search-type')) {
     const query = document.querySelector('#athena-search-input')?.value || '';
     replaceSearchUrl(query, event.target.value);

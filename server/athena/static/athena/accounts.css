@@ -1,17 +1,17 @@
 .account-header { padding: 2.5rem clamp(1.25rem, 6vw, 5rem); }
 .account-header .brand { display: inline-flex; }
-.account-main { max-width: 650px; margin: 2rem auto 5rem; padding: 0 1.5rem; }
-.account-main h1 { font: 700 clamp(2.6rem, 6vw, 4rem)/1.05 var(--font-display); text-wrap: balance; margin: 0 0 1.5rem; }
+.account-main { max-width: 650px; margin: 0 auto; padding: var(--space-4) var(--space-3); }
+.account-main h1 { font: 700 clamp(2.6rem, 6vw, 4rem)/1.05 var(--font-display); text-wrap: balance; margin: 0 0 var(--space-2); }
 .account-main p { color: var(--muted); }
-.account-form { margin: 2.5rem 0; }
-.account-form label { display: block; margin: 1.25rem 0 .5rem; color: var(--muted); font: 13px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+.account-form { margin: var(--space-4) 0; }
+.account-form label { display: block; margin: var(--space-2) 0 var(--space-1); color: var(--muted); font: 13px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
 /* Controls match the admin system: 44px, 4px radius, #555 border, 13px uppercase button text. */
 .account-form input:not([type=hidden]) { display: block; box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #555; border-radius: 4px; background: var(--bg); color: var(--text); font: 16px var(--font-ui); caret-color: var(--accent); }
 .account-form input:not([type=hidden]):focus { border-color: var(--accent); }
-.account-form button { min-height: 44px; padding: 0 16px; margin-top: 1.5rem; border: 1px solid var(--accent); border-radius: 4px; background: var(--accent); color: #1a1400; font: 700 13px var(--font-ui); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
+.account-form button { min-height: 44px; padding: 0 16px; margin-top: var(--space-3); border: 1px solid var(--accent); border-radius: 4px; background: var(--accent); color: #1a1400; font: 700 13px var(--font-ui); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
 .account-form button:hover { background: var(--accent-soft); border-color: var(--accent-soft); }
 .account-form .errorlist { color: #ffb8ac; padding: .75rem 1rem; background: #421c19; border-radius: 4px; }
 .account-form .helptext { color: #8f8f8f; font-size: 14px; }
-.account-help { padding-top: 1.5rem; border-top: 1px solid #444; }
-.account-links { display: grid; gap: 1rem; }
+.account-help { padding-top: var(--space-3); border-top: 1px solid #444; }
+.account-links { display: grid; gap: var(--space-2); }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

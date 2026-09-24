@@ -1,6 +1,7 @@
 import hashlib
 import io
 import json
+import re
 import tempfile
 from datetime import timedelta
 from pathlib import Path
@@ -15,6 +16,7 @@ from django.utils import timezone
 from .admin import since
 from .forms import ArticleForm
 from .models import ApiKey, Article, Download, LoginAttempt
+from .views import sidebar_links
 
 
 @override_settings(SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False)
@@ -136,7 +138,7 @@ class PortalTests(TestCase):
         self.assertContains(self.client.get('/api.md'), '## Quick start')
         self.assertNotIn('API para agentes', self.client.get('/_sidebar.md').content.decode())
         self.client.force_login(self.admin)
-        self.assertIn('[Administrar Athena](/admin/ ":ignore")\n- [API para agentes](/api.md)',
+        self.assertIn('  - [Administrar Athena](/admin/ ":ignore")\n  - [API para agentes](/api.md)',
                       self.client.get('/_sidebar.md').content.decode())
 
     def test_api_key_admin_shows_setup(self):
@@ -259,21 +261,42 @@ class PortalTests(TestCase):
     def test_portal_sidebar(self):
         self.client.force_login(self.reader)
         sidebar = self.client.get('/_sidebar.md').content.decode()
-        self.assertIn('[Mi cuenta](/accounts/profile/', sidebar)
+        self.assertTrue(sidebar.startswith('- Biblioteca\n  - [Inicio](/)\n'), sidebar)
+        self.assertIn('- Participar\n  - [Contribuir](/content/contributing.md)\n', sidebar)
+        self.assertIn('- Cuenta\n  - [Mi cuenta](/accounts/profile/ ":ignore")\n', sidebar)
+        self.assertNotIn('Administración', sidebar)
         self.assertNotIn('Administrar Athena', sidebar)
+        self.assertEqual([group for group, _ in sidebar_links(self.reader)], ['Biblioteca', 'Participar', 'Cuenta'])
         self.client.force_login(self.admin)
-        self.assertIn('[Administrar Athena](/admin/', self.client.get('/_sidebar.md').content.decode())
-        reader_links = ['<a href="/">Inicio</a>', '<a href="/#/guides">Guías</a>', '<a href="/#/content/contributing">Contribuir</a>',
-                        '<a href="/accounts/profile/">Mi cuenta</a>', '<li class="active"><a href="/admin/" aria-current="true">Administrar Athena</a>']
+        self.assertTrue(self.client.get('/_sidebar.md').content.decode().endswith(
+            '- Administración\n  - [Administrar Athena](/admin/ ":ignore")\n  - [API para agentes](/api.md)\n'))
+        self.assertEqual(sidebar_links(self.admin), [
+            ('Biblioteca', [('Inicio', '/'), ('Guías', '/#/guides'), ('Actualizaciones', '/#/updates'),
+                            ('Herramientas', '/#/tools'), ('Descargas', '/#/downloads')]),
+            ('Participar', [('Contribuir', '/#/content/contributing')]), ('Cuenta', [('Mi cuenta', '/accounts/profile/')]),
+            ('Administración', [('Administrar Athena', '/admin/'), ('API para agentes', '/#/api')])])
+        item = '<a class="rail-item" href="{}"{}><span class="rail-label">{}</span></a>'.format
+        reader_links = [item('/', '', 'Inicio'), item('/#/guides', '', 'Guías'), item('/#/content/contributing', '', 'Contribuir'),
+                        item('/accounts/profile/', '', 'Mi cuenta')]
         for path in ['/admin/', '/admin/auth/user/']:
             response = self.client.get(path)
             self.assertNotContains(response, 'id="nav-sidebar"')
-            for link in reader_links + ['<h2 id="portal-sidebar-admin">Administrar</h2>', '>Artículos</a>', '>Claves de API</a>']:
+            self.assertNotContains(response, '>Administrar</h2>')
+            self.assertContains(response, '<script src="/assets/rail.js"></script>')
+            for link in reader_links + ['>Artículos</span></a>', '>Claves de API</span></a>']:
                 self.assertContains(response, link, html=False)
-        self.assertContains(response, '<li class="active"><a href="/admin/auth/user/" aria-current="page">Usuarios</a>')
+            page = response.content.decode()
+            labels = re.findall(r'<h2 class="rail-group-label"[^>]*>([^<]+)</h2>', page)
+            self.assertEqual(labels, ['Biblioteca', 'Participar', 'Cuenta', 'Administración'])
+            admin_group = page[page.index('>Administración</h2>'):]
+            self.assertLess(admin_group.index('>API para agentes</span>'), admin_group.index('>Artículos</span>'))
+            self.assertEqual(page.count('aria-current="page"'), 1)
+        self.assertContains(response, item('/admin/', '', 'Administrar Athena'))
+        self.assertContains(response, item('/admin/auth/user/', ' aria-current="page"', 'Usuarios'))
+        self.assertContains(self.client.get('/admin/'), item('/admin/', ' aria-current="page"', 'Administrar Athena'))
         self.assertContains(self.client.get('/admin/athena/article/add/'),
-                            '<li class="active"><a href="/admin/athena/article/" aria-current="page">Artículos</a>')
-        self.assertNotContains(self.client.get('/admin/auth/user/add/?_popup=1'), 'portal-sidebar')
+                            item('/admin/athena/article/', ' aria-current="page"', 'Artículos'))
+        self.assertNotContains(self.client.get('/admin/auth/user/add/?_popup=1'), 'class="rail"')
 
     def test_changelist_uses_text_pills(self):
         Article.objects.create(title='Draft', slug='draft', summary='Draft', author='Author')
@@ -374,6 +397,24 @@ class DownloadTests(TestCase):
         self.assertEqual([(e['title'], e['section'], e['route']) for e in entries],
                          [('Framework actual', 'Framework', '/downloads/' + self.item.slug),
                           ('Versión 2025', 'Versiones anteriores', '/downloads/old-zip')])
+
+    def test_downloads_page_filter(self):
+        Download.objects.create(title='Versión 2025', section='previous', note='Solo lectura', file=ContentFile(b'old', name='old.zip'))
+        self.client.force_login(self.reader)
+        page = self.client.get('/downloads.md').content.decode()
+        self.assertIn('<input id="download-filter" type="search" placeholder="Buscar archivo, sección o nota" autocomplete="off">', page)
+        self.assertIn('<select id="download-section"><option value="">Todas</option><option value="framework">Framework</option>'
+                      '<option value="previous">Versiones anteriores</option></select>', page)
+        self.assertIn('<p id="download-count" class="result-count" aria-live="polite"></p>', page)
+        self.assertIn('<section class="download-section" data-section="framework">', page)
+        self.assertIn('<article class="catalog-item" data-search="Framework actual Plantilla A360+2024.zip Framework ">', page)
+        self.assertIn('<article class="catalog-item" data-search="Versión 2025 old.zip Versiones anteriores Solo lectura">', page)
+        self.assertIn('<p class="library-empty download-empty" hidden>No hay archivos que coincidan.</p>', page)
+        self.assertLess(page.index('id="download-filter"'), page.index('## Framework'))
+        Download.objects.all().delete()
+        page = self.client.get('/downloads.md').content.decode()
+        self.assertIn('Todavía no hay archivos publicados.', page)
+        self.assertNotIn('download-filter', page)
 
     def test_download_admin_pages(self):
         self.client.force_login(self.admin)

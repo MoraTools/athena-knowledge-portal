@@ -1,7 +1,9 @@
 window.$docsify = {
   name: 'ATHENA',
   homepage: 'README.md',
-  loadSidebar: true,
+  // The portal rail (src/assets/rail.js, src/app.js) replaces Docsify's sidebar.
+  loadSidebar: false,
+  hideSidebar: true,
   auto2top: true,
   maxLevel: 3,
   subMaxLevel: 0,
@@ -22,6 +24,5 @@ window.$docsify = {
         FORBID_ATTR: ['style']
       }));
     }
-  ],
-  alias: { '/.*/_sidebar.md': '/_sidebar.md' }
+  ]
 };

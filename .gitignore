@@ -9,3 +9,7 @@ data/
 staticfiles/
 __pycache__/
 .impeccable/review/
+
+# local secrets (API key)
+.env
+.env.*

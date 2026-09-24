@@ -11,15 +11,22 @@
   <link rel="alternate icon" href="/assets/favicon.ico" sizes="any">
   <link rel="stylesheet" href="/vendor/vue.css">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/assets/rail.css">
+  <script src="/assets/rail.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Saltar al contenido</a>
-  <div id="brand-source" hidden>
-    <a class="brand" href="#/" aria-label="Athena, inicio">
-      <span>ATHENA</span>
-      <small>KNOWLEDGE PORTAL</small>
-    </a>
-  </div>
+  <aside id="rail" class="rail" aria-label="Navegación del portal">
+    <div class="rail-inner">
+      <a class="rail-brand" href="#/" aria-label="Athena, inicio"><span>ATHENA</span><small>KNOWLEDGE PORTAL</small></a>
+      <div class="rail-search-slot"></div>
+      <button class="rail-item rail-search-button" type="button" data-icon="search"><span class="rail-label">Buscar</span></button>
+      <!-- A div, not <nav>: Docsify takes the first <nav> in the page as its navbar. -->
+      <div class="rail-nav" role="navigation" aria-label="Portal"></div>
+      <button class="rail-toggle" type="button" aria-controls="rail" data-icon="collapse"><span class="rail-label">Contraer</span></button>
+    </div>
+  </aside>
+  <button class="rail-reveal" type="button" aria-controls="rail" aria-label="Mostrar la navegación" data-icon="menu"></button>
   <template id="athena-search-template">
     <form id="athena-search" class="search athena-search" role="search">
       <label class="visually-hidden" for="athena-search-input">Buscar en Athena</label>

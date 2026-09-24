@@ -136,28 +136,42 @@ def api_docs(request):
     return HttpResponse(api_markdown(), content_type='text/markdown; charset=utf-8')
 
 
-_sidebar_cache = (None, '')
+_sidebar_cache = (None, [])
+SIDEBAR_LINK = re.compile(r'\[([^\]]+)\]\(([^\s)]+)[^)]*\)')
+# The code owns the grouping; a link that is not listed here falls into Biblioteca.
+SIDEBAR_GROUPS = ['Biblioteca', 'Participar', 'Cuenta', 'Administración']
+SIDEBAR_GROUP = {'/content/contributing.md': 'Participar', '/accounts/profile/': 'Cuenta',
+                 '/admin/': 'Administración', '/api.md': 'Administración'}
 
 
 def sidebar_markdown(user):
-    """The reader's Docsify sidebar; the admin renders the same items through sidebar_links."""
+    """The portal rail as nested markdown groups; src/app.js renders it in the reader, sidebar_links in the admin."""
     global _sidebar_cache
     file = settings.BASE_DIR / 'dist/_sidebar.md'
     mtime = file.stat().st_mtime
     if _sidebar_cache[0] != mtime:
         # Archivo is now the "Versiones anteriores" section of Descargas.
-        text = re.sub(r'^[ \t]*[-*][ \t]*\[Archivo\]\([^)]*\)[ \t]*\n?', '', file.read_text(encoding='utf-8-sig'), flags=re.M)
-        _sidebar_cache = (mtime, text.rstrip())
-    text = _sidebar_cache[1] + '\n- [Mi cuenta](/accounts/profile/ ":ignore")\n'
+        _sidebar_cache = (mtime, [m[0] for m in SIDEBAR_LINK.finditer(file.read_text(encoding='utf-8-sig')) if m[1] != 'Archivo'])
+    links = _sidebar_cache[1] + ['[Mi cuenta](/accounts/profile/ ":ignore")']
     if user.is_staff:
-        text += '- [Administrar Athena](/admin/ ":ignore")\n- [API para agentes](/api.md)\n'
-    return text
+        links += ['[Administrar Athena](/admin/ ":ignore")', '[API para agentes](/api.md)']
+    groups = {group: [] for group in SIDEBAR_GROUPS}
+    for link in links:
+        groups[SIDEBAR_GROUP.get(SIDEBAR_LINK.match(link)[2], 'Biblioteca')].append(link)
+    return ''.join(f'- {group}\n' + ''.join(f'  - {link}\n' for link in items)
+                   for group, items in groups.items() if items)
 
 
 def sidebar_links(user):
-    """(label, href) pairs; Docsify routes a /page.md link to /#/page."""
-    return [(label, '/#' + href[:-3] if href.endswith('.md') else href)
-            for label, href in re.findall(r'^\s*[-*]\s*\[([^\]]+)\]\(([^\s)]+)', sidebar_markdown(user), re.M)]
+    """[(group, [(label, href), ...]), ...]; Docsify routes a /page.md link to /#/page."""
+    groups = []
+    for line in sidebar_markdown(user).splitlines():
+        if line.startswith('- '):
+            groups.append((line[2:], []))
+        else:
+            label, href = SIDEBAR_LINK.search(line).groups()
+            groups[-1][1].append((label, '/#' + href[:-3] if href.endswith('.md') else href))
+    return groups
 
 
 def robots(request):

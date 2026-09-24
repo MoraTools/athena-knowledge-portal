@@ -1,0 +1,113 @@
+/* Portal rail, shared by the reader (src/index.html) and the admin (admin/portal_sidebar.html).
+   States live on <html data-rail>: expanded, compact or hidden; src/assets/rail.js sets them.
+   Colors, fonts and spacing come from the page tokens (src/styles.css or admin.css). */
+:root {
+  --rail-w: 280px; --rail-compact: 72px; --rail-current: var(--rail-w);
+  --rail-ease: cubic-bezier(.2, .8, .2, 1); --rail-dur: .36s;
+}
+html[data-rail=compact] { --rail-current: var(--rail-compact); }
+html[data-rail=hidden] { --rail-current: 0px; }
+
+.rail {
+  position: fixed; inset: 0 auto 0 0; z-index: 40; box-sizing: border-box; width: var(--rail-current); overflow: hidden;
+  background: #080808; border-right: 1px solid var(--line); color: var(--text); font-family: var(--font-ui);
+  transition: width var(--rail-dur) var(--rail-ease), visibility var(--rail-dur);
+}
+html[data-rail=hidden] .rail { visibility: hidden; border-right-color: transparent; }
+.rail-inner {
+  display: flex; flex-direction: column; width: var(--rail-w); height: 100%; padding: 24px 20px 16px; box-sizing: border-box;
+  transition: width var(--rail-dur) var(--rail-ease), padding var(--rail-dur) var(--rail-ease);
+}
+html[data-rail=compact] .rail-inner { width: var(--rail-compact); padding: 18px 12px 12px; }
+.rail svg, .rail-reveal svg { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Brand */
+.rail .rail-brand {
+  display: flex; flex-direction: column; align-items: center; margin: 0 0 20px; color: var(--text);
+  text-decoration: none; white-space: nowrap; line-height: 1;
+}
+.rail-brand span { font: 700 30px/1 var(--font-display); letter-spacing: .12em; transition: font-size var(--rail-dur) var(--rail-ease), letter-spacing var(--rail-dur) var(--rail-ease); }
+.rail-brand small {
+  display: block; max-height: 20px; margin: 8px 0 0; overflow: hidden; color: var(--accent);
+  font: 700 10px/1 var(--font-mono); letter-spacing: .24em; transition: opacity .2s var(--rail-ease), max-height var(--rail-dur) var(--rail-ease);
+}
+/* Compact keeps the A of the wordmark: the full word does not fit 48px. */
+html[data-rail=compact] .rail-brand span { font-size: 0; letter-spacing: 0; }
+html[data-rail=compact] .rail-brand span::first-letter { font-size: 26px; }
+html[data-rail=compact] .rail-brand small { max-height: 0; margin: 0; opacity: 0; }
+
+/* Search: the form in expanded, one icon button in compact (reader only) */
+.rail-search-slot { max-height: 120px; margin: 0 0 18px; overflow: hidden; transition: opacity .18s var(--rail-ease), max-height var(--rail-dur) var(--rail-ease), margin var(--rail-dur) var(--rail-ease); }
+.rail-search-slot:empty { display: none; }
+html[data-rail=compact] .rail-search-slot { max-height: 0; margin: 0; opacity: 0; }
+.rail .rail-item.rail-search-button { display: none; width: 100%; margin: 0 0 6px; border: 0; background: transparent; cursor: pointer; }
+html[data-rail=compact] .rail .rail-item.rail-search-button { display: grid; }
+
+/* Groups: the label rule is separate from the item rules. */
+.rail-nav { flex: 1; min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: #333 transparent; }
+.rail-group { margin: 0 0 14px; }
+.rail .rail-group-label {
+  max-height: 20px; margin: 0 0 6px; padding: 0 0 0 10px; overflow: hidden; background: none; color: var(--accent);
+  font: 700 11px/1 var(--font-mono); letter-spacing: .18em; text-transform: uppercase; white-space: nowrap;
+  transition: opacity .18s var(--rail-ease), max-height var(--rail-dur) var(--rail-ease), margin var(--rail-dur) var(--rail-ease);
+}
+html[data-rail=compact] .rail-group { margin: 0 0 6px; padding: 0 0 6px; border-bottom: 1px solid var(--line); }
+html[data-rail=compact] .rail-group:last-child { border-bottom: 0; }
+html[data-rail=compact] .rail .rail-group-label { max-height: 0; margin: 0; opacity: 0; }
+.rail ul, .rail li { margin: 0; padding: 0; list-style: none; font-size: inherit; line-height: inherit; }
+
+/* Items */
+.rail .rail-item, .rail .rail-toggle {
+  position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; align-items: center;
+  height: 40px; padding: 0 10px; box-sizing: border-box; border-right: 2px solid transparent; border-radius: 4px 0 0 4px;
+  color: var(--muted); text-decoration: none; white-space: nowrap;
+  transition: background-color .15s, color .15s, grid-template-columns var(--rail-dur) var(--rail-ease), padding var(--rail-dur) var(--rail-ease);
+}
+.rail .rail-item:hover, .rail .rail-item:focus-visible { background: var(--surface); color: var(--text); text-decoration: none; }
+.rail .rail-item[aria-current] { border-right-color: var(--accent); color: var(--accent); }
+.rail-label {
+  overflow: hidden; font: 700 13px/1.2 var(--font-ui); letter-spacing: .05em; text-align: left; text-overflow: ellipsis; text-transform: uppercase;
+  transition: opacity .16s var(--rail-ease), transform var(--rail-dur) var(--rail-ease);
+}
+html[data-rail=compact] .rail .rail-item, html[data-rail=compact] .rail .rail-toggle {
+  grid-template-columns: 24px 0; gap: 0; justify-content: center; padding: 0 12px; border-right: 0; border-radius: 4px;
+}
+html[data-rail=compact] .rail .rail-item[aria-current] { background: var(--surface-2); }
+html[data-rail=compact] .rail-label { opacity: 0; transform: translateX(-6px); }
+
+/* Compact tooltip: one fixed element placed by rail.js, so the scrolling nav does not clip it. */
+.rail-tip {
+  position: fixed; z-index: 60; padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-2);
+  color: var(--text); font: 600 13px var(--font-ui); white-space: nowrap; pointer-events: none;
+  opacity: 0; transform: translate(-4px, -50%); transition: opacity .15s var(--rail-ease), transform .15s var(--rail-ease);
+}
+.rail-tip.is-visible { opacity: 1; transform: translate(0, -50%); }
+
+/* Collapse control at the bottom of the rail */
+.rail .rail-toggle { width: 100%; margin-top: auto; border: 0; background: transparent; color: var(--quiet); cursor: pointer; font: inherit; }
+.rail .rail-toggle:hover { background: var(--surface); color: var(--accent); }
+.rail-toggle svg { transition: transform var(--rail-dur) var(--rail-ease); }
+.rail-toggle .rail-label { font-size: 12px; letter-spacing: .06em; }
+html[data-rail=compact] .rail-toggle svg { transform: rotate(180deg); }
+
+/* Floating control that brings a hidden rail back */
+.rail-reveal {
+  position: fixed; left: 16px; bottom: 16px; z-index: 45; display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
+  border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface-2); color: var(--accent); cursor: pointer;
+  opacity: 0; visibility: hidden; transform: translateY(80px);
+  transition: transform var(--rail-dur) var(--rail-ease), opacity .2s, visibility var(--rail-dur);
+}
+/* Showing is instant for visibility so focus() can land at once; hiding keeps the delay. */
+html[data-rail=hidden] .rail-reveal { opacity: 1; visibility: visible; transform: none; transition: transform var(--rail-dur) var(--rail-ease), opacity .2s, visibility 0s; }
+.rail-reveal svg { width: 22px; height: 22px; stroke-width: 2; }
+
+/* Narrow screens: the rail is an overlay drawer; the page never moves. */
+@media (max-width: 768px) {
+  :root, html[data-rail] { --rail-current: 0px; }
+  .rail { width: var(--rail-w); transform: translateX(-100%); transition: transform var(--rail-dur) var(--rail-ease), visibility var(--rail-dur); }
+  html[data-rail=expanded] .rail { transform: none; box-shadow: 12px 0 40px rgba(0, 0, 0, .6); transition: transform var(--rail-dur) var(--rail-ease), visibility 0s; }
+  html:not([data-rail=expanded]) .rail { visibility: hidden; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail, .rail *, .rail-tip, .rail-reveal { transition: none !important; }
+}
