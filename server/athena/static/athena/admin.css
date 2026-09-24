@@ -15,6 +15,7 @@
   --control-height: 44px; --radius: 4px;
   /* Spacing scale, the same as the reader's (src/styles.css). */
   --space-1: .5rem; --space-2: 1rem; --space-3: 1.5rem; --space-4: 2rem; --space-5: 3rem;
+  --content-max: 1320px; /* The reader's page width cap. */
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23ffcf40' stroke-width='1.6'/%3E%3C/svg%3E");
 
   /* Django's own variables, mapped onto the tokens. */
@@ -50,23 +51,29 @@ code, pre, kbd { font-family: var(--font-mono); color: var(--code); font-size: 1
 /* Label voice: Courier Prime 13px uppercase, the same as the sidebar and the directory. */
 div.breadcrumbs, thead th, .module h2, .module caption, .inline-group h2, fieldset .fieldset-heading,
 .aligned label, .login .form-row label, #changelist-filter h2, #changelist-filter h3, #changelist-filter summary,
-#changelist .actions label, #changelist .actions .action-counter, #changelist .actions .all, #changelist .actions .question,
-#changelist .actions .clear, .paginator, #toolbar .quiet, .pill, .mini.quiet, #user-tools .user-chip,
+.bulk-count, .paginator, #toolbar .quiet, .pill, .mini.quiet, #user-tools .user-chip,
 #recent-actions-module h3, #recent-actions-module .mini, #change-history tbody th,
 #changelist td.field-date, #changelist td.field-last_updated, #changelist td.field-expires_at, #changelist td.field-created, #changelist td.field-last_login {
   font-family: var(--font-mono); font-size: 13px; font-weight: 400; letter-spacing: .06em; text-transform: uppercase;
 }
 
 /* Header */
+/* Section label on the left, user tools on the right; Django's responsive column layout starts only at 767px here. */
 #header {
+  flex-direction: row; justify-content: space-between; align-items: center;
   gap: 12px 24px; flex-wrap: wrap; padding: 16px var(--space-4); background: var(--surface); color: var(--text);
   border-bottom: 1px solid var(--line);
 }
-#site-name { margin: 0; font: 700 30px/1 Cormorant, serif; color: var(--gold); }
-#site-name a:link, #site-name a:visited { color: var(--gold); text-decoration: none; }
-#site-name span { font: 400 17px var(--font-ui); margin-left: .75rem; color: var(--muted); }
+/* The wordmark lives in the rail; the header names the section and shows ATHENA only without a visible rail. */
+#site-name { display: flex; align-items: baseline; gap: 16px; margin: 0; }
+#site-name a:link, #site-name a:visited { text-decoration: none; }
+#site-name .site-brand { display: none; font: 700 22px/1 var(--font-display); letter-spacing: .12em; }
+#site-name .site-brand:link, #site-name .site-brand:visited { color: var(--text); }
+html[data-rail=hidden] #site-name .site-brand, body:not(:has(#rail)) #site-name .site-brand { display: inline; }
+#site-name .site-section:link, #site-name .site-section:visited { color: var(--muted); font: 13px/1.5 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+#site-name a:hover, #site-name a:focus { color: var(--gold-soft); }
 #header #user-tools {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; float: none; margin: 0;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; float: none; margin: 0 0 0 auto;
   font: inherit; letter-spacing: normal; text-transform: none; line-height: 1;
 }
 #user-tools .user-chip { color: var(--quiet); margin-right: 4px; }
@@ -77,14 +84,15 @@ div.breadcrumbs { padding: 14px var(--space-4); background: var(--bg); color: va
 div.breadcrumbs a:link, div.breadcrumbs a:visited { color: var(--gold-soft); }
 div.breadcrumbs a:hover, div.breadcrumbs a:focus { color: var(--code); }
 
-/* Page title */
-#content { padding: var(--space-4); }
+/* Page: fills the width beside the rail up to --content-max; ultra-wide screens centre it, like the reader. */
+#content { box-sizing: border-box; width: auto; max-width: var(--content-max); padding: var(--space-4); }
+@media (min-width: 1600px) { #content { margin: 0 auto; } }
 #content h1 { margin: 0 0 var(--space-3); font: 500 34px/44px var(--font-display); color: var(--text); overflow-wrap: anywhere; }
 #content > h2 { margin: -12px 0 var(--space-3); font: 400 18px var(--font-ui); color: var(--muted); }
 
 /* Controls: one height, radius, border, type size and weight. */
 .button, a.button, form .button, input[type=submit], input[type=button], .submit-row a.deletelink, .submit-row a.closelink,
-.object-tools a:link, .object-tools a:visited, #changelist .actions .button, #toolbar form input[type=submit],
+.object-tools a:link, .object-tools a:visited, #toolbar form input[type=submit],
 .delete-confirmation form .cancel-link, .delete-confirmation form input[type=submit],
 .paginator a:link, .paginator a:visited, .paginator .this-page, #header #user-tools .button, #logout-form button {
   box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -97,7 +105,7 @@ div.breadcrumbs a:hover, div.breadcrumbs a:focus { color: var(--code); }
 /* Secondary hover and focus keep a transparent fill; only the border turns gold. */
 .button:hover, .button:focus, .button:active, input[type=submit]:hover, input[type=submit]:focus, input[type=submit]:active,
 input[type=button]:hover, input[type=button]:focus, .submit-row a.closelink:hover, .submit-row a.closelink:focus,
-.object-tools a:hover, .object-tools a:focus, #changelist .actions .button:hover, #changelist .actions .button:focus,
+.object-tools a:hover, .object-tools a:focus,
 #toolbar form input[type=submit]:hover, #toolbar form input[type=submit]:focus,
 .delete-confirmation form .cancel-link:hover, .delete-confirmation form .cancel-link:focus,
 .paginator a:hover, .paginator a:focus, #header #user-tools .button:hover, #header #user-tools .button:focus {
@@ -113,12 +121,12 @@ input[type=button]:hover, input[type=button]:focus, .submit-row a.closelink:hove
 .login .submit-row input[type=submit]:focus, .object-tools a.addlink:hover, .object-tools a.addlink:focus {
   background: var(--gold-soft); border-color: var(--gold-soft); color: var(--gold-ink);
 }
-/* Danger: Eliminar and the delete confirmation. */
-.submit-row a.deletelink:link, .submit-row a.deletelink:visited, .delete-confirmation form input[type=submit] {
+/* Danger: Eliminar, the bulk bar's delete, and the delete confirmation. */
+.submit-row a.deletelink:link, .submit-row a.deletelink:visited, .delete-confirmation form input[type=submit], .button.danger {
   height: var(--control-height); padding: 0 16px; background: transparent; border-color: var(--danger-line); color: var(--error);
 }
 .submit-row a.deletelink:hover, .submit-row a.deletelink:focus, .delete-confirmation form input[type=submit]:hover,
-.delete-confirmation form input[type=submit]:focus { background: transparent; border-color: var(--error); color: var(--error); }
+.delete-confirmation form input[type=submit]:focus, .button.danger:hover, .button.danger:focus { background: transparent; border-color: var(--error); color: var(--error); }
 .button[disabled], input[type=submit][disabled], input[type=button][disabled], button[disabled],
 input[disabled], select[disabled], textarea[disabled] { opacity: .5; cursor: not-allowed; }
 /* Django icon sprites on links are replaced by text. */
@@ -137,7 +145,9 @@ input[type=tel], input[type=search], input[type=date], input[type=time], .vTextF
 input:not([type]):focus, input[type=text]:focus, input[type=password]:focus, input[type=email]:focus, input[type=url]:focus,
 input[type=number]:focus, input[type=search]:focus, .vTextField:focus, select:focus, textarea:focus { border-color: var(--gold); }
 input::placeholder, textarea::placeholder { color: var(--quiet); opacity: 1; }
-textarea, .form-row textarea { width: min(100%, 900px); padding: 10px 12px; line-height: 1.5; }
+textarea, .form-row textarea { width: 100%; padding: 10px 12px; line-height: 1.5; }
+/* Aligned textareas fill the row beside the label column; zero basis so the cols attribute cannot widen the row. */
+.aligned .form-row .flex-container > textarea { flex: 1 1 0; width: auto; min-width: 0; }
 select, .form-row select {
   height: var(--control-height); padding-right: 40px; appearance: none; cursor: pointer;
   background: var(--bg) var(--chevron) no-repeat right 14px center / 12px 8px;
@@ -285,10 +295,10 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 #change-history table { border: 1px solid var(--line); }
 #change-history tbody th { width: 12em; color: var(--quiet); }
 #changelist td.field-date, #changelist td.field-last_updated, #changelist td.field-expires_at, #changelist td.field-created, #changelist td.field-last_login { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
-/* Download titles are often long file names without spaces; let them wrap instead of widening the table. */
-.model-download #changelist th.field-title { min-width: 16ch; overflow-wrap: anywhere; }
+/* Titles and names wrap (download titles are often long file names) but keep a readable column. */
+#changelist th.field-title, #changelist th.field-name { min-width: 16ch; overflow-wrap: anywhere; }
 
-/* Changelist toolbar, actions and pagination */
+/* Changelist toolbar, bulk bar, row controls and pagination */
 #changelist.module { background: transparent; border: 0; }
 #changelist .changelist-form-container { min-width: 0; }
 #changelist-form .results { scrollbar-color: var(--line-strong) var(--surface); }
@@ -297,13 +307,31 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 #toolbar form #searchbar, #toolbar #searchbar { width: 320px; max-width: 100%; height: var(--control-height); margin: 0; padding: 0 12px; font-size: 16px; }
 #changelist-search > div > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 #toolbar .quiet { color: var(--quiet); margin: 0; }
-#changelist .actions {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 0 0 16px; background: transparent; color: var(--quiet); line-height: 1.5;
+/* Django's action form is hidden (admin/change_list.html); admin-list.js shows this bar while rows are checked. */
+.bulk-bar {
+  position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  margin: 0 0 12px; padding: 8px 8px 8px 16px; background: var(--surface-2); border: 1px solid var(--gold);
 }
-#changelist .actions label { display: inline-flex; align-items: center; gap: 12px; color: var(--muted); }
-#changelist .actions select { height: var(--control-height); margin: 0; font-size: 16px; }
-#changelist .actions span.all, #changelist .actions span.action-counter, #changelist .actions span.clear,
-#changelist .actions span.question { margin: 0; font-size: 13px; color: var(--quiet); }
+.bulk-bar[hidden] { display: none; }
+.bulk-count { margin-right: auto; color: var(--gold); font-variant-numeric: tabular-nums; }
+.bulk-bar .button { height: 36px; min-height: 36px; }
+/* Row controls: 36px icon links in the last column, named by title and aria-label.
+   The column stays pinned to the right edge when a narrow table scrolls inside .results. */
+#changelist td.field-controls, #changelist thead th.column-controls { position: sticky; right: 0; box-shadow: inset 1px 0 0 var(--line); }
+#changelist td.field-controls { width: 1%; padding: 8px 12px; white-space: nowrap; background: var(--bg); }
+#changelist tbody tr:hover td.field-controls { background: var(--row-hover); }
+#changelist tbody tr.selected td.field-controls, #changelist tbody tr:has(.action-select:checked) td.field-controls { background: var(--row-selected); }
+.row-controls { display: flex; gap: 8px; justify-content: flex-end; }
+.icon-button {
+  box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius); color: var(--gold-soft); transition: border-color .15s, color .15s;
+}
+a.icon-button:link, a.icon-button:visited, a.icon-button:hover, a.icon-button:focus { color: var(--gold-soft); text-decoration: none; }
+a.icon-button:hover, a.icon-button:focus-visible { border-color: var(--gold); }
+a.icon-button.danger:link, a.icon-button.danger:visited, a.icon-button.danger:hover, a.icon-button.danger:focus { border-color: var(--danger-line); color: var(--error); }
+a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: var(--error); }
+.icon-button[aria-disabled] { opacity: .5; cursor: not-allowed; }
+.icon-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .paginator, #changelist .paginator, #change-history .paginator {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 16px 0; margin: 0;
   border: 0; background: transparent; color: var(--quiet); line-height: 1.5; overflow: visible;
@@ -316,6 +344,14 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 /* Filter column */
 #changelist-filter {
   flex: 0 0 240px; margin: 0 0 0 24px; background: var(--surface); border: 1px solid var(--line); color: var(--muted);
+}
+/* Below 1200px of content (the rail takes its share of the viewport) the filter moves under the table, its groups side by side. */
+#content-main { container-type: inline-size; }
+@container (max-width: 1199px) {
+  #changelist { flex-direction: column; align-items: stretch; }
+  #changelist-filter { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); flex-basis: auto; margin: 24px 0 0; }
+  #changelist-filter > h2, #changelist-filter > #changelist-filter-extra-actions { grid-column: 1 / -1; }
+  #changelist-filter ul { border-bottom: 0; }
 }
 #changelist-filter h2 { margin: 0 0 8px; padding: 12px 16px; background: var(--surface-2); color: var(--muted); border-bottom: 1px solid var(--line); }
 #changelist-filter h3, #changelist-filter details summary { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; padding: 8px 16px; color: var(--quiet); }
@@ -331,7 +367,7 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 #changelist-filter #changelist-filter-extra-actions a.hidelink { padding: 0; }
 
 /* Dashboard and recent actions */
-.dashboard #content { width: auto; max-width: 1100px; }
+.dashboard #content { width: auto; }
 .dashboard .module table td, .dashboard .module table th { padding: 12px 16px; }
 .dashboard .module table td a { white-space: nowrap; }
 #content-related { background: transparent; }
@@ -372,7 +408,7 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
   #header { flex-direction: column; align-items: stretch; }
   #content { padding: var(--space-3) var(--space-2) 80px; } /* 80px clears the fixed sidebar toggle. */
   /* The user tools wrap under the wordmark as a grid of buttons that fit. */
-  #header #user-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; justify-content: stretch; }
+  #header #user-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; justify-content: stretch; margin: 0; }
   #user-tools .user-chip { grid-column: 1 / -1; margin: 0; }
   #header #user-tools .button { height: 40px; min-height: 40px; padding: 0 8px; }
   .object-tools { float: none; margin: 0 0 16px; overflow: visible; }
@@ -386,8 +422,6 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
   .submit-row a.deletelink { margin-left: 0; }
   #changelist-filter { margin: 24px 0 0; }
   #toolbar form #searchbar, #toolbar #searchbar { flex: 1 1 0; width: auto; min-width: 0; }
-  #changelist .actions label { flex: 1 1 0; min-width: 0; }
-  #changelist .actions select { flex: 1 1 0; width: auto; min-width: 0; }
 }
 
 /* API key created: the raw key is shown once, on its own page */

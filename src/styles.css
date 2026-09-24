@@ -6,7 +6,7 @@
 @font-face{font-family:"Courier Prime";font-style:normal;font-weight:400;font-display:swap;src:url("/fonts/courier-prime-400-latin-ext.woff2") format("woff2");unicode-range:U+0100-02BA,U+1E00-1E9F,U+2020,U+20A0-20AB,U+2C60-2C7F,U+A720-A7FF}
 @font-face{font-family:"Courier Prime";font-style:normal;font-weight:700;font-display:swap;src:url("/fonts/courier-prime-700-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2122,U+2212,U+FEFF}
 @font-face{font-family:"Courier Prime";font-style:normal;font-weight:700;font-display:swap;src:url("/fonts/courier-prime-700-latin-ext.woff2") format("woff2");unicode-range:U+0100-02BA,U+1E00-1E9F,U+2020,U+20A0-20AB,U+2C60-2C7F,U+A720-A7FF}
-:root{--bg:#000;--surface:#101010;--surface-2:#191919;--text:#fff;--muted:#d0d0d0;--accent:#ffb900;--accent-soft:#ffcf40;--code:#ffe08a;--theme-color:#ffb900;--font-display:"Sigurd Variable","Cormorant","Times New Roman",serif;--font-ui:"Rules Variable","Archivo Narrow","Arial Narrow",Arial,sans-serif;--font-mono:"Courier Prime","Cascadia Code",ui-monospace,monospace;--line:#2a2a2a;--line-strong:#555;--quiet:#8f8f8f;--space-1:.5rem;--space-2:1rem;--space-3:1.5rem;--space-4:2rem;--space-5:3rem}
+:root{--bg:#000;--surface:#101010;--surface-2:#191919;--text:#fff;--muted:#d0d0d0;--accent:#ffb900;--accent-soft:#ffcf40;--code:#ffe08a;--theme-color:#ffb900;--font-display:"Sigurd Variable","Cormorant","Times New Roman",serif;--font-ui:"Rules Variable","Archivo Narrow","Arial Narrow",Arial,sans-serif;--font-mono:"Courier Prime","Cascadia Code",ui-monospace,monospace;--line:#2a2a2a;--line-strong:#555;--quiet:#8f8f8f;--space-1:.5rem;--space-2:1rem;--space-3:1.5rem;--space-4:2rem;--space-5:3rem;--content-max:1320px}
 *{box-sizing:border-box}
 html{background:var(--bg);color-scheme:dark;scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--text);font:18px/1.55 var(--font-ui)}
@@ -63,7 +63,9 @@ div#main{min-height:100vh;width:auto;padding-left:var(--rail-current);transition
 .search-state strong{display:block;color:var(--text);font:700 1.8rem/1.1 var(--font-display)}
 .search-state p{margin:.5rem 0 0}
 .content{top:0;padding-top:0}
-.markdown-section{max-width:1080px;padding:var(--space-4) var(--space-4) var(--space-5);color:var(--text)}
+/* Content starts next to the rail and fills it up to --content-max; ultra-wide screens centre it. */
+.markdown-section{max-width:var(--content-max);margin:0;padding:var(--space-4) var(--space-4) var(--space-5);color:var(--text)}
+@media (min-width:1600px){.markdown-section{margin:0 auto}}
 .markdown-section>:last-child{margin-bottom:0}
 .article-actions{display:flex;justify-content:flex-end;margin-bottom:var(--space-2)}
 .page-tree{margin:0 0 var(--space-3);padding:var(--space-2);background:var(--surface);font-size:.9rem}
@@ -78,7 +80,7 @@ div#main{min-height:100vh;width:auto;padding-left:var(--rail-current);transition
 .copy-page:hover{background:var(--accent)}
 .copy-page svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .copy-page__check{display:none}.copy-page.copied .copy-page__copy{display:none}.copy-page.copied .copy-page__check{display:block}
-.markdown-section>p,.markdown-section>ul,.markdown-section>ol,.markdown-section>blockquote{max-width:72ch}
+.markdown-section>p,.markdown-section>ul,.markdown-section>ol:not(.timeline),.markdown-section>blockquote{max-width:72ch}
 body .markdown-section h1,body .markdown-section h2,body .markdown-section h3,body .markdown-section h4,body .markdown-section h5,body .markdown-section h6{font-family:var(--font-display);color:var(--text);font-weight:700;line-height:1.08}
 body .markdown-section h1 a,body .markdown-section h2 a,body .markdown-section h3 a,body .markdown-section h4 a{color:inherit}
 body .markdown-section .anchor span{color:var(--accent)}
@@ -106,13 +108,14 @@ body .markdown-section tr:nth-child(2n) code{color:#5c4300!important;background:
 .hero h1{font-size:clamp(4rem,10vw,7rem);margin:0}.hero p{max-width:38rem;color:#e0e0e0;font-size:1.2rem}
 .hero img{width:100%;height:100%;min-height:500px;object-fit:cover;object-position:center;filter:contrast(1.1)}
 .portal-grid,.library-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2);margin:0}
+.library-grid{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
 .portal-card,.library-card,.update-item,.catalog-item{display:block;padding:var(--space-3);background:var(--surface);color:var(--text)!important;text-decoration:none}
 .portal-card:hover,.library-card:hover{background:var(--surface-2)}
 .portal-card span,.library-card h2,.update-item h2{display:block;margin:.35rem 0;font:700 1.8rem/1.1 var(--font-display)}
 .portal-card p,.library-card>p,.update-item>p{color:var(--muted);margin:.55rem 0}
 /* The card padding is the only space at its edges. */
-:is(.portal-card,.library-card,.update-item,.catalog-item>div)>:first-child{margin-top:0}
-:is(.portal-card,.library-card,.update-item,.catalog-item>div)>:last-child{margin-bottom:0}
+:is(.portal-card,.library-card,.update-item,.catalog-item>div,.account-panel)>:first-child{margin-top:0}
+:is(.portal-card,.library-card,.update-item,.catalog-item>div,.account-panel)>:last-child{margin-bottom:0}
 .contribute-note{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);margin:var(--space-4) 0}
 .contribute-note p{margin:0;color:var(--muted)}
 .library-controls{display:grid;grid-template-columns:minmax(0,2fr) minmax(180px,1fr);gap:var(--space-2);align-items:end;margin:0 0 var(--space-4);padding:var(--space-3);background:var(--surface)}
@@ -160,3 +163,23 @@ table{display:table!important;width:100%;border-collapse:collapse}th,td{border:0
 .post-link{display:inline-block;padding:.55rem .8rem;border:1px solid var(--accent);color:var(--accent)!important;font-weight:700;text-decoration:none}
 .post-link:hover{background:var(--surface-2)}
 @media (max-width:768px){.timeline{--rail:52px}.timeline{--card-pad:var(--space-3)}.timeline-month>h2{padding-left:0}}
+
+/* Mi cuenta (/#/account): controls follow the admin system (44px, 4px radius, #555 border). */
+.markdown-section .account-meta{margin:0 0 var(--space-4);color:var(--muted);font:13px/1.5 var(--font-mono);letter-spacing:.06em;text-transform:uppercase}
+.account-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:var(--space-2);align-items:start}
+.account-panel{padding:var(--space-3);background:var(--surface)}
+.markdown-section .account-panel h2,.markdown-section .account-admin h2{margin:0 0 var(--space-2);font-size:1.6rem}
+.markdown-section .account-admin h2{margin-top:var(--space-4)}
+.account-panel p{color:var(--muted)}
+.account-panel table{margin:0 0 var(--space-3)}
+/* Key rows are ruled, not zebra-striped: the light stripe of article tables would glare inside a dark panel. */
+.markdown-section .account-panel tr{border-top:1px solid var(--line)}
+body .markdown-section .account-panel tr:nth-child(2n){background:transparent}
+body .markdown-section .account-panel tr:nth-child(2n) *{color:var(--text)!important}
+.account-actions{display:flex;flex-wrap:wrap;gap:12px;margin:0}
+.account-actions form{margin:0}
+.account-button{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 16px;border:1px solid var(--line-strong);border-radius:4px;background:transparent;color:var(--accent-soft)!important;font:700 13px/1 var(--font-ui);letter-spacing:.04em;text-transform:uppercase;text-decoration:none;white-space:nowrap;cursor:pointer;transition:border-color .15s}
+.account-button:hover{border-color:var(--accent)}
+.account-button.danger{border-color:#6b3a33;color:#ffb8ac!important}
+.account-button.danger:hover{border-color:#ffb8ac}
+@media (max-width:1100px){.account-grid{grid-template-columns:1fr}}

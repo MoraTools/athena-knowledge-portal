@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, render
 from django.template.defaultfilters import filesizeformat
 from django.utils.html import escape, strip_tags
 
-from .models import Article, Download
+from .models import ApiKey, Article, Download
 
 
 def visible_articles(user):
@@ -107,8 +107,13 @@ def library(request, section):
 
 
 @login_required
-def account(request):
-    return render(request, 'account.html')
+def account_markdown(request):
+    """Mi cuenta, rendered by Docsify at /#/account; the logout form posts with the token rendered here."""
+    user = request.user
+    return render(request, 'account.md', {
+        'is_admin': user.is_staff and user.is_superuser,
+        'keys': ApiKey.objects.filter(user=user).order_by('expires_at'),
+    }, content_type='text/markdown; charset=utf-8')
 
 
 def health(request):
@@ -140,7 +145,7 @@ _sidebar_cache = (None, [])
 SIDEBAR_LINK = re.compile(r'\[([^\]]+)\]\(([^\s)]+)[^)]*\)')
 # The code owns the grouping; a link that is not listed here falls into Biblioteca.
 SIDEBAR_GROUPS = ['Biblioteca', 'Participar', 'Cuenta', 'Administración']
-SIDEBAR_GROUP = {'/content/contributing.md': 'Participar', '/accounts/profile/': 'Cuenta',
+SIDEBAR_GROUP = {'/content/contributing.md': 'Participar', '/account.md': 'Cuenta',
                  '/admin/': 'Administración', '/api.md': 'Administración'}
 
 
@@ -152,7 +157,7 @@ def sidebar_markdown(user):
     if _sidebar_cache[0] != mtime:
         # Archivo is now the "Versiones anteriores" section of Descargas.
         _sidebar_cache = (mtime, [m[0] for m in SIDEBAR_LINK.finditer(file.read_text(encoding='utf-8-sig')) if m[1] != 'Archivo'])
-    links = _sidebar_cache[1] + ['[Mi cuenta](/accounts/profile/ ":ignore")']
+    links = _sidebar_cache[1] + ['[Mi cuenta](/account.md)']
     if user.is_staff:
         links += ['[Administrar Athena](/admin/ ":ignore")', '[API para agentes](/api.md)']
     groups = {group: [] for group in SIDEBAR_GROUPS}

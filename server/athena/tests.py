@@ -263,7 +263,7 @@ class PortalTests(TestCase):
         sidebar = self.client.get('/_sidebar.md').content.decode()
         self.assertTrue(sidebar.startswith('- Biblioteca\n  - [Inicio](/)\n'), sidebar)
         self.assertIn('- Participar\n  - [Contribuir](/content/contributing.md)\n', sidebar)
-        self.assertIn('- Cuenta\n  - [Mi cuenta](/accounts/profile/ ":ignore")\n', sidebar)
+        self.assertIn('- Cuenta\n  - [Mi cuenta](/account.md)\n', sidebar)
         self.assertNotIn('Administración', sidebar)
         self.assertNotIn('Administrar Athena', sidebar)
         self.assertEqual([group for group, _ in sidebar_links(self.reader)], ['Biblioteca', 'Participar', 'Cuenta'])
@@ -273,11 +273,11 @@ class PortalTests(TestCase):
         self.assertEqual(sidebar_links(self.admin), [
             ('Biblioteca', [('Inicio', '/'), ('Guías', '/#/guides'), ('Actualizaciones', '/#/updates'),
                             ('Herramientas', '/#/tools'), ('Descargas', '/#/downloads')]),
-            ('Participar', [('Contribuir', '/#/content/contributing')]), ('Cuenta', [('Mi cuenta', '/accounts/profile/')]),
+            ('Participar', [('Contribuir', '/#/content/contributing')]), ('Cuenta', [('Mi cuenta', '/#/account')]),
             ('Administración', [('Administrar Athena', '/admin/'), ('API para agentes', '/#/api')])])
         item = '<a class="rail-item" href="{}"{}><span class="rail-label">{}</span></a>'.format
         reader_links = [item('/', '', 'Inicio'), item('/#/guides', '', 'Guías'), item('/#/content/contributing', '', 'Contribuir'),
-                        item('/accounts/profile/', '', 'Mi cuenta')]
+                        item('/#/account', '', 'Mi cuenta')]
         for path in ['/admin/', '/admin/auth/user/']:
             response = self.client.get(path)
             self.assertNotContains(response, 'id="nav-sidebar"')
@@ -307,6 +307,69 @@ class PortalTests(TestCase):
         self.assertNotContains(response, 'icon-yes.svg')
         self.assertNotContains(response, 'icon-no.svg')
         self.assertContains(response, '<title>Artículos · Athena</title>')
+
+    def test_account_page(self):
+        self.assertEqual(self.client.get('/account.md').status_code, 302)
+        self.key(self.reader, 'read')
+        self.key(self.admin, 'admin')
+        ApiKey.objects.filter(user=self.admin).update(name='admin-key')
+        self.client.force_login(self.reader)
+        response = self.client.get('/account.md')
+        self.assertEqual(response['Content-Type'], 'text/markdown; charset=utf-8')
+        page = response.content.decode()
+        self.assertTrue(page.startswith('# reader\n'), page)
+        self.assertIn('Lector · Última sesión', page)
+        self.assertIn('<td>test</td><td>Lectura</td>', page)
+        self.assertNotIn('admin-key', page)  # Only the user's own keys.
+        self.assertIn('Pida una clave a un administrador.', page)
+        self.assertNotIn('/admin/', page)
+        # Docsify injects this form; it posts normally with the token rendered here.
+        self.assertRegex(page, r'<form method="post" action="/accounts/logout/"><input type="hidden" name="csrfmiddlewaretoken" value="\w+">')
+        self.client.force_login(self.admin)
+        page = self.client.get('/account.md').content.decode()
+        self.assertIn('Administrador · Última sesión', page)
+        self.assertIn('admin-key', page)
+        self.assertIn('href="/admin/athena/apikey/add/">Crear clave</a>', page)
+        for link in ['/admin/athena/article/', '/admin/athena/apikey/', '/admin/athena/download/', '/admin/auth/user/']:
+            self.assertIn(f'href="{link}"', page)
+
+    def test_account_redirects_and_password_pages(self):
+        self.assertRedirects(self.client.get('/accounts/profile/'), '/#/account', fetch_redirect_response=False)
+        self.assertNotContains(self.client.get('/accounts/login/'), 'class="rail"')
+        self.client.force_login(self.reader)
+        response = self.client.get('/accounts/password_change/')
+        self.assertContains(response, 'class="rail"')
+        self.assertContains(response, '<a class="rail-item" href="/#/account" aria-current="page">', html=False)
+        response = self.client.post('/accounts/password_change/', {
+            'old_password': 'Reader-Example-9348!', 'new_password1': 'Changed-Reader-Pass-5521!',
+            'new_password2': 'Changed-Reader-Pass-5521!'})
+        self.assertRedirects(response, '/#/account', fetch_redirect_response=False)
+        self.assertEqual(self.client.get('/account.md').status_code, 200)  # This session stays valid.
+
+    def test_changelists_have_row_controls_and_hidden_actions(self):
+        self.key(self.admin, 'read')
+        key = ApiKey.objects.get()
+        self.client.force_login(self.admin)
+        for url, links in [
+            ('/admin/athena/article/', ['/#/content/first-guide', f'/admin/athena/article/{self.article.pk}/change/',
+                                        f'/admin/athena/article/{self.article.pk}/delete/']),
+            ('/admin/athena/apikey/', [f'/admin/athena/apikey/{key.pk}/change/', f'/admin/athena/apikey/{key.pk}/delete/']),
+        ]:
+            response = self.client.get(url)
+            page = response.content.decode()
+            self.assertIn('<div class="row-controls">', page)
+            for link in links:
+                self.assertIn(f'href="{link}"', page)
+            self.assertIn('athena/admin-list.js', page)
+            # Django's action form is rendered only inside the hidden container that admin-list.js drives.
+            hidden = page.index('<div class="bulk-source" hidden>')
+            self.assertEqual(page.count('<select name="action"'), 1)
+            self.assertLess(hidden, page.index('<select name="action"'))
+            self.assertLess(page.index('<select name="action"'), page.index('<table id="result_list">'))
+        self.assertNotContains(self.client.get(f'/admin/athena/article/{self.article.pk}/change/'), 'admin-list.js')
+        response = self.client.get('/admin/athena/article/')
+        self.assertContains(response, '<a class="site-brand" href="/">ATHENA</a>')  # Shown by CSS only without a visible rail.
+        self.assertNotContains(response, 'ATHENA <span>')
 
     def test_relative_last_login(self):
         now = timezone.now()
@@ -420,6 +483,12 @@ class DownloadTests(TestCase):
         self.client.force_login(self.admin)
         response = self.client.get('/admin/athena/download/')
         self.assertContains(response, '<span class="pill">Framework</span>')
+        self.assertContains(response, f'href="/downloads/{self.item.slug}" title="Descargar"')
+        self.assertContains(response, f'href="/admin/athena/download/{self.item.pk}/delete/" title="Eliminar"')
+        self.item.published = False
+        self.item.save()
+        # The download view serves published files only, so the control is disabled.
+        self.assertContains(self.client.get('/admin/athena/download/'), 'aria-disabled="true" title="Sin publicar: no se puede descargar"')
         self.assertContains(response, '<title>Descargas · Athena</title>')
         self.assertEqual(self.client.get('/admin/athena/download/add/').status_code, 200)
         self.assertContains(self.client.get(f'/admin/athena/download/{self.item.pk}/change/'), self.item.sha256)

@@ -1,4 +1,4 @@
-{% load static %}<!doctype html>
+{% load static athena_nav %}<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -7,9 +7,11 @@
   <link rel="icon" href="/assets/favicon.svg">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="{% static 'athena/accounts.css' %}">
+  {% if user.is_authenticated %}<link rel="stylesheet" href="/assets/rail.css"><script src="/assets/rail.js"></script>{% endif %}
 </head>
 <body class="account-page">
   <a class="skip-link" href="#account-main">Saltar al contenido</a>
+  {% if user.is_authenticated %}{% portal_sidebar %}{% endif %}
   <header class="account-header"><a class="brand" href="/"><span>ATHENA</span><small>KNOWLEDGE PORTAL</small></a></header>
   <main id="account-main" class="account-main">{% block content %}{% endblock %}</main>
 </body>

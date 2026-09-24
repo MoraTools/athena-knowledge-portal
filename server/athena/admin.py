@@ -49,6 +49,32 @@ def flag(value, yes, no):
     return format_html('<span class="pill {}">{}</span>', 'gold' if value else 'off', yes if value else no)
 
 
+# Row controls: 24px line icons in the rail's stroke style (src/assets/rail.js).
+ICONS = {
+    'view': '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    'download': '<path d="M12 4v11m-5-4 5 5 5-5"/><path d="M4 20h16"/>',
+    'edit': '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/>',
+    'delete': '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+}
+
+
+def row_controls(obj, *extra):
+    """Icon links for a changelist row: extra (label, icon, href) first, then Editar and Eliminar.
+    A None href renders the control disabled. Eliminar opens Django's confirmation page."""
+    base = f'admin:{obj._meta.app_label}_{obj._meta.model_name}'
+    links = [*extra, ('Editar', 'edit', reverse(base + '_change', args=[obj.pk])),
+             ('Eliminar', 'delete', reverse(base + '_delete', args=[obj.pk]))]
+    buttons = []
+    for label, icon, href in links:
+        svg = mark_safe(f'<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">{ICONS[icon]}</svg>')
+        if href:
+            buttons.append(format_html('<a class="icon-button{}" href="{}" title="{}" aria-label="{}: {}">{}</a>',
+                                       ' danger' if icon == 'delete' else '', href, label, label, obj, svg))
+        else:
+            buttons.append(format_html('<span class="icon-button" aria-disabled="true" title="{}">{}</span>', label, svg))
+    return format_html('<div class="row-controls">{}</div>', mark_safe(''.join(buttons)))
+
+
 @admin.register(User)
 class AthenaUserAdmin(UserAdmin):
     form = SafeUserChangeForm
@@ -128,7 +154,7 @@ class AthenaUserAdmin(UserAdmin):
 @admin.register(Article)
 class ArticleAdmin(admin.ModelAdmin):
     form = ArticleForm
-    list_display = ['title', 'kind', 'state', 'author', 'date', 'last_updated']
+    list_display = ['title', 'kind', 'state', 'author', 'date', 'last_updated', 'controls']
     list_filter = ['published', 'kind']
     search_fields = ['title', 'summary', 'author', 'body']
     prepopulated_fields = {'slug': ('title',)}
@@ -144,6 +170,10 @@ class ArticleAdmin(admin.ModelAdmin):
     @admin.display(description='Estado', ordering='published')
     def state(self, obj):
         return flag(obj.published, 'Publicado', 'Borrador')
+
+    @admin.display(description='')
+    def controls(self, obj):
+        return row_controls(obj, ('Ver', 'view', obj.get_absolute_url()))
 
     def changelist_view(self, request, extra_context=None):
         return super().changelist_view(request, {'title': 'Artículos', **(extra_context or {})})
@@ -175,11 +205,17 @@ class ArticleAdmin(admin.ModelAdmin):
 
 @admin.register(Download)
 class DownloadAdmin(admin.ModelAdmin):
-    list_display = ['title', 'section_pill', 'human_size', 'created']
+    list_display = ['title', 'section_pill', 'human_size', 'created', 'controls']
     list_filter = ['section', 'published']
     search_fields = ['title', 'slug']
     fields = ['title', 'section', 'file', 'note', 'published', 'human_size', 'sha256', 'created']
     readonly_fields = ['human_size', 'sha256', 'created']
+
+    @admin.display(description='')
+    def controls(self, obj):
+        # The download view serves published files only.
+        return row_controls(obj, ('Descargar' if obj.published else 'Sin publicar: no se puede descargar', 'download',
+                                  f'/downloads/{obj.slug}' if obj.published else None))
 
     @admin.display(description='Sección', ordering='section')
     def section_pill(self, obj):
@@ -205,12 +241,16 @@ class DownloadAdmin(admin.ModelAdmin):
 
 @admin.register(ApiKey)
 class ApiKeyAdmin(admin.ModelAdmin):
-    list_display = ['name', 'user', 'scope', 'expires_at', 'created']
+    list_display = ['name', 'user', 'scope', 'expires_at', 'created', 'controls']
     fields = ['name', 'user', 'scope', 'expires_at']
 
     @admin.display(description='Creada', ordering='created_at')
     def created(self, obj):
         return obj.created_at
+
+    @admin.display(description='')
+    def controls(self, obj):
+        return row_controls(obj)
 
     def has_module_permission(self, request):
         return request.user.is_superuser

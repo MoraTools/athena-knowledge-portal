@@ -11,8 +11,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/login/', auth.LoginView.as_view()),
     path('accounts/logout/', auth.LogoutView.as_view()),
-    path('accounts/profile/', views.account),
-    path('accounts/password_change/', auth.PasswordChangeView.as_view(success_url='/accounts/profile/')),
+    # Mi cuenta is a reader page; PasswordChangeView keeps this session valid (update_session_auth_hash).
+    path('accounts/profile/', RedirectView.as_view(url='/#/account')),
+    path('accounts/password_change/', auth.PasswordChangeView.as_view(success_url='/#/account')),
     path('request-access', RedirectView.as_view(url='/accounts/login/')),
     path('request-access.html', RedirectView.as_view(url='/accounts/login/')),
     path('api/', api.index),
@@ -34,6 +35,7 @@ urlpatterns = [
     path('pdf/<slug:slug>.pdf', views.pdf),
     path('downloads/<slug:slug>', views.download),
     path('downloads.md', views.downloads_page),
+    path('account.md', views.account_markdown),
     # The former OneDrive catalog pages are sections of Descargas now.
     re_path(r'^(?:archive|framework|packages|exercises)\.md$', RedirectView.as_view(url='/downloads.md')),
     re_path(r'^(?P<section>guides|tools|updates)\.md$', views.library),
