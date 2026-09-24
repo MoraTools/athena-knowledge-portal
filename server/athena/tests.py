@@ -268,6 +268,32 @@ class PortalTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         return form.save()
 
+    def test_partial_admin_cannot_escalate(self):
+        manager = self.directory_admin('manager', ['users'])
+        self.client.force_login(manager)
+        directory = '/admin/auth/user/'
+        self.assertEqual(self.client.get(directory).status_code, 200)
+        # A superuser account is read-only for a partial administrator.
+        page = self.client.get(directory + f'?user={self.admin.pk}')
+        self.assertNotContains(page, 'name="_save"')
+        self.assertNotContains(page, '>Guardar<')
+        self.assertContains(page, 'todos los permisos')
+        post = {'username': self.admin.username, 'role': 'reader', 'edits': [], 'is_active': 'on'}
+        self.assertEqual(self.client.post(directory + f'?user={self.admin.pk}', post).status_code, 403)
+        self.assertEqual(self.client.get(f'/admin/auth/user/{self.admin.pk}/delete/').status_code, 403)
+        self.assertTrue(User.objects.get(pk=self.admin.pk).is_superuser)
+        # Only the areas the actor holds can be granted, so a superuser can never be minted.
+        post = {'username': 'reader', 'role': 'admin', 'edits': ['users', 'articles'], 'is_active': 'on'}
+        response = self.client.post(directory + f'?user={self.reader.pk}', post)
+        self.assertContains(response, 'que usted tiene')
+        self.assertFalse(User.objects.get(pk=self.reader.pk).is_staff)
+        post['edits'] = ['users']
+        self.assertEqual(self.client.post(directory + f'?user={self.reader.pk}', post).status_code, 302)
+        promoted = User.objects.get(pk=self.reader.pk)
+        self.assertEqual((promoted.is_staff, promoted.is_superuser), (True, False))
+        self.assertTrue(promoted.has_perm('auth.change_user'))
+        self.assertFalse(promoted.has_perm('athena.change_article'))
+
     def test_directory_edit_permissions(self):
         self.article.published = False
         self.article.save()
@@ -330,7 +356,7 @@ class PortalTests(TestCase):
             self.assertFalse(form.is_valid())
             self.assertIn('No puede quitar su propio acceso de administrador.', form.non_field_errors())
         other = self.directory_admin('other', ['users'])
-        form = DirectoryUserForm({'username': 'administrator', 'role': 'admin', 'edits': ['articles'], 'is_active': 'on'},
+        form = DirectoryUserForm({'username': 'administrator', 'role': 'admin', 'edits': ['users'], 'is_active': 'on'},
                                  instance=self.admin, actor=other)
         self.assertTrue(form.is_valid(), form.errors)  # Another account can still manage users.
         other.is_active = False

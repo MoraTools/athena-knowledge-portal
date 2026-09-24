@@ -104,6 +104,12 @@ EDIT_AREAS = {
 ADMIN_VIEW = ['athena.view_article', 'athena.view_download']
 
 
+def held_areas(user):
+    """Edit areas a non-superuser holds directly (a superuser holds every area)."""
+    held = {f'{app}.{codename}' for app, codename in user.user_permissions.values_list('content_type__app_label', 'codename')}
+    return {area for area, names in EDIT_AREAS.items() if names[0] in held}
+
+
 def permissions(names):
     query = Q(pk__in=[])
     for name in names:
@@ -132,9 +138,7 @@ class DirectoryUserForm(forms.ModelForm):
         if user.is_superuser:
             self.initial.setdefault('edits', list(EDIT_AREAS))
         elif user.pk:
-            held = {f'{app}.{codename}' for app, codename in
-                    user.user_permissions.values_list('content_type__app_label', 'codename')}
-            self.initial.setdefault('edits', [area for area, names in EDIT_AREAS.items() if names[0] in held])
+            self.initial.setdefault('edits', sorted(held_areas(user)))
         for name in ['first_name', 'last_name', 'email']:
             self.fields[name].widget.attrs['placeholder'] = 'Opcional'
         self.fields['username'].help_text = self.fields['is_active'].help_text = ''
@@ -144,6 +148,8 @@ class DirectoryUserForm(forms.ModelForm):
         if self.instance.pk:
             protect_admin(User.objects.get(pk=self.instance.pk), actor=self.actor, active=data.get('is_active', False),
                           admin=data.get('role') == 'admin' and 'users' in data.get('edits', []))
+        if not self.actor.is_superuser and set(data.get('edits', [])) - held_areas(self.actor):
+            raise ValidationError('Solo puede otorgar los permisos de edición que usted tiene.')
         return data
 
     def save(self, commit=True):

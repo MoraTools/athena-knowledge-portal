@@ -54,8 +54,8 @@
       </fieldset>
     </div>
     <div class="bar">
-      <button class="button default" type="submit">Guardar</button>
-      {% if selected %}
+      {% if can_edit %}<button class="button default" type="submit">Guardar</button>{% else %}<span class="help">Solo un administrador con todos los permisos puede editar esta cuenta.</span>{% endif %}
+      {% if selected and can_edit %}
       <a class="button ghost" href="{% url 'admin:auth_user_password_change' selected.pk %}">Restablecer contraseña</a>
       <a class="link" href="{% url 'admin:athena_apikey_changelist' %}?user__id__exact={{ selected.pk }}">{{ api_keys }} clave{{ api_keys|pluralize:'s' }} de API</a>
       {% if selected.pk == request.user.pk %}

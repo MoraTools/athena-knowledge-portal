@@ -101,8 +101,15 @@ class AthenaUserAdmin(UserAdmin):
     def superuser(self, obj):
         return flag(obj.is_staff, 'Admin', 'Lector')
 
+    def may_touch(self, request, obj):  # A superuser account is off limits to a partial administrator.
+        return obj is None or request.user.is_superuser or not obj.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj) and self.may_touch(request, obj)
+
     def has_delete_permission(self, request, obj=None):
-        return super().has_delete_permission(request, obj) and (obj is None or obj.pk != request.user.pk)
+        return super().has_delete_permission(request, obj) and self.may_touch(request, obj) and (
+            obj is None or obj.pk != request.user.pk)
 
     def get_actions(self, request):
         return {}  # User removal is individual so the acting admin cannot be removed in a batch.
@@ -154,6 +161,7 @@ class AthenaUserAdmin(UserAdmin):
             **self.admin_site.each_context(request), **(extra_context or {}),
             'title': 'Directorio', 'opts': self.opts, 'form': form, 'selected': selected, 'users': users,
             'api_keys': ApiKey.objects.filter(user=selected).count() if selected else 0,
+            'can_edit': self.has_add_permission(request) if creating else self.has_change_permission(request, selected),
         })
 
 
