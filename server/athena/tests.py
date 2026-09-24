@@ -175,6 +175,9 @@ class PortalTests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(self.client.get('/pdf/new-guide.pdf').status_code, 200)
         self.assertIn('sandbox', self.client.get('/pdf/new-guide.pdf')['Content-Security-Policy'])
+        self.assertEqual(self.client.get('/pdf/new-guide.pdf')['X-Frame-Options'], 'SAMEORIGIN')
+        self.assertTrue(self.client.get('/pdf/new-guide.pdf')['Content-Disposition'].startswith('inline;'))
+        self.assertTrue(self.client.get('/pdf/new-guide.pdf?download=1')['Content-Disposition'].startswith('attachment;'))
         self.assertEqual(self.client.delete(url, HTTP_IF_MATCH=response['ETag'], **headers).status_code, 204)
         self.assertEqual(self.client.get('/pdf/new-guide.pdf').status_code, 404)
 

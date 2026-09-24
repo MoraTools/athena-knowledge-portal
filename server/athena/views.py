@@ -9,6 +9,7 @@ from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.defaultfilters import filesizeformat
 from django.utils.html import escape, strip_tags
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from .models import ApiKey, Article, Download
 
@@ -68,13 +69,15 @@ def article_markdown(request, slug):
 
 
 @login_required
+@xframe_options_sameorigin  # The reader embeds the PDF in an iframe.
 def pdf(request, slug):
     article = get_object_or_404(visible_articles(request.user), slug=slug)
     if not article.pdf:
         raise Http404
+    disposition = 'attachment' if request.GET.get('download') else 'inline'
     return HttpResponse(bytes(article.pdf), content_type='application/pdf', headers={
-        'Content-Disposition': f'inline; filename="{article.slug}.pdf"',
-        'Content-Security-Policy': "sandbox; default-src 'none'",
+        'Content-Disposition': f'{disposition}; filename="{article.slug}.pdf"',
+        'Content-Security-Policy': "sandbox; default-src 'none'; frame-ancestors 'self'",
     })
 
 

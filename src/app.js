@@ -534,6 +534,36 @@ function placeSearch() {
   if (input) input.value = searchPage ? params.get('q') || '' : '';
 }
 
+// The article's "Abrir PDF original" link becomes an in-page viewer. Docsify rewrites the
+// link to a #/pdf/... route, so the leading hash is dropped to get the file back.
+function buildPdfViewer() {
+  if (document.querySelector('.markdown-section .pdf-viewer')) return;
+  const link = document.querySelector('.markdown-section a[href$=".pdf"]');
+  const src = link?.getAttribute('href').replace(/^#/, '') || '';
+  if (!src.startsWith('/pdf/') || !getRouteState().path.startsWith('/content/')) return;
+  const viewer = document.createElement('section');
+  viewer.className = 'pdf-viewer';
+  const actions = document.createElement('p');
+  actions.className = 'pdf-viewer__actions';
+  [['Descargar PDF', src + '?download=1', ''], ['Abrir en pestaña nueva', src, '_blank']].forEach(([label, href, target]) => {
+    const a = document.createElement('a');
+    a.className = 'pdf-link';
+    a.href = href;
+    a.textContent = label;
+    if (target) {
+      a.target = target;
+      a.rel = 'noreferrer';
+    }
+    actions.append(a);
+  });
+  const frame = document.createElement('iframe');
+  frame.src = src;
+  frame.title = 'Documento PDF';
+  frame.loading = 'lazy';
+  viewer.append(actions, frame);
+  link.closest('p').replaceWith(viewer);
+}
+
 function syncView() {
   const { path } = getRouteState();
   document.body.classList.toggle('home-view', path === '/');
@@ -543,6 +573,7 @@ function syncView() {
   filterGuides();
   filterDownloads();
   buildPageTree();
+  buildPdfViewer();
   if (path === '/search') renderSearchPage();
 }
 
