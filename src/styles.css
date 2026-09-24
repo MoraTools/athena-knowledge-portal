@@ -43,7 +43,7 @@ div#main{min-height:100vh;width:auto;padding-left:var(--rail-current);transition
 #search-page-slot .search{margin:0!important;background:#fff}
 #search-page-slot .search input{background:#fff;color:#000;padding:1rem!important;font-size:1.15rem}
 #search-page-slot .search input::placeholder{color:#444}
-.search-page{max-width:900px}
+.search-page{max-width:none}
 .search-toolbar{display:flex;align-items:center;gap:.8rem;margin:0 0 var(--space-2)}
 .search-toolbar label{color:var(--muted);font-weight:700}
 .search-toolbar select{min-width:190px;border:0;background:var(--surface-2);color:var(--text);padding:.7rem;font:16px var(--font-ui)}
@@ -80,7 +80,7 @@ div#main{min-height:100vh;width:auto;padding-left:var(--rail-current);transition
 .copy-page:hover{background:var(--accent)}
 .copy-page svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .copy-page__check{display:none}.copy-page.copied .copy-page__copy{display:none}.copy-page.copied .copy-page__check{display:block}
-.markdown-section>p,.markdown-section>ul,.markdown-section>ol:not(.timeline),.markdown-section>blockquote{max-width:72ch}
+/* Prose fills the content area; only --content-max (1320px, centred above 1600px) bounds it. */
 body .markdown-section h1,body .markdown-section h2,body .markdown-section h3,body .markdown-section h4,body .markdown-section h5,body .markdown-section h6{font-family:var(--font-display);color:var(--text);font-weight:700;line-height:1.08}
 body .markdown-section h1 a,body .markdown-section h2 a,body .markdown-section h3 a,body .markdown-section h4 a{color:inherit}
 body .markdown-section .anchor span{color:var(--accent)}
@@ -156,7 +156,7 @@ table{display:table!important;width:100%;border-collapse:collapse}th,td{border:0
 .timeline-card{margin:0;padding:var(--card-pad);border:1px solid #1f1f1f}
 .timeline-card .post-meta{display:block;margin:0 0 var(--space-1);color:var(--muted);font:12px/1.4 var(--font-mono);letter-spacing:.04em;text-transform:uppercase}
 .markdown-section .timeline-card h2{margin:0;font-size:2rem;line-height:var(--title-lh)}
-.timeline-card .post-summary{max-width:62ch;margin:var(--space-2) 0 0;font-size:17px;line-height:1.6}
+.timeline-card .post-summary{margin:var(--space-2) 0 0;font-size:17px;line-height:1.6}
 .timeline-card h2 a{text-decoration:none}
 .timeline-card h2 a:hover{color:var(--accent)}
 .post-actions{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:var(--space-2) 0 0}
