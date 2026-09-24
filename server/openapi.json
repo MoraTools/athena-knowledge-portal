@@ -2,12 +2,12 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Athena management API",
-    "version": "1.2.0",
-    "description": "Private knowledge base. Create a scoped key in /admin/athena/apikey/. Keys expire after 90 days by default and are revoked when the owning user is disabled, removed, or has their password reset. Browser cookies are not accepted by the API."
+    "version": "1.3.0",
+    "description": "Private knowledge base. Create a scoped key in /admin/athena/apikey/. Keys expire after 90 days by default and are revoked when the owning user is disabled, removed, or has their password reset. Browser cookies are not accepted by the API. Guide for agents: GET /api/docs/. Check a key with GET /me/."
   },
   "servers": [
     {
-      "url": "https://athena.moratechnology.com"
+      "url": "https://athena.moratechnology.com/api/v1"
     }
   ],
   "security": [
@@ -16,7 +16,43 @@
     }
   ],
   "paths": {
-    "/api/v1/articles/": {
+    "/": {
+      "servers": [
+        {
+          "url": "https://athena.moratechnology.com/api/v1"
+        },
+        {
+          "url": "https://athena.moratechnology.com/api"
+        }
+      ],
+      "get": {
+        "operationId": "api_index",
+        "summary": "API index",
+        "security": [],
+        "description": "Served at /api/ and /api/v1/. Lists every route with its methods. No key needed.",
+        "responses": {
+          "200": {
+            "description": "JSON {name, version, docs, openapi, auth, endpoints}"
+          }
+        }
+      }
+    },
+    "/me/": {
+      "get": {
+        "operationId": "read_me",
+        "summary": "Check the current key",
+        "description": "Returns the key owner, the key, and a can map: read_articles, write_articles, manage_downloads, manage_users.",
+        "responses": {
+          "200": {
+            "description": "JSON {user, key, can}"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          }
+        }
+      }
+    },
+    "/articles/": {
       "get": {
         "operationId": "list_articles",
         "summary": "List articles",
@@ -112,7 +148,7 @@
         }
       }
     },
-    "/api/v1/articles/{slug}/": {
+    "/articles/{slug}/": {
       "get": {
         "operationId": "get_article",
         "summary": "Get article",
@@ -261,7 +297,7 @@
         ]
       }
     },
-    "/api/v1/downloads/": {
+    "/downloads/": {
       "get": {
         "operationId": "list_downloads",
         "summary": "List downloads",
@@ -357,7 +393,7 @@
         }
       }
     },
-    "/api/v1/downloads/{slug}/": {
+    "/downloads/{slug}/": {
       "delete": {
         "operationId": "delete_download",
         "summary": "Delete a download and its file (articles or admin scope)",
@@ -396,7 +432,7 @@
         ]
       }
     },
-    "/api/v1/users/": {
+    "/users/": {
       "get": {
         "operationId": "list_users",
         "summary": "List users",
@@ -464,7 +500,7 @@
         "description": "Requires admin scope and a superuser account."
       }
     },
-    "/api/v1/users/{user_id}/": {
+    "/users/{user_id}/": {
       "get": {
         "operationId": "get_user",
         "summary": "Get user",
@@ -587,7 +623,7 @@
         ]
       }
     },
-    "/api/v1/articles/{slug}/pdf/": {
+    "/articles/{slug}/pdf/": {
       "post": {
         "operationId": "upload_pdf",
         "summary": "Attach PDF (25 MiB) or replace Markdown (1 MiB)",
@@ -691,7 +727,7 @@
         ]
       }
     },
-    "/api/v1/articles/{slug}/markdown/": {
+    "/articles/{slug}/markdown/": {
       "post": {
         "operationId": "upload_markdown",
         "summary": "Attach PDF (25 MiB) or replace Markdown (1 MiB)",
@@ -751,6 +787,31 @@
                     "type": "string",
                     "format": "binary"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/docs/": {
+      "servers": [
+        {
+          "url": "https://athena.moratechnology.com/api"
+        }
+      ],
+      "get": {
+        "operationId": "api_docs",
+        "summary": "API guide (Markdown)",
+        "security": [],
+        "description": "Served at /api/docs/. No key needed.",
+        "responses": {
+          "200": {
+            "description": "API.md as text/markdown",
+            "content": {
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }

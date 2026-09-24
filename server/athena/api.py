@@ -17,6 +17,34 @@ from .forms import ArticleForm, protect_admin
 from .models import ApiKey, Article, Download
 
 
+DOCS = '/api/docs/'
+ENDPOINTS = {
+    '/api/v1/me/': ['GET'],
+    '/api/v1/articles/': ['GET', 'POST'],
+    '/api/v1/articles/{slug}/': ['GET', 'PATCH', 'DELETE'],
+    '/api/v1/articles/{slug}/markdown/': ['POST'],
+    '/api/v1/articles/{slug}/pdf/': ['GET', 'POST'],
+    '/api/v1/downloads/': ['GET', 'POST'],
+    '/api/v1/downloads/{slug}/': ['DELETE'],
+    '/api/v1/users/': ['GET', 'POST'],
+    '/api/v1/users/{id}/': ['GET', 'PATCH', 'DELETE'],
+    '/api/docs/': ['GET'],
+    '/api/openapi.json': ['GET'],
+}
+
+
+@csrf_exempt
+def index(request):
+    # Public, so an agent can find the routes and the docs before it has a working key.
+    return JsonResponse({'name': 'Athena API', 'version': 'v1', 'docs': DOCS, 'openapi': '/api/openapi.json',
+                         'auth': 'Authorization: Bearer <key>', 'endpoints': ENDPOINTS})
+
+
+@csrf_exempt
+def not_found(request):
+    return JsonResponse({'error': f'Not found. See {DOCS}.'}, status=404)
+
+
 def api(view):
     @csrf_exempt
     @wraps(view)
@@ -29,7 +57,7 @@ def api(view):
         if not key or not key.user.is_active or not hmac.compare_digest(
             key.password_digest, hashlib.sha256(key.user.password.encode()).hexdigest()
         ):
-            return JsonResponse({'error': 'A valid Bearer API key is required.'}, status=401,
+            return JsonResponse({'error': 'A valid Bearer API key is required.', 'docs': DOCS}, status=401,
                                 headers={'WWW-Authenticate': 'Bearer'})
         request.user, request.api_key = key.user, key
         try:
@@ -55,7 +83,7 @@ def payload(request):
 
 
 def denied():
-    return JsonResponse({'error': 'Permission denied.'}, status=403)
+    return JsonResponse({'error': 'Permission denied.', 'docs': DOCS}, status=403)
 
 
 def method_not_allowed(methods):
@@ -64,6 +92,23 @@ def method_not_allowed(methods):
 
 def can_edit(request, action, model='article'):
     return request.api_key.scope in ('articles', 'admin') and request.user.has_perm(f'athena.{action}_{model}')
+
+
+@api
+def me(request):
+    if request.method != 'GET':
+        return method_not_allowed('GET')
+    user, key = request.user, request.api_key
+    return JsonResponse({
+        'user': {'id': user.pk, 'username': user.username, 'email': user.email,
+                 'is_superuser': user.is_superuser, 'is_active': user.is_active},
+        'key': {'name': key.name, 'scope': key.scope, 'expires_at': key.expires_at.isoformat(),
+                'created_at': key.created_at.isoformat()},
+        # The same checks the article, download, and user endpoints make.
+        'can': {'read_articles': True, 'write_articles': can_edit(request, 'change'),
+                'manage_downloads': can_edit(request, 'add', 'download'),
+                'manage_users': key.scope == 'admin' and user.is_superuser},
+    })
 
 
 def article_data(article, detail=True):

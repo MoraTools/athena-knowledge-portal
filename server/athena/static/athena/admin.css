@@ -161,6 +161,8 @@ ul.messagelist li { background-color: var(--success-bg); }
 ul.messagelist li.warning { background-color: var(--warning-bg); }
 ul.messagelist li.error { background-color: var(--error-bg); }
 ul.messagelist code.secret { display: block; margin-top: 8px; font-size: 16px; color: var(--code); user-select: all; overflow-wrap: anywhere; }
+ul.messagelist code.secret + code.secret { font-size: 14px; white-space: pre-wrap; }
+ul.messagelist code.secret ~ a { display: inline-block; margin-top: 8px; }
 .errornote {
   margin: 0 0 16px; padding: 12px 16px; border: 1px solid var(--danger-line); border-radius: var(--radius);
   background: var(--error-bg); color: var(--error); font-size: 16px; font-weight: 400;

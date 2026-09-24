@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.template.defaultfilters import filesizeformat
 from django.utils import formats, timezone
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 
 from .forms import ArticleForm, DirectoryUserCreationForm, DirectoryUserForm, SafeUserChangeForm
 from .models import ApiKey, Article, Download
@@ -225,7 +226,8 @@ class ApiKeyAdmin(admin.ModelAdmin):
         return ['user', 'scope'] if obj else []
 
     def changelist_view(self, request, extra_context=None):
-        return super().changelist_view(request, {'title': 'Claves de API', **(extra_context or {})})
+        subtitle = mark_safe('Documentación: <a href="/api/docs/">/api/docs/</a> · Verifique una clave con <code>GET /api/v1/me/</code>')
+        return super().changelist_view(request, {'title': 'Claves de API', 'subtitle': subtitle, **(extra_context or {})})
 
     def add_view(self, request, form_url='', extra_context=None):
         return super().add_view(request, form_url, {'title': 'Nueva clave de API', **(extra_context or {})})
@@ -237,4 +239,8 @@ class ApiKeyAdmin(admin.ModelAdmin):
         raw = obj.issue() if not change else None
         super().save_model(request, obj, form, change)
         if raw:
-            messages.warning(request, format_html('Copie esta clave ahora. No se mostrará otra vez: <code class="secret">{}</code>', raw))
+            messages.warning(request, format_html(
+                'Copie esta clave ahora. No se mostrará otra vez: <code class="secret">{}</code>'
+                '<code class="secret">export ATHENA_API_KEY={}</code>'
+                '<code class="secret">curl -H "Authorization: Bearer $ATHENA_API_KEY" https://{}/api/v1/me/</code>'
+                '<a href="/api/docs/">Documentación de la API</a>', raw, raw, request.get_host()))

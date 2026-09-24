@@ -120,6 +120,22 @@ def api_schema(request):
     return FileResponse((settings.BASE_DIR / 'server/openapi.json').open('rb'), content_type='application/json')
 
 
+_api_docs_cache = (None, '')
+
+
+def api_markdown():
+    global _api_docs_cache
+    file = settings.BASE_DIR / 'API.md'
+    mtime = file.stat().st_mtime
+    if _api_docs_cache[0] != mtime:
+        _api_docs_cache = (mtime, file.read_text(encoding='utf-8'))
+    return _api_docs_cache[1]
+
+
+def api_docs(request):
+    return HttpResponse(api_markdown(), content_type='text/markdown; charset=utf-8')
+
+
 _sidebar_cache = (None, '')
 
 
@@ -134,7 +150,7 @@ def sidebar_markdown(user):
         _sidebar_cache = (mtime, text.rstrip())
     text = _sidebar_cache[1] + '\n- [Mi cuenta](/accounts/profile/ ":ignore")\n'
     if user.is_staff:
-        text += '- [Administrar Athena](/admin/ ":ignore")\n'
+        text += '- [Administrar Athena](/admin/ ":ignore")\n- [API para agentes](/api.md)\n'
     return text
 
 
@@ -160,13 +176,17 @@ def static_portal(request, path='index.html'):
         else:
             file = settings.BASE_DIR / 'src' / path
     else:
-        allowed = {'index.html', 'README.md', '_sidebar.md', 'search.md', 'catalog.json'}
+        allowed = {'index.html', 'README.md', '_sidebar.md', 'search.md', 'catalog.json', 'api.md'}
         if path not in allowed:
             raise Http404
         file = settings.BASE_DIR / ('src' if path == 'index.html' else 'dist') / path
+        if path == 'api.md':
+            file = settings.BASE_DIR / 'API.md'  # The repository's API.md, the same file as /api/docs/.
     root = settings.BASE_DIR.resolve()
     if '..' in Path(path).parts or not file.resolve().is_relative_to(root) or not file.is_file():
         raise Http404
     if path == '_sidebar.md':
         return HttpResponse(sidebar_markdown(request.user), content_type='text/markdown; charset=utf-8')
+    if path == 'api.md':
+        return HttpResponse(api_markdown(), content_type='text/markdown; charset=utf-8')
     return FileResponse(file.open('rb'), content_type=mimetypes.guess_type(file)[0] or 'application/octet-stream')

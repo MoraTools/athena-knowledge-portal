@@ -1,7 +1,30 @@
 # Athena REST API
 
 Base URL: `https://athena.moratechnology.com/api/v1`
-OpenAPI: [schema](https://athena.moratechnology.com/api/openapi.json)
+OpenAPI: [schema](https://athena.moratechnology.com/api/openapi.json) · This guide: `GET /api/docs/` (no key needed)
+
+## Quick start
+
+1. An administrator creates a key in the admin at `/admin/athena/apikey/add/`. For full access, select scope `admin` and an owner who is an administrator. The raw key is shown once.
+2. Store the key: `export ATHENA_API_KEY=athena_...`
+3. Check the key:
+
+   ```sh
+   curl --fail-with-body https://athena.moratechnology.com/api/v1/me/ \
+     -H "Authorization: Bearer $ATHENA_API_KEY"
+   ```
+
+   A good answer is `200` with the owner, the key, and what the key can do:
+   `{"user": {"username": "...", "is_superuser": true, ...}, "key": {"scope": "admin", "expires_at": "...", ...}, "can": {"read_articles": true, "write_articles": true, "manage_downloads": true, "manage_users": true}}`.
+   A `false` value in `can` means the endpoint answers `403` for this key.
+4. Then use the article, download, and user endpoints below. `GET /api/v1/` lists every route and its methods without a key.
+
+### Common failures
+
+- **Missing `v1` or a wrong path**, for example `/api/users/`: every route starts with `/api/v1/` and ends with `/`.
+  An unknown path under `/api/` answers `404` with `{"error": "Not found. See /api/docs/."}`.
+- **`401` with a key that worked before**: a password change or reset of the key's owner invalidates all of that owner's keys,
+  as do an expired key and a disabled or deleted owner. Create a new key.
 
 ## Authentication and scopes
 
@@ -22,6 +45,9 @@ A scope never grants more authority than its owner has. A key owned by an ordina
 
 | Method | Path | Result |
 | --- | --- | --- |
+| GET | `/api/` or `/api/v1/` (full path) | Index: every route with its methods; no key needed |
+| GET | `/api/docs/` (full path) | This guide as Markdown; no key needed |
+| GET | `/me/` | The key's owner, scope, expiry, and `can` map of allowed operations |
 | GET | `/articles/?q=recorder&kind=guide&offset=0&limit=50` | Search/list articles; maximum page size 100 |
 | POST | `/articles/` | Create an article, draft by default |
 | GET | `/articles/{slug}/` | Read article, body, metadata, and version `ETag` |
@@ -88,5 +114,5 @@ Setting `admin: true` also enables staff access. The acting administrator cannot
 ## Errors
 
 Errors are JSON under `error`: 400 invalid input, 401 invalid key, 403 insufficient permission,
-404 missing resource, 409 duplicate record, 412 missing/stale ETag, 405 unsupported method.
+404 missing resource or unknown path, 409 duplicate record, 412 missing/stale ETag, 405 unsupported method.
 A stale ETag means another edit was saved. Read the latest article before retrying; do not overwrite blindly.

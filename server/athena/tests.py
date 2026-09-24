@@ -105,6 +105,48 @@ class PortalTests(TestCase):
         key.delete()
         self.assertEqual(self.client.get('/api/v1/articles/', **headers).status_code, 401)
 
+    def test_api_discovery_me_and_docs(self):
+        for path in ['/api/', '/api/v1/']:
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200, path)
+            self.assertEqual(response.json()['docs'], '/api/docs/')
+            self.assertEqual(response.json()['endpoints']['/api/v1/me/'], ['GET'])
+        for path in ['/api/nope', '/api', '/api/users/users/?limit=1']:
+            response = self.client.get(path)
+            self.assertEqual((response.status_code, response['Content-Type']), (404, 'application/json'), path)
+            self.assertEqual(response.json(), {'error': 'Not found. See /api/docs/.'})
+        self.assertEqual(self.client.post('/api/users/tokens/provision/').status_code, 404)  # JSON, not a CSRF page.
+        response = self.client.get('/api/v1/me/')
+        self.assertEqual((response.status_code, response['WWW-Authenticate']), (401, 'Bearer'))
+        self.assertEqual(response.json()['docs'], '/api/docs/')
+        headers, key = self.key(self.reader, 'read')
+        response = self.client.get('/api/v1/me/', **headers).json()
+        self.assertEqual((response['user']['username'], response['key']['scope']), ('reader', 'read'))
+        self.assertEqual(response['can'], {'read_articles': True, 'write_articles': False, 'manage_downloads': False, 'manage_users': False})
+        self.assertEqual(self.client.post('/api/v1/articles/', '{}', content_type='application/json', **headers).json()['docs'], '/api/docs/')
+        headers, key = self.key(self.admin, 'admin')
+        response = self.client.get('/api/v1/me/', **headers).json()
+        self.assertEqual(response['key']['expires_at'], key.expires_at.isoformat())
+        self.assertEqual(response['can'], {'read_articles': True, 'write_articles': True, 'manage_downloads': True, 'manage_users': True})
+        response = self.client.get('/api/docs/')
+        self.assertEqual((response.status_code, response['Content-Type']), (200, 'text/markdown; charset=utf-8'))
+        self.assertContains(response, '## Quick start')
+        self.assertEqual(self.client.get('/api.md').status_code, 302)
+        self.client.force_login(self.reader)
+        self.assertContains(self.client.get('/api.md'), '## Quick start')
+        self.assertNotIn('API para agentes', self.client.get('/_sidebar.md').content.decode())
+        self.client.force_login(self.admin)
+        self.assertIn('[Administrar Athena](/admin/ ":ignore")\n- [API para agentes](/api.md)',
+                      self.client.get('/_sidebar.md').content.decode())
+
+    def test_api_key_admin_shows_setup(self):
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get('/admin/athena/apikey/'), 'Verifique una clave con <code>GET /api/v1/me/</code>')
+        response = self.client.post('/admin/athena/apikey/add/', {
+            'name': 'agent', 'user': self.admin.pk, 'scope': 'admin', 'expires_at_0': '2099-01-01', 'expires_at_1': '00:00:00'}, follow=True)
+        self.assertContains(response, 'export ATHENA_API_KEY=athena_')
+        self.assertContains(response, 'curl -H "Authorization: Bearer $ATHENA_API_KEY" https://testserver/api/v1/me/')
+
     def test_article_crud_upload_search_and_conflicts(self):
         headers, _ = self.key(self.admin, 'articles')
         data = dict(title='New guide', slug='new-guide', summary='Fresh content', author='Team', body='# New guide',
