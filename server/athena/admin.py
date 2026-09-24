@@ -41,7 +41,7 @@ def since(moment, now):
 def pill(user):
     if not user.is_active:
         return 'Inactivo'
-    return 'Admin' if user.is_staff and user.is_superuser else 'Lector'
+    return 'Admin' if user.is_staff else 'Lector'
 
 
 def flag(value, yes, no):
@@ -58,12 +58,15 @@ ICONS = {
 }
 
 
-def row_controls(obj, *extra):
-    """Icon links for a changelist row: extra (label, icon, href) first, then Editar and Eliminar.
-    A None href renders the control disabled. Eliminar opens Django's confirmation page."""
+def row_controls(model_admin, request, obj, *extra):
+    """Icon links for a changelist row: extra (label, icon, href) first, then Editar and Eliminar when the user
+    holds that permission. A None href renders the control disabled. Eliminar opens Django's confirmation page."""
     base = f'admin:{obj._meta.app_label}_{obj._meta.model_name}'
-    links = [*extra, ('Editar', 'edit', reverse(base + '_change', args=[obj.pk])),
-             ('Eliminar', 'delete', reverse(base + '_delete', args=[obj.pk]))]
+    links = list(extra)
+    if model_admin.has_change_permission(request, obj):
+        links.append(('Editar', 'edit', reverse(base + '_change', args=[obj.pk])))
+    if model_admin.has_delete_permission(request, obj):
+        links.append(('Eliminar', 'delete', reverse(base + '_delete', args=[obj.pk])))
     buttons = []
     for label, icon, href in links:
         svg = mark_safe(f'<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">{ICONS[icon]}</svg>')
@@ -75,6 +78,16 @@ def row_controls(obj, *extra):
     return format_html('<div class="row-controls">{}</div>', mark_safe(''.join(buttons)))
 
 
+class RowControlsAdmin(admin.ModelAdmin):
+    """Binds the request to the controls column, since list_display callables receive only the row."""
+
+    def get_list_display(self, request):
+        @admin.display(description='')
+        def controls(obj):
+            return self.controls(request, obj)
+        return [controls if name == 'controls' else name for name in super().get_list_display(request)]
+
+
 @admin.register(User)
 class AthenaUserAdmin(UserAdmin):
     form = SafeUserChangeForm
@@ -84,21 +97,12 @@ class AthenaUserAdmin(UserAdmin):
     def active(self, obj):
         return flag(obj.is_active, 'Activa', 'Inactiva')
 
-    @admin.display(description='Admin', ordering='is_superuser')
+    @admin.display(description='Admin', ordering='is_staff')
     def superuser(self, obj):
-        return flag(obj.is_superuser, 'Admin', 'Lector')
-
-    def has_module_permission(self, request):
-        return request.user.is_superuser
-
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_superuser
-
-    has_add_permission = has_view_permission
-    has_change_permission = has_view_permission
+        return flag(obj.is_staff, 'Admin', 'Lector')
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser and (obj is None or obj.pk != request.user.pk)
+        return super().has_delete_permission(request, obj) and (obj is None or obj.pk != request.user.pk)
 
     def get_actions(self, request):
         return {}  # User removal is individual so the acting admin cannot be removed in a batch.
@@ -131,6 +135,8 @@ class AthenaUserAdmin(UserAdmin):
             raise Http404
         form_class = DirectoryUserCreationForm if creating else DirectoryUserForm
         if request.method == 'POST':
+            if not (self.has_add_permission(request) if creating else self.has_change_permission(request, selected)):
+                raise PermissionDenied
             form = form_class(request.POST, instance=selected, actor=request.user)
             with transaction.atomic():
                 saved = form.save() if form.is_valid() else None
@@ -152,7 +158,7 @@ class AthenaUserAdmin(UserAdmin):
 
 
 @admin.register(Article)
-class ArticleAdmin(admin.ModelAdmin):
+class ArticleAdmin(RowControlsAdmin):
     form = ArticleForm
     list_display = ['title', 'kind', 'state', 'author', 'date', 'last_updated', 'controls']
     list_filter = ['published', 'kind']
@@ -171,9 +177,8 @@ class ArticleAdmin(admin.ModelAdmin):
     def state(self, obj):
         return flag(obj.published, 'Publicado', 'Borrador')
 
-    @admin.display(description='')
-    def controls(self, obj):
-        return row_controls(obj, ('Ver', 'view', obj.get_absolute_url()))
+    def controls(self, request, obj):
+        return row_controls(self, request, obj, ('Ver', 'view', obj.get_absolute_url()))
 
     def changelist_view(self, request, extra_context=None):
         return super().changelist_view(request, {'title': 'Artículos', **(extra_context or {})})
@@ -185,6 +190,13 @@ class ArticleAdmin(admin.ModelAdmin):
         article = self.get_object(request, object_id)
         title = f'Editar artículo · {article.title}' if article else 'Editar artículo'
         return super().change_view(request, object_id, form_url, {'title': title, 'subtitle': None, **(extra_context or {})})
+
+    def get_fieldsets(self, request, obj=None):
+        if obj and not self.has_change_permission(request, obj):  # Upload fields mean nothing on a read-only page.
+            uploads = {'markdown_file', 'pdf_file', 'remove_pdf'}
+            return [(name, {**options, 'fields': [f for f in options['fields'] if f not in uploads]})
+                    for name, options in self.fieldsets]
+        return self.fieldsets
 
     def get_prepopulated_fields(self, request, obj=None):
         return {} if obj else self.prepopulated_fields
@@ -204,18 +216,18 @@ class ArticleAdmin(admin.ModelAdmin):
 
 
 @admin.register(Download)
-class DownloadAdmin(admin.ModelAdmin):
+class DownloadAdmin(RowControlsAdmin):
     list_display = ['title', 'section_pill', 'human_size', 'created', 'controls']
     list_filter = ['section', 'published']
     search_fields = ['title', 'slug']
     fields = ['title', 'section', 'file', 'note', 'published', 'human_size', 'sha256', 'created']
     readonly_fields = ['human_size', 'sha256', 'created']
 
-    @admin.display(description='')
-    def controls(self, obj):
+    def controls(self, request, obj):
         # The download view serves published files only.
-        return row_controls(obj, ('Descargar' if obj.published else 'Sin publicar: no se puede descargar', 'download',
-                                  f'/downloads/{obj.slug}' if obj.published else None))
+        return row_controls(self, request, obj, (
+            'Descargar' if obj.published else 'Sin publicar: no se puede descargar', 'download',
+            f'/downloads/{obj.slug}' if obj.published else None))
 
     @admin.display(description='Sección', ordering='section')
     def section_pill(self, obj):
@@ -240,7 +252,7 @@ class DownloadAdmin(admin.ModelAdmin):
 
 
 @admin.register(ApiKey)
-class ApiKeyAdmin(admin.ModelAdmin):
+class ApiKeyAdmin(RowControlsAdmin):
     list_display = ['name', 'user', 'scope', 'expires_at', 'created', 'controls']
     fields = ['name', 'user', 'scope', 'expires_at']
 
@@ -248,19 +260,8 @@ class ApiKeyAdmin(admin.ModelAdmin):
     def created(self, obj):
         return obj.created_at
 
-    @admin.display(description='')
-    def controls(self, obj):
-        return row_controls(obj)
-
-    def has_module_permission(self, request):
-        return request.user.is_superuser
-
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_superuser
-
-    has_add_permission = has_view_permission
-    has_change_permission = has_view_permission
-    has_delete_permission = has_view_permission
+    def controls(self, request, obj):
+        return row_controls(self, request, obj)
 
     def get_readonly_fields(self, request, obj=None):
         return ['user', 'scope'] if obj else []

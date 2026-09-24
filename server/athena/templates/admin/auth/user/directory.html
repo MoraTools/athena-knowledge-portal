@@ -44,6 +44,14 @@
         </div>
         {{ form.role.errors }}{{ form.is_active.errors }}{{ form.non_field_errors }}
       </fieldset>
+      <fieldset class="full directory-edits">
+        <legend class="label">Permisos de edición</legend>
+        <div class="chips">
+          {% for box in form.edits %}<label class="chip">{{ box.tag }}{{ box.choice_label }}</label>{% endfor %}
+        </div>
+        <p class="help">Sin marcar, el administrador solo consulta.</p>
+        {{ form.edits.errors }}
+      </fieldset>
     </div>
     <div class="bar">
       <button class="button default" type="submit">Guardar</button>

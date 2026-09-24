@@ -3,8 +3,9 @@ import re
 
 from django import forms
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm, UsernameField
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission, User
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 
 from .models import Article
 
@@ -34,7 +35,7 @@ class ArticleForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.instance.pk:
+        if self.instance.pk and 'slug' in self.fields:  # A view-only change form has no fields.
             self.fields['slug'].disabled = True
             self.initial['tags'] = ', '.join(self.instance.tags)
 
@@ -65,11 +66,18 @@ class ArticleForm(forms.ModelForm):
         return data
 
 
+def user_managers():
+    """Active accounts that can manage users: superusers and staff with auth.change_user."""
+    return User.objects.filter(Q(is_superuser=True) | Q(is_staff=True, user_permissions__codename='change_user',
+                                                        user_permissions__content_type__app_label='auth'), is_active=True)
+
+
 def protect_admin(user, *, actor, active=True, admin=True, deleting=False):
+    """admin: whether the account keeps the right to manage users after the change."""
     if user.pk == actor.pk and (deleting or not active or not admin):
         raise ValidationError('No puede quitar su propio acceso de administrador.')
-    if user.is_active and user.is_superuser and (deleting or not active or not admin):
-        if not User.objects.filter(is_active=True, is_superuser=True).exclude(pk=user.pk).exists():
+    if (deleting or not active or not admin) and user_managers().filter(pk=user.pk).exists():
+        if not user_managers().exclude(pk=user.pk).exists():
             raise ValidationError('Debe conservar al menos un administrador activo.')
 
 
@@ -78,14 +86,38 @@ class SafeUserChangeForm(UserChangeForm):
         data = super().clean()
         if self.instance.pk:
             original = User.objects.get(pk=self.instance.pk)
+            permissions = data.get('user_permissions', Permission.objects.none())
+            manages = data.get('is_superuser', False) or permissions.filter(
+                codename='change_user', content_type__app_label='auth').exists()
             protect_admin(original, actor=self.actor, active=data.get('is_active', False),
-                          admin=data.get('is_superuser', False) and data.get('is_staff', False))
+                          admin=data.get('is_staff', False) and manages)
         return data
+
+
+# Edit areas an administrator can hold; the first permission of each decides whether the area shows as checked.
+EDIT_AREAS = {
+    'articles': ['athena.change_article', 'athena.add_article', 'athena.delete_article'],
+    'downloads': ['athena.change_download', 'athena.add_download', 'athena.delete_download'],
+    'users': ['auth.change_user', 'auth.add_user', 'auth.delete_user', 'auth.view_user',
+              'athena.add_apikey', 'athena.change_apikey', 'athena.delete_apikey', 'athena.view_apikey'],
+}
+ADMIN_VIEW = ['athena.view_article', 'athena.view_download']
+
+
+def permissions(names):
+    query = Q(pk__in=[])
+    for name in names:
+        app_label, codename = name.split('.')
+        query |= Q(content_type__app_label=app_label, codename=codename)
+    return Permission.objects.filter(query)
 
 
 class DirectoryUserForm(forms.ModelForm):
     role = forms.ChoiceField(label='Acceso', choices=[('admin', 'Administrador'), ('reader', 'Lector')],
                              widget=forms.RadioSelect)
+    edits = forms.MultipleChoiceField(label='Permisos de edición', required=False, widget=forms.CheckboxSelectMultiple,
+                                      choices=[('articles', 'Artículos'), ('downloads', 'Descargas'),
+                                               ('users', 'Usuarios y claves de API')])
 
     class Meta:
         model = User
@@ -95,7 +127,14 @@ class DirectoryUserForm(forms.ModelForm):
     def __init__(self, *args, actor, **kwargs):
         super().__init__(*args, **kwargs)
         self.actor = actor
-        self.initial.setdefault('role', 'admin' if self.instance.is_staff and self.instance.is_superuser else 'reader')
+        user = self.instance
+        self.initial.setdefault('role', 'admin' if user.is_staff else 'reader')
+        if user.is_superuser:
+            self.initial.setdefault('edits', list(EDIT_AREAS))
+        elif user.pk:
+            held = {f'{app}.{codename}' for app, codename in
+                    user.user_permissions.values_list('content_type__app_label', 'codename')}
+            self.initial.setdefault('edits', [area for area, names in EDIT_AREAS.items() if names[0] in held])
         for name in ['first_name', 'last_name', 'email']:
             self.fields[name].widget.attrs['placeholder'] = 'Opcional'
         self.fields['username'].help_text = self.fields['is_active'].help_text = ''
@@ -103,13 +142,23 @@ class DirectoryUserForm(forms.ModelForm):
     def clean(self):
         data = super().clean()
         if self.instance.pk:
-            protect_admin(User.objects.get(pk=self.instance.pk), actor=self.actor,
-                          active=data.get('is_active', False), admin=data.get('role') == 'admin')
+            protect_admin(User.objects.get(pk=self.instance.pk), actor=self.actor, active=data.get('is_active', False),
+                          admin=data.get('role') == 'admin' and 'users' in data.get('edits', []))
         return data
 
     def save(self, commit=True):
-        self.instance.is_staff = self.instance.is_superuser = self.cleaned_data['role'] == 'admin'
+        admin = self.cleaned_data['role'] == 'admin'
+        self.instance.is_staff = admin
+        self.instance.is_superuser = admin and set(self.cleaned_data['edits']) == set(EDIT_AREAS)
         return super().save(commit)
+
+    def _save_m2m(self):
+        # Runs for commit=True and for a later save_m2m(), so the permissions follow the user row.
+        super()._save_m2m()
+        user = self.instance
+        names = [] if user.is_superuser or not user.is_staff else ADMIN_VIEW + [
+            name for area in self.cleaned_data['edits'] for name in EDIT_AREAS[area]]
+        user.user_permissions.set(permissions(names))
 
 
 class DirectoryUserCreationForm(DirectoryUserForm, UserCreationForm):

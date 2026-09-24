@@ -45,6 +45,8 @@
 .chip:has(input:checked) { border-color: var(--gold); color: var(--text); }
 .chip:has(input:focus-visible) { outline: 3px solid var(--gold-soft); outline-offset: 3px; }
 .chip-apart { margin-left: 12px; }
+/* Edit areas apply to administrators only. */
+.directory-panel:not(:has(input[name="role"][value="admin"]:checked)) .directory-edits { display: none; }
 .directory .errorlist { margin: 6px 0 0; color: var(--error); }
 .directory .help { font-size: 14px; color: var(--quiet); margin: 6px 0 0; }
 .directory .help ul { margin: 0; padding-left: 1.2em; }

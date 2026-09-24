@@ -14,7 +14,7 @@ from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
 from .admin import since
-from .forms import ArticleForm
+from .forms import ArticleForm, DirectoryUserForm
 from .models import ApiKey, Article, Download, LoginAttempt
 from .views import sidebar_links
 
@@ -237,7 +237,8 @@ class PortalTests(TestCase):
         self.assertContains(response, '0 claves de API')
         self.assertEqual(self.client.get(f'{url}?user=999').status_code, 404)
 
-        data = {'username': 'reader2', 'first_name': 'Ana', 'last_name': '', 'email': '', 'role': 'admin', 'is_active': 'on'}
+        data = {'username': 'reader2', 'first_name': 'Ana', 'last_name': '', 'email': '', 'role': 'admin',
+                'edits': ['articles', 'downloads', 'users'], 'is_active': 'on'}
         response = self.client.post(f'{url}?user={self.reader.pk}', data, follow=True)
         self.assertRedirects(response, f'{url}?user={self.reader.pk}')
         self.assertContains(response, 'Usuario guardado.')
@@ -260,6 +261,94 @@ class PortalTests(TestCase):
         self.assertFalse(created.is_staff or created.is_superuser)
         self.assertTrue(Client().login(username='nueva', password='Fresh-Reader-Pass-8824!'))
         self.assertEqual(self.client.get(f'/admin/athena/apikey/?user__id__exact={created.pk}').status_code, 200)
+
+    def directory_admin(self, username, edits):
+        form = DirectoryUserForm({'username': username, 'role': 'admin', 'edits': edits, 'is_active': 'on'},
+                                 instance=User.objects.create_user(username, password='Staff-Example-7215!'), actor=self.admin)
+        self.assertTrue(form.is_valid(), form.errors)
+        return form.save()
+
+    def test_directory_edit_permissions(self):
+        self.article.published = False
+        self.article.save()
+        change = f'/admin/athena/article/{self.article.pk}/change/'
+        data = {'title': 'Edited', 'kind': 'guide', 'summary': 'S', 'author': 'A', 'date': '2026-09-15', 'tags': '',
+                'body': 'Body', 'status': '', 'url': '', 'download_file': ''}
+        viewer = self.directory_admin('viewer', [])
+        self.assertEqual((viewer.is_staff, viewer.is_superuser), (True, False))
+        self.client.force_login(viewer)
+        for path in ['/admin/', '/admin/athena/article/', change]:
+            self.assertEqual(self.client.get(path).status_code, 200, path)
+        self.assertNotContains(self.client.get(change), 'name="_save"')
+        page = self.client.get('/admin/athena/article/').content.decode()
+        self.assertNotIn(f'{change}"', page.split('row-controls', 1)[1])
+        self.assertNotIn('/delete/', page)
+        self.assertEqual(self.client.post(change, data).status_code, 403)
+        self.assertEqual(self.client.get('/content/first-guide.md').status_code, 404)  # No drafts.
+        self.assertEqual(self.client.get('/admin/auth/user/').status_code, 403)
+        self.assertIn('Administrador · Última sesión', self.client.get('/account.md').content.decode())
+        self.assertIn('Administrar Athena', self.client.get('/_sidebar.md').content.decode())
+
+        editor = self.directory_admin('editor', ['articles'])
+        self.client.force_login(editor)
+        self.assertEqual(self.client.post(change, data).status_code, 302)
+        self.assertContains(self.client.get('/content/first-guide.md'), 'Borrador')
+        self.assertContains(self.client.get('/admin/athena/article/'), f'/admin/athena/article/{self.article.pk}/delete/')
+        self.assertEqual(self.client.get('/admin/athena/download/add/').status_code, 403)
+        self.assertEqual(self.client.get('/admin/auth/user/').status_code, 403)
+        self.assertEqual(self.client.post(f'/admin/auth/user/?user={editor.pk}',
+                                          {'username': 'editor', 'role': 'admin', 'edits': ['articles', 'users'],
+                                           'is_active': 'on'}).status_code, 403)
+
+        full = self.directory_admin('full', ['articles', 'downloads', 'users'])
+        self.assertTrue(full.is_superuser)
+        self.assertFalse(full.user_permissions.exists())
+        self.assertEqual(DirectoryUserForm(instance=full, actor=self.admin)['edits'].value(), ['articles', 'downloads', 'users'])
+        form = DirectoryUserForm({'username': 'full', 'role': 'admin', 'edits': ['articles', 'users'], 'is_active': 'on'},
+                                 instance=full, actor=self.admin)
+        self.assertTrue(form.is_valid(), form.errors)
+        full = User.objects.get(pk=form.save().pk)
+        self.assertEqual((full.is_staff, full.is_superuser), (True, False))
+        self.assertEqual(set(full.get_all_permissions()), {
+            'athena.view_article', 'athena.view_download', 'athena.add_article', 'athena.change_article',
+            'athena.delete_article', 'auth.add_user', 'auth.change_user', 'auth.delete_user', 'auth.view_user',
+            'athena.add_apikey', 'athena.change_apikey', 'athena.delete_apikey', 'athena.view_apikey'})
+        self.assertEqual(DirectoryUserForm(instance=full, actor=self.admin)['edits'].value(), ['articles', 'users'])
+        self.client.force_login(full)
+        self.assertEqual(self.client.get('/admin/auth/user/').status_code, 200)
+        self.assertEqual(self.client.get('/admin/athena/apikey/').status_code, 200)
+        form = DirectoryUserForm({'username': 'full', 'role': 'reader', 'edits': ['articles'], 'is_active': 'on'},
+                                 instance=full, actor=self.admin)
+        self.assertTrue(form.is_valid(), form.errors)
+        full = User.objects.get(pk=form.save().pk)
+        self.assertEqual((full.is_staff, full.is_superuser, full.user_permissions.count()), (False, False, 0))
+
+        # The last superuser keeps user management through the form and the API.
+        for edits in [['articles', 'downloads'], ['articles', 'downloads', 'users']]:
+            form = DirectoryUserForm({'username': 'administrator', 'role': 'admin' if 'users' not in edits else 'reader',
+                                      'edits': edits, 'is_active': 'on'}, instance=self.admin, actor=self.admin)
+            self.assertFalse(form.is_valid())
+            self.assertIn('No puede quitar su propio acceso de administrador.', form.non_field_errors())
+        other = self.directory_admin('other', ['users'])
+        form = DirectoryUserForm({'username': 'administrator', 'role': 'admin', 'edits': ['articles'], 'is_active': 'on'},
+                                 instance=self.admin, actor=other)
+        self.assertTrue(form.is_valid(), form.errors)  # Another account can still manage users.
+        other.is_active = False
+        other.save()
+        form = DirectoryUserForm({'username': 'administrator', 'role': 'admin', 'edits': ['articles'], 'is_active': 'on'},
+                                 instance=self.admin, actor=viewer)
+        self.assertFalse(form.is_valid())
+        self.assertIn('Debe conservar al menos un administrador activo.', form.non_field_errors())
+        headers, _ = self.key(self.admin, 'admin')
+        response = self.client.patch(f'/api/v1/users/{self.admin.pk}/', '{"admin":false}',
+                                     content_type='application/json', **headers)
+        self.assertEqual(response.status_code, 400)
+        # An API update that leaves admin unchanged keeps an administrator's edit areas.
+        response = self.client.patch(f'/api/v1/users/{editor.pk}/', '{"email":"editor@example.com","admin":false}',
+                                     content_type='application/json', **headers)
+        self.assertEqual(response.status_code, 200, response.content)
+        editor = User.objects.get(pk=editor.pk)
+        self.assertTrue(editor.is_staff and editor.has_perm('athena.change_article'))
 
     def test_portal_sidebar(self):
         self.client.force_login(self.reader)

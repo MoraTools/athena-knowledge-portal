@@ -267,12 +267,16 @@ def users(request, user_id=None):
         if any(not isinstance(v, bool) if k in ('active', 'admin') else not isinstance(v, str) for k, v in data.items()):
             raise ValidationError('User fields must be strings; active and admin must be booleans.')
         active, admin = data.get('active', user.is_active), data.get('admin', user.is_superuser)
+        # admin means a full superuser; an unchanged value keeps an administrator's granular edit areas.
+        changed = admin != user.is_superuser
         if user.pk:
-            protect_admin(user, actor=request.user, active=active, admin=admin)
+            protect_admin(user, actor=request.user, active=active, admin=admin or not changed)
         for field in ('username', 'email', 'first_name', 'last_name'):
             if field in data:
                 setattr(user, field, data[field])
-        user.is_active, user.is_superuser, user.is_staff = active, admin, admin
+        user.is_active = active
+        if changed:
+            user.is_superuser = user.is_staff = admin
         if not user_id and 'password' not in data:
             raise ValidationError('A password is required.')
         if 'password' in data:
@@ -280,4 +284,6 @@ def users(request, user_id=None):
             user.set_password(data['password'])
         user.full_clean()
         user.save()
+        if changed:
+            user.user_permissions.clear()  # A superuser holds every permission; a demoted one keeps none.
         return JsonResponse(user_data(user), status=201 if request.method == 'POST' else 200)

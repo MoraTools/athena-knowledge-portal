@@ -114,7 +114,7 @@ def account_markdown(request):
     """Mi cuenta, rendered by Docsify at /#/account; the logout form posts with the token rendered here."""
     user = request.user
     return render(request, 'account.md', {
-        'is_admin': user.is_staff and user.is_superuser,
+        'is_admin': user.is_staff,
         'keys': ApiKey.objects.filter(user=user).order_by('expires_at'),
     }, content_type='text/markdown; charset=utf-8')
 
