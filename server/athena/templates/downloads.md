@@ -8,7 +8,9 @@ Archivos aprobados. Solo para usuarios de Athena.
 
 ## {{ label }}
 
-{% if key == 'previous' %}<details class="download-archive"><summary>Mostrar {{ items|length }} archivo{{ items|length|pluralize }}</summary>
+{% if key == 'framework' %}<p class="download-permalink">Enlace permanente a la última versión: <a href="{{ latest_url }}" download>{{ latest_url }}</a></p>
+
+{% endif %}{% if key == 'previous' %}<details class="download-archive"><summary>Mostrar {{ items|length }} archivo{{ items|length|pluralize }}</summary>
 {% endif %}<div class="catalog-list">
 {% for item in items %}<article class="catalog-item" data-search="{{ item.title }} {{ item.filename }} {{ label }} {{ item.note }}">
 <div><strong>{{ item.title }}</strong><small>{{ item.size|filesizeformat }}</small><code>{{ item.filename }}</code>{% if item.note %}<p>{{ item.note }}</p>{% endif %}</div>

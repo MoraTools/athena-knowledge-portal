@@ -268,6 +268,13 @@ class PortalTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         return form.save()
 
+    def test_new_article_button_on_guides_for_editors(self):
+        self.client.force_login(self.reader)
+        self.assertNotContains(self.client.get('/guides.md'), 'Nuevo artículo')
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get('/guides.md'), '<a class="copy-page" href="/admin/athena/article/add/">')
+        self.assertNotContains(self.client.get('/tools.md'), 'Nuevo artículo')
+
     def test_article_edit_link_for_editors(self):
         self.client.force_login(self.reader)
         self.assertNotContains(self.client.get('/content/first-guide.md'), 'article-edit')
@@ -569,6 +576,22 @@ class DownloadTests(TestCase):
         self.assertIn('0 added, 4 already present, 1 ignored.', out.getvalue())
         self.assertEqual(Download.objects.count(), 5)
 
+    def test_latest_framework_link_follows_new_uploads(self):
+        url = '/downloads/framework/latest'
+        self.assertEqual(self.client.get(url).status_code, 302)
+        self.client.force_login(self.reader)
+        self.assertIn('Plantilla A360+2024.zip', self.client.get(url)['Content-Disposition'])
+        Download.objects.create(title='Anterior', section='previous', file=ContentFile(b'o', name='Older.zip'))
+        newer = Download.objects.create(title='Nueva', section='framework', file=ContentFile(b'n', name='Framework-2.zip'))
+        response = self.client.get(url)
+        self.assertIn('Framework-2.zip', response['Content-Disposition'])
+        self.assertEqual(b''.join(response.streaming_content), b'n')
+        newer.published = False
+        newer.save()
+        self.assertIn('Plantilla A360+2024.zip', self.client.get(url)['Content-Disposition'])
+        Download.objects.filter(section='framework').delete()
+        self.assertEqual(self.client.get(url).status_code, 404)
+
     def test_downloads_page_search_and_navigation(self):
         Download.objects.create(title='Versión 2025', section='previous', file=ContentFile(b'old', name='old.zip'))
         Download.objects.create(title='Oculto', section='packages', published=False, file=ContentFile(b'h', name='hidden.jar'))
@@ -577,6 +600,7 @@ class DownloadTests(TestCase):
         page = self.client.get('/downloads.md').content.decode()
         self.assertTrue(page.startswith('# Descargas\n\nArchivos aprobados. Solo para usuarios de Athena.'))
         self.assertIn('## Framework', page)
+        self.assertIn('Enlace permanente a la última versión: <a href="http://testserver/downloads/framework/latest" download>', page)
         self.assertIn('## Versiones anteriores', page)
         self.assertNotIn('## Paquetes', page)  # Empty sections are omitted; unpublished files are hidden.
         self.assertNotIn('Oculto', page)

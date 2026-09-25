@@ -86,9 +86,7 @@ def pdf(request, slug):
     })
 
 
-@login_required
-def download(request, slug):
-    item = get_object_or_404(Download, slug=slug, published=True)
+def send_download(item):
     try:
         file = open(item.file.path, 'rb')
     except FileNotFoundError:
@@ -98,11 +96,27 @@ def download(request, slug):
 
 
 @login_required
+def download(request, slug):
+    return send_download(get_object_or_404(Download, slug=slug, published=True))
+
+
+@login_required
+def latest_framework(request):
+    """Permanent link: the newest published file in Framework, whatever its name or version."""
+    item = Download.objects.filter(section='framework', published=True).order_by('-created_at', '-pk').first()
+    if item is None:
+        raise Http404
+    return send_download(item)
+
+
+@login_required
 def downloads_page(request):
     published = Download.objects.filter(published=True)
     sections = [(key, label, [d for d in published if d.section == key]) for key, label in Download.SECTIONS]
-    return render(request, 'downloads.md', {'sections': [s for s in sections if s[2]]},
-                  content_type='text/markdown; charset=utf-8')
+    return render(request, 'downloads.md', {
+        'sections': [s for s in sections if s[2]],
+        'latest_url': request.build_absolute_uri(reverse(latest_framework)),
+    }, content_type='text/markdown; charset=utf-8')
 
 
 @login_required

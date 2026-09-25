@@ -33,6 +33,7 @@ urlpatterns = [
     path('search-index.json', views.search_index),
     re_path(r'^content/(?P<slug>[a-z0-9-]+)(?:\.md)?$', views.article_markdown),
     path('pdf/<slug:slug>.pdf', views.pdf),
+    path('downloads/framework/latest', views.latest_framework),
     path('downloads/<slug:slug>', views.download),
     path('downloads.md', views.downloads_page),
     path('account.md', views.account_markdown),

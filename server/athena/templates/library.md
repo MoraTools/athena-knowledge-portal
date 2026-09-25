@@ -1,4 +1,6 @@
-{% if section == 'guides' %}# Guías
+{% if section == 'guides' %}{% if perms.athena.add_article %}<div class="article-actions"><a class="copy-page" href="/admin/athena/article/add/"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Nuevo artículo</span></a></div>
+
+{% endif %}# Guías
 {% elif section == 'tools' %}# Herramientas
 {% else %}# Actualizaciones
 {% endif %}
