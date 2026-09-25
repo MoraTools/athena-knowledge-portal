@@ -13,6 +13,8 @@ with os.fdopen(fd, 'w') as file:
     file.write('ATHENA_HOSTS=athena.moratechnology.com\nATHENA_DATA_DIR=/var/lib/athena\n')
 PY
 fi
+# WeasyPrint (article PDF export) needs Pango, HarfBuzz subsetting, and the DejaVu fonts.
+apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core
 python3 -m venv .venv
 .venv/bin/pip install --disable-pip-version-check -r requirements.txt
 set -a

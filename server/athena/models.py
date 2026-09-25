@@ -36,6 +36,8 @@ class Article(models.Model):
     published = models.BooleanField('publicado', default=False)
     pdf = models.BinaryField(blank=True, default=bytes)
     pdf_name = models.CharField(max_length=240, blank=True, editable=False)
+    pdf_only = models.BooleanField('solo PDF', default=False,
+                                   help_text='El PDF adjunto es el contenido del artículo. El lector no ofrece «Exportar PDF».')
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

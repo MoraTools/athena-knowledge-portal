@@ -113,7 +113,7 @@ def me(request):
 
 def article_data(article, detail=True):
     result = {field: getattr(article, field) for field in
-              ('id', 'slug', 'title', 'kind', 'summary', 'author', 'tags', 'published', 'status', 'url', 'download_file')}
+              ('id', 'slug', 'title', 'kind', 'summary', 'author', 'tags', 'published', 'pdf_only', 'status', 'url', 'download_file')}
     result.update(date=article.date.isoformat(), updated_at=article.updated_at.isoformat(),
                   route=article.get_absolute_url(), pdf=f'/api/v1/articles/{article.slug}/pdf/' if article.pdf_name else None)
     if detail:
@@ -126,8 +126,9 @@ def article_form(data, instance=None, files=None):
     unknown = set(data) - set(fields)
     if unknown:
         raise ValidationError('Unknown fields: ' + ', '.join(sorted(unknown)))
-    if 'published' in data and not isinstance(data['published'], bool):
-        raise ValidationError('published must be a boolean.')
+    for field in ('published', 'pdf_only'):
+        if field in data and not isinstance(data[field], bool):
+            raise ValidationError(f'{field} must be a boolean.')
     if 'tags' in data and (not isinstance(data['tags'], list) or any(not isinstance(t, str) or ',' in t for t in data['tags'])):
         raise ValidationError('tags must be a list of strings without commas.')
     if any(not isinstance(value, (str, list, bool)) for value in data.values()):

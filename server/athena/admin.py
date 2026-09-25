@@ -175,7 +175,7 @@ class ArticleAdmin(RowControlsAdmin):
     readonly_fields = ['last_updated', 'current_pdf']
     fieldsets = [
         (None, {'fields': ['title', 'slug', 'kind', 'summary', 'author', 'tags']}),
-        ('Contenido', {'fields': ['markdown_file', 'body', 'pdf_file', 'current_pdf', 'remove_pdf']}),
+        ('Contenido', {'fields': ['markdown_file', 'body', 'pdf_file', 'current_pdf', 'remove_pdf', 'pdf_only']}),
         ('Publicación', {'fields': ['published', 'date', 'last_updated']}),
         ('Herramientas', {'fields': ['status', 'url', 'download_file'], 'classes': ['collapse']}),
     ]

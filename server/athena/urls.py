@@ -32,6 +32,7 @@ urlpatterns = [
     re_path(r'^api(?:/.*)?$', api.not_found),
     path('search-index.json', views.search_index),
     re_path(r'^content/(?P<slug>[a-z0-9-]+)(?:\.md)?$', views.article_markdown),
+    re_path(r'^content/(?P<slug>[a-z0-9-]+)\.pdf$', views.article_export),
     path('pdf/<slug:slug>.pdf', views.pdf),
     path('downloads/framework/latest', views.latest_framework),
     path('downloads/<slug:slug>', views.download),

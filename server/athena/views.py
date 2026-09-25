@@ -11,6 +11,7 @@ from django.template.defaultfilters import filesizeformat
 from django.urls import reverse
 from django.utils.html import escape, strip_tags
 from django.views.decorators.clickjacking import xframe_options_sameorigin
+from markdown_it import MarkdownIt
 
 from .models import ApiKey, Article, Download
 
@@ -56,9 +57,8 @@ def search_index(request):
                         + [download_entry(d) for d in Download.objects.filter(published=True)], safe=False)
 
 
-@login_required
-def article_markdown(request, slug):
-    article = get_object_or_404(visible_articles(request.user).defer('pdf'), slug=slug)
+def article_body(article):
+    """The article Markdown the reader and the PDF export share: title heading, draft notice, original PDF link."""
     body = article.body
     if not re.match(r'^\s*#\s+', body):
         body = f'# {escape(article.title)}\n\n' + body
@@ -66,11 +66,93 @@ def article_markdown(request, slug):
         body = '> **Borrador.** Solo visible para editores.\n\n' + body
     if article.pdf_name:
         body += f'\n\n[Abrir PDF original](/pdf/{article.slug}.pdf)\n'
+    return body
+
+
+# 24px line icons, the stroke style of the "Copiar página" button (src/config.js).
+EDIT_ICON = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4Zm9-13 4 4"/></svg>'
+EXPORT_ICON = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11m-5-4 5 5 5-5M4 20h16"/></svg>'
+
+
+@login_required
+def article_markdown(request, slug):
+    article = get_object_or_404(visible_articles(request.user).defer('pdf'), slug=slug)
+    body = article_body(article)
+    tools = []
     if request.user.has_perm('athena.change_article'):
-        # Raw HTML so Docsify leaves the href alone; the reader moves the link next to "Copiar página".
         edit = reverse('admin:athena_article_change', args=[article.pk])
-        body += f'\n\n<div class="article-edit"><a href="{edit}">Editar artículo</a></div>\n'
+        tools.append(f'<a class="copy-page copy-page--ghost" href="{edit}">{EDIT_ICON}<span>Editar artículo</span></a>')
+    if not article.pdf_only:
+        tools.append(f'<a class="copy-page copy-page--ghost" href="/content/{article.slug}.pdf" download>'
+                     f'{EXPORT_ICON}<span>Exportar PDF</span></a>')
+    if tools:
+        # Raw HTML on one line so Docsify leaves the hrefs alone; the reader moves the links next to "Copiar página".
+        body += f'\n\n<div class="article-tools">{"".join(tools)}</div>\n'
     return HttpResponse(body, content_type='text/markdown; charset=utf-8')
+
+
+# CommonMark is closer to the reader's marked (GFM) than Python-Markdown, e.g. a list right after a paragraph.
+MARKDOWN = MarkdownIt('commonmark', {'html': True}).enable(['table', 'strikethrough'])
+# The only resources an exported PDF may load; everything else (file:, other hosts, the site itself) is skipped.
+PDF_RESOURCES = ('data:', 'https://raw.githubusercontent.com/')
+PDF_STYLE = """
+@page { size: A4; margin: 2cm;
+  @bottom-center { content: counter(page) " / " counter(pages); font: 9pt "DejaVu Sans", sans-serif; color: #555 } }
+body { font: 10.5pt/1.5 "DejaVu Sans", sans-serif; color: #111; background: #fff }
+h1, h2, h3, h4, h5, h6 { color: #000; font-weight: bold; line-height: 1.25; margin: 1.2em 0 .5em; break-after: avoid }
+h1 { font-size: 20pt; margin-top: 0 } h2 { font-size: 15pt } h3 { font-size: 12.5pt } h4, h5, h6 { font-size: 11pt }
+a { color: #1a55b0 }
+code, pre { font-family: "DejaVu Sans Mono", monospace; font-size: 9pt; background: #f2f2f2 }
+code { padding: 0 .2em }
+pre { padding: .6em .8em; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid }
+pre code { padding: 0 }
+img { max-width: 100%; break-inside: avoid }
+table { border-collapse: collapse; margin: .8em 0 }
+th, td { border: .5pt solid #999; padding: .3em .5em; text-align: left; vertical-align: top }
+blockquote { margin: .8em 0; padding: 0 1em; border-left: 3pt solid #bbb; color: #333 }
+"""
+
+
+def export_href(href, origin):
+    """The PDF is read outside the site: reader routes point back to it."""
+    if href.startswith('#/'):
+        return origin + '/' + href
+    if match := re.fullmatch(r'/content/([a-z0-9-]+)(?:\.md)?(\?[^#]*)?', href):
+        return f'{origin}/#/content/{match[1]}{match[2] or ""}'
+    return href  # Other root-relative links resolve against base_url; absolute links stay.
+
+
+def article_html(article, origin):
+    body = MARKDOWN.render(article_body(article))
+    body = re.sub(r'\bhref="([^"]*)"', lambda m: f'href="{export_href(m[1], escape(origin))}"', body)
+    return (f'<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>{escape(article.title)}</title>'
+            f'<meta name="author" content="{escape(article.author)}"><style>{PDF_STYLE}</style></head>'
+            f'<body>{body}</body></html>')
+
+
+def pdf_fetcher():
+    from weasyprint.urls import URLFetcher  # WeasyPrint loads Pango; only an export pays for it.
+
+    class AllowlistFetcher(URLFetcher):
+        def fetch(self, url, headers=None):
+            if not url.startswith(PDF_RESOURCES):
+                raise ValueError(f'Recurso no permitido en el PDF: {url}')
+            return super().fetch(url, headers)
+
+    # No redirects, so an allowed URL cannot lead to another host.
+    return AllowlistFetcher(timeout=10, allow_redirects=False)
+
+
+@login_required
+def article_export(request, slug):
+    from weasyprint import HTML
+    article = get_object_or_404(visible_articles(request.user).defer('pdf'), slug=slug)
+    origin = request.build_absolute_uri('/').rstrip('/')
+    # The base is this export's URL, not origin + '/': WeasyPrint reads {origin}/#/... as an anchor of its base document.
+    pdf = HTML(string=article_html(article, origin), base_url=request.build_absolute_uri(request.path),
+               url_fetcher=pdf_fetcher()).write_pdf()
+    return HttpResponse(pdf, content_type='application/pdf',
+                        headers={'Content-Disposition': f'attachment; filename="{article.slug}.pdf"'})
 
 
 @login_required

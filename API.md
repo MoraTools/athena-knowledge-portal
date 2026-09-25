@@ -64,7 +64,9 @@ A scope never grants more authority than its owner has. A key owned by an ordina
 
 Dates use `YYYY-MM-DD`. Types: `guide`, `page`, `tool`, `announcement`, `release`.
 Tags are an array of strings. Tools require `status`: `stable`, `alpha`, or `coming-soon`.
-Article slugs remain fixed after creation. Optional fields: `url` (HTTPS), `download_file`.
+Article slugs remain fixed after creation. Optional fields: `url` (HTTPS), `download_file`, `pdf_only`.
+`pdf_only` (boolean, default `false`) means the attached PDF is the whole article: the reader then shows
+the PDF viewer only and no "Exportar PDF" button. Articles send and return it like `published`.
 Uploads accept UTF-8 `.md` up to 1 MiB and `.pdf` up to 25 MiB.
 Create a draft with a short body before uploading attachments through the API.
 Download sections: `framework`, `packages`, `exercises`, `previous`. Uploads are published at once and keep the original file name.

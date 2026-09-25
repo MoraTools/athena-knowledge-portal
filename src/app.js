@@ -538,7 +538,7 @@ function placeSearch() {
 // link to a #/pdf/... route, so the leading hash is dropped to get the file back.
 function buildPdfViewer() {
   if (document.querySelector('.markdown-section .pdf-viewer')) return;
-  const link = document.querySelector('.markdown-section a[href$=".pdf"]');
+  const link = document.querySelector('.markdown-section a[href$=".pdf"]:not(.copy-page)');
   const src = link?.getAttribute('href').replace(/^#/, '') || '';
   if (!src.startsWith('/pdf/') || !getRouteState().path.startsWith('/content/')) return;
   const viewer = document.createElement('section');
@@ -564,23 +564,13 @@ function buildPdfViewer() {
   link.closest('p').replaceWith(viewer);
 }
 
-// Editors get an "Editar artículo" link at the end of the article; it belongs beside "Copiar página".
-function placeEditLink() {
-  const holder = document.querySelector('.markdown-section .article-edit');
-  const actions = document.querySelector('.markdown-section .article-actions');
-  if (!holder || !actions) return;
-  const link = holder.querySelector('a');
-  link.className = 'copy-page copy-page--ghost';
-  const label = document.createElement('span');
-  label.textContent = link.textContent;
-  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  icon.setAttribute('viewBox', '0 0 24 24');
-  icon.setAttribute('aria-hidden', 'true');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', 'M4 20h4L19 9l-4-4L4 16v4Zm9-13 4 4');
-  icon.append(path);
-  link.replaceChildren(icon, label);
-  actions.prepend(link);
+// The server ends an article with one .article-tools marker (Editar artículo, Exportar PDF);
+// its links belong beside "Copiar página". The marker is removed, so a later sync does nothing.
+function placeArticleTools() {
+  const holder = document.querySelector('.markdown-section .article-tools');
+  const copy = document.querySelector('.markdown-section .article-actions button.copy-page');
+  if (!holder || !copy) return;
+  copy.before(...holder.children);
   holder.remove();
 }
 
@@ -594,7 +584,7 @@ function syncView() {
   filterDownloads();
   buildPageTree();
   buildPdfViewer();
-  placeEditLink();
+  placeArticleTools();
   if (path === '/search') renderSearchPage();
 }
 
@@ -609,7 +599,7 @@ document.addEventListener('click', async (event) => {
     const route = getRouteState().path;
     const response = await fetch(route.endsWith('.md') ? route : route + '.md');
     if (!response.ok) throw new Error('Article request failed: ' + response.status);
-    const text = (await response.text()).replace(/\n*<div class="article-edit">.*<\/div>\n?$/, '\n');
+    const text = (await response.text()).replace(/\n*<div class="article-tools">.*<\/div>\n?$/, '\n');
     await navigator.clipboard.writeText(text);
     copyButton.classList.add('copied');
     label.textContent = 'Copiado';

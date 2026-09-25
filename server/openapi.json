@@ -886,6 +886,11 @@
           "published": {
             "type": "boolean",
             "default": false
+          },
+          "pdf_only": {
+            "type": "boolean",
+            "default": false,
+            "description": "The attached PDF is the whole article; the reader offers no Exportar PDF button."
           }
         }
       },

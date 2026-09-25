@@ -3,6 +3,7 @@ import io
 import json
 import re
 import tempfile
+import zlib
 from datetime import timedelta
 from pathlib import Path
 
@@ -16,7 +17,7 @@ from django.utils import timezone
 from .admin import since
 from .forms import ArticleForm, DirectoryUserForm
 from .models import ApiKey, Article, Download, LoginAttempt
-from .views import sidebar_links
+from .views import article_html, pdf_fetcher, sidebar_links
 
 
 @override_settings(SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False)
@@ -161,6 +162,12 @@ class PortalTests(TestCase):
         response = self.client.patch(url, '{"published":true}', content_type='application/json',
                                      HTTP_IF_MATCH=response['ETag'], **headers)
         self.assertEqual(response.status_code, 200, response.content)
+        self.assertFalse(response.json()['pdf_only'])
+        response = self.client.patch(url, '{"pdf_only":true}', content_type='application/json',
+                                     HTTP_IF_MATCH=response['ETag'], **headers)
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertTrue(response.json()['pdf_only'] and Article.objects.get(slug='new-guide').pdf_only)
+        self.assertTrue(self.client.get(url, **headers).json()['published'])
         self.client.force_login(self.reader)
         self.assertContains(self.client.get('/guides.md'), 'New guide')
         self.assertTrue(any(x.get('title') == 'New guide' for x in self.client.get('/search-index.json').json()))
@@ -205,7 +212,7 @@ class PortalTests(TestCase):
         article = form.save()
         self.assertEqual(article.tags, ['One', 'Two'])
         headers, _ = self.key(self.admin, 'articles')
-        for bad in ['[]', '{"published":"false"}', '{"tags":"wrong"}', '{"unexpected":"value"}']:
+        for bad in ['[]', '{"published":"false"}', '{"pdf_only":"true"}', '{"tags":"wrong"}', '{"unexpected":"value"}']:
             self.assertEqual(self.client.post('/api/v1/articles/', bad, content_type='application/json', **headers).status_code, 400)
         self.client.force_login(self.admin)
         self.assertContains(self.client.get('/admin/'), 'athena/admin.css')
@@ -275,12 +282,71 @@ class PortalTests(TestCase):
         self.assertContains(self.client.get('/guides.md'), '<a class="copy-page" href="/admin/athena/article/add/">')
         self.assertNotContains(self.client.get('/tools.md'), 'Nuevo artículo')
 
-    def test_article_edit_link_for_editors(self):
+    def test_article_tools_edit_and_export_links(self):
+        export = '<a class="copy-page copy-page--ghost" href="/content/first-guide.pdf" download>'
         self.client.force_login(self.reader)
-        self.assertNotContains(self.client.get('/content/first-guide.md'), 'article-edit')
+        body = self.client.get('/content/first-guide.md').content.decode()
+        self.assertIn(f'\n\n<div class="article-tools">{export}', body)
+        self.assertNotIn('Editar artículo', body)
         self.client.force_login(self.admin)
-        self.assertContains(self.client.get('/content/first-guide.md'),
-                            f'<div class="article-edit"><a href="/admin/athena/article/{self.article.pk}/change/">')
+        edit = f'<a class="copy-page copy-page--ghost" href="/admin/athena/article/{self.article.pk}/change/">'
+        self.assertRegex(self.client.get('/content/first-guide.md').content.decode(),
+                         rf'\n<div class="article-tools">{re.escape(edit)}.*Editar artículo</span></a>{re.escape(export)}.*</div>\n$')
+        Article.objects.filter(pk=self.article.pk).update(pdf_only=True)
+        body = self.client.get('/content/first-guide.md').content.decode()
+        self.assertIn(edit, body)
+        self.assertNotIn('Exportar PDF', body)
+        self.client.force_login(self.reader)
+        self.assertNotIn('article-tools', self.client.get('/content/first-guide.md').content.decode())
+
+    def test_article_pdf_export(self):
+        self.assertEqual(self.client.get('/content/first-guide.pdf').status_code, 302)
+        self.client.force_login(self.reader)
+        response = self.client.get('/content/first-guide.pdf')
+        self.assertEqual((response.status_code, response['Content-Type']), (200, 'application/pdf'))
+        self.assertEqual(response['Content-Disposition'], 'attachment; filename="first-guide.pdf"')
+        self.assertTrue(response.content.startswith(b'%PDF'))
+        # A reader route stays a web link, not an internal anchor of the PDF.
+        Article.objects.filter(pk=self.article.pk).update(body='[Tools](#/tools)')
+        pdf = self.client.get('/content/first-guide.pdf').content
+        streams = [pdf] + [zlib.decompress(m[1]) for m in re.finditer(rb'stream\r?\n(.*?)\r?\nendstream', pdf, re.S)
+                           if m[1][:1] == b'x']  # zlib streams; images may use other filters.
+        self.assertTrue(any(b'/URI (http://testserver/#/tools)' in chunk for chunk in streams))
+        self.assertEqual(self.client.get('/content/missing.pdf').status_code, 404)
+        self.assertEqual(self.client.get('/content/first-guide.md').status_code, 200)  # The Markdown route still answers.
+        Article.objects.filter(pk=self.article.pk).update(published=False, pdf_only=True)
+        self.assertEqual(self.client.get('/content/first-guide.pdf').status_code, 404)
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get('/content/first-guide.pdf').status_code, 200)
+
+    def test_article_export_html(self):
+        article = Article(title='T & co', slug='t', author='Ana <A>', published=True, body=(
+            '# T\n\nIntro\n- one\n- two\n\n```xml\n<config href="x"/>\n```\n\n'
+            '[a](#/content/x) [b](/content/x.md) [c](/content/x) [d](#/tools) [e](/pdf/x.pdf) [f](https://example.com/)'))
+        html = article_html(article, 'https://athena.test')
+        self.assertIn('<html lang="es">', html)
+        self.assertIn('<title>T &amp; co</title><meta name="author" content="Ana &lt;A&gt;">', html)
+        self.assertIn('<h1>T</h1>', html)
+        self.assertIn('<p>Intro</p>\n<ul>\n<li>one</li>', html)
+        self.assertIn('<pre><code class="language-xml">&lt;config href=&quot;x&quot;/&gt;', html)
+        for label, href in [('a', 'https://athena.test/#/content/x'), ('b', 'https://athena.test/#/content/x'),
+                            ('c', 'https://athena.test/#/content/x'), ('d', 'https://athena.test/#/tools'),
+                            ('e', '/pdf/x.pdf'), ('f', 'https://example.com/')]:
+            self.assertIn(f'<a href="{href}">{label}</a>', html)
+
+    def test_pdf_fetcher_allowlist(self):
+        from unittest import mock
+        from weasyprint.urls import URLFetcher
+        fetcher = pdf_fetcher()
+        self.assertEqual(fetcher.fetch('data:text/plain,hi').read(), b'hi')
+        with mock.patch.object(URLFetcher, 'fetch', return_value='fetched') as fetch:
+            self.assertEqual(fetcher.fetch('https://raw.githubusercontent.com/o/r/main/a.png'), 'fetched')
+            for url in ['file:///etc/passwd', 'http://169.254.169.254/', 'https://example.com/x.png',
+                        'http://raw.githubusercontent.com/x', 'https://raw.githubusercontent.com.example.com/x',
+                        'http://testserver/content/first-guide.md']:
+                with self.assertRaises(ValueError, msg=url):
+                    fetcher.fetch(url)
+            fetch.assert_called_once()
 
     def test_admin_index_lists_last_activity(self):
         self.client.force_login(self.admin)

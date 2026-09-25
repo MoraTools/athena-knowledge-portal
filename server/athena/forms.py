@@ -29,7 +29,7 @@ class ArticleForm(forms.ModelForm):
     class Meta:
         model = Article
         fields = ['title', 'slug', 'kind', 'summary', 'author', 'date', 'tags', 'body',
-                  'status', 'url', 'download_file', 'published']
+                  'status', 'url', 'download_file', 'published', 'pdf_only']
         widgets = {'body': forms.Textarea(attrs={'rows': 24, 'cols': 90}),
                    'summary': forms.Textarea(attrs={'rows': 3, 'cols': 80})}
 
