@@ -32,11 +32,11 @@ chown -R athena:athena /var/lib/athena
 chmod -R go-rwx /var/lib/athena
 # Code is readable but not writable by the web process.
 chmod -R a+rX /opt/athena/src /opt/athena/dist /opt/athena/server /opt/athena/staticfiles
-install -m 644 deploy/athena.service deploy/athena-backup.service deploy/athena-backup.timer /etc/systemd/system/
+install -m 644 deploy/athena.service deploy/athena-backup.service deploy/athena-backup.timer deploy/athena-image-gc.service deploy/athena-image-gc.timer /etc/systemd/system/
 install -m 644 deploy/Caddyfile /etc/caddy/Caddyfile
 caddy validate --config /etc/caddy/Caddyfile
 systemctl daemon-reload
-systemctl enable --now athena athena-backup.timer
+systemctl enable --now athena athena-backup.timer athena-image-gc.timer
 systemctl restart athena
 systemctl reload caddy
 systemctl start athena-backup

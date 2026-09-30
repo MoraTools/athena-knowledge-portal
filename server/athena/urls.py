@@ -22,6 +22,8 @@ urlpatterns = [
     path('api/v1/articles/', api.articles),
     path('api/v1/articles/<slug:slug>/', api.articles),
     re_path(r'^api/v1/articles/(?P<slug>[a-z0-9-]+)/(?P<kind>pdf|markdown)/$', api.article_upload),
+    path('api/v1/article-images/', api.article_images),
+    path('api/v1/article-images/<uuid:image_id>/', api.article_images),
     path('api/v1/downloads/', api.downloads),
     path('api/v1/downloads/<slug:slug>/', api.downloads),
     path('api/v1/users/', api.users),
@@ -31,6 +33,8 @@ urlpatterns = [
     # Any other API path answers in JSON instead of redirecting an agent to the browser login.
     re_path(r'^api(?:/.*)?$', api.not_found),
     path('search-index.json', views.search_index),
+    path('article-images/upload/', views.article_image_upload, name='article_image_upload'),
+    path('article-images/<uuid:image_id>/', views.article_image),
     re_path(r'^content/(?P<slug>[a-z0-9-]+)(?:\.md)?$', views.article_markdown),
     re_path(r'^content/(?P<slug>[a-z0-9-]+)\.pdf$', views.article_export),
     path('pdf/<slug:slug>.pdf', views.pdf),

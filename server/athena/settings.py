@@ -7,6 +7,8 @@ SECRET_KEY = os.environ.get('ATHENA_SECRET_KEY', '')
 if not SECRET_KEY:
     raise RuntimeError('Set ATHENA_SECRET_KEY to a random secret before starting Athena.')
 ALLOWED_HOSTS = os.environ.get('ATHENA_HOSTS', 'localhost,127.0.0.1').split(',')
+# PDF links and cache keys must not depend on client-controlled Host headers.
+PUBLIC_ORIGIN = os.environ.get('ATHENA_PUBLIC_ORIGIN', 'https://athena.moratechnology.com').rstrip('/')
 CSRF_TRUSTED_ORIGINS = [f'https://{host}' for host in ALLOWED_HOSTS]
 INSTALLED_APPS = [
     'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes',
@@ -25,7 +27,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'athena.urls'
 TEMPLATES = [{
     'BACKEND': 'django.template.backends.django.DjangoTemplates', 'APP_DIRS': True,
-    'DIRS': [BASE_DIR / 'server/athena/templates'],
+    'DIRS': [BASE_DIR / 'server/athena/templates', BASE_DIR / 'src'],
     'OPTIONS': {'context_processors': [
         'django.template.context_processors.request', 'django.contrib.auth.context_processors.auth',
         'django.contrib.messages.context_processors.messages',

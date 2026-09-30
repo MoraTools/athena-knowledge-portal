@@ -14,5 +14,6 @@
   {% if user.is_authenticated %}{% portal_sidebar %}{% endif %}
   <header class="account-header"><a class="brand" href="/"><span>ATHENA</span><small>KNOWLEDGE PORTAL</small></a></header>
   <main id="account-main" class="account-main">{% block content %}{% endblock %}</main>
+  <script src="/assets/session.js" data-session="{{ user.pk|default:0 }}"></script>
 </body>
 </html>

@@ -97,6 +97,9 @@ At 768px and below the rail is an overlay drawer that starts closed and is never
 ## Controls and states
 
 Use native inputs, selects, file uploads, and Django validation messages.
+The article Markdown textarea supports pasted PNG/JPEG/WebP images and a secondary **Insertar imagen** button below the field.
+Keep its native text behavior. Image insertion preserves selected text; progress and upload errors appear beside the button with a live status.
+Save controls stay disabled during upload. The helper wraps below the textarea on narrow screens and uses the existing control and spacing tokens.
 Keep visible labels, skip links, focus outlines, and reduced-motion support.
 Account and reader focus outlines are 3px gold; admin outlines use soft gold.
 Most reader surfaces are square. Admin and account controls share one shape: 44px high, 4px radius, 1px `#555` border; buttons pad 0 16px and inputs 0 12px.
@@ -110,3 +113,9 @@ All admin colors, fonts, spacing, and control sizes are custom properties in `ad
 
 Preserve Spanish interface copy, the ATHENA wordmark, the existing fonts, and the current article routes.
 Do not add a second theme or a custom form framework. Keep editor content inside its mobile container.
+
+## Public access states
+
+The reader and rail use the same design for visitors and signed-in users. Visitors see Biblioteca and Ingresar; protected downloads, account controls, and admin controls appear only with the existing permissions.
+A muted inline notice identifies the public library and provides an Ingresar link. Empty sections use plain text; unavailable articles use the generic “Artículo no disponible” view without disclosing private metadata.
+The article editor separates Estado (Borrador/Publicado) from Acceso (Con cuenta/Público). The native access select explains that public access includes images and PDF files; the article list uses the existing text pills.

@@ -5,6 +5,7 @@
 {% else %}# Actualizaciones
 {% endif %}
 
+{% if not user.is_authenticated %}<p class="visitor-note">Está viendo artículos públicos. <a href="/accounts/login/">Ingresar</a> para consultar el contenido de su equipo.</p>{% endif %}
 {% if section == 'guides' %}<div class="library-controls"><label>Buscar guías<input id="guide-filter" type="search" placeholder="Título, autor o tema" autocomplete="off"></label><label>Etiqueta<select id="guide-tag"><option value="">Todas</option>{% for tag in tags %}<option value="{{ tag }}">{{ tag }}</option>{% endfor %}</select></label><p id="guide-count" class="result-count" aria-live="polite"></p></div>{% endif %}
 {% if section == 'updates' %}<p class="timeline-intro">Novedades en orden cronológico, de la más reciente a la más antigua.</p>
 <ol class="timeline">
@@ -16,7 +17,7 @@
 <h2><a href="#/content/{{ article.slug }}">{{ article.title }}</a></h2><p class="post-summary">{{ article.summary }}</p>
 {% if article.status %}<p class="status status-{{ article.status }}">{{ article.get_status_display }}</p>{% endif %}
 <p class="tag-list">{% for tag in article.tags %}<span>{{ tag }}</span>{% endfor %}</p>
-<p class="post-actions"><a class="post-link" href="#/content/{{ article.slug }}">Leer</a>{% if article.pdf_name %}<a class="pdf-link" href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a>{% endif %}{% if article.url %}<a class="post-link" href="{{ article.url }}" target="_blank" rel="noreferrer">Sitio oficial</a>{% endif %}{% if article.download_file %}<a class="post-link" href="#/downloads">Descarga aprobada</a>{% endif %}</p>
+<p class="post-actions"><a class="post-link" href="#/content/{{ article.slug }}">Leer</a>{% if article.pdf_name %}<a class="pdf-link" href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a>{% endif %}{% if article.url %}<a class="post-link" href="{{ article.url }}" target="_blank" rel="noreferrer">Sitio oficial</a>{% endif %}{% if article.download_file and user.is_authenticated %}<a class="post-link" href="#/downloads">Descarga aprobada</a>{% endif %}</p>
 </article></li>{% endfor %}</ol></li>{% empty %}<li><p>Todavía no hay actualizaciones publicadas.</p></li>{% endfor %}
 </ol>
 {% else %}<div class="library-grid{% if section == 'guides' %} guide-library{% endif %}">
@@ -26,7 +27,7 @@
 <p class="tag-list">{% for tag in article.tags %}<span>{{ tag }}</span>{% endfor %}</p>
 {% if article.pdf_name %}<p><a class="pdf-link" href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a></p>{% endif %}
 {% if article.url %}<p><a href="{{ article.url }}" target="_blank" rel="noreferrer">Sitio oficial</a></p>{% endif %}
-{% if article.download_file %}<p><a href="#/downloads">Descarga aprobada</a></p>{% endif %}
-</article>{% empty %}<p>Todavía no hay artículos publicados en esta sección.</p>{% endfor %}
+{% if article.download_file and user.is_authenticated %}<p><a href="#/downloads">Descarga aprobada</a></p>{% endif %}
+</article>{% empty %}<p>Todavía no hay artículos {% if not user.is_authenticated %}públicos {% endif %}publicados en esta sección.</p>{% endfor %}
 </div>{% endif %}
 {% if section == 'guides' %}<p class="library-empty" hidden>No hay guías que coincidan con estos filtros.</p>{% endif %}

@@ -1,0 +1,78 @@
+{% extends 'admin/change_form.html' %}{% load static admin_urls admin_modify %}
+{% block bodyclass %}{{ block.super }} article-desk{% endblock %}
+{% block header %}{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+{% block content_title %}{% endblock %}
+{% block content_subtitle %}{% endblock %}
+{% block responsive %}{{ block.super }}
+<link rel="stylesheet" href="{% static 'athena/article-editor.css' %}">
+<script>if (!matchMedia('(max-width: 768px)').matches) document.documentElement.dataset.rail = 'compact';</script>
+{% endblock %}
+{% block content %}
+<div id="content-main">
+  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="article_form" novalidate data-article-slug="{{ original.slug|default:'' }}" data-pdf-name="{{ original.pdf_name|default:'' }}" data-published="{{ original.published|yesno:'true,false' }}" data-public="{{ original.is_public|yesno:'true,false' }}" data-pdf-only="{{ original.pdf_only|yesno:'true,false' }}">
+    {% csrf_token %}
+    {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
+    {% if to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}">{% endif %}
+    <header class="desk-header">
+      {% url opts|admin_urlname:'changelist' as list_url %}
+      <a class="desk-back" href="{% add_preserved_filters list_url %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg>Artículos</a>
+      <span id="desk-state" class="desk-state">{% if original.published %}Publicado{% else %}Borrador{% endif %} · {% if original.is_public %}Público{% else %}Con cuenta{% endif %}</span>
+      <button type="button" class="button desk-details" data-open-details>Detalles</button>
+      <details class="desk-overflow">
+        <summary class="button" aria-label="Más opciones"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></summary>
+        <div class="desk-menu">
+          {% submit_row %}
+          {% if change and not is_popup %}
+            {% url opts|admin_urlname:'history' original.pk|admin_urlquote as history_url %}<a href="{% add_preserved_filters history_url %}">Historial</a>
+            {% if has_absolute_url %}<a href="{{ original.get_absolute_url }}" target="_blank" rel="noopener">Ver artículo</a>{% endif %}
+            {% if has_delete_permission %}{% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}<a class="desk-danger" href="{% add_preserved_filters delete_url %}">Eliminar artículo</a>{% endif %}
+          {% endif %}
+          {% if has_change_permission or add and has_add_permission %}<button type="button" data-open-details data-detail-focus="id_markdown_file">Importar Markdown</button>{% endif %}
+          <button type="button" data-open-details data-detail-focus="id_pdf_file">Archivos y publicación</button>
+          <hr>
+          <span class="desk-user">{% firstof user.get_short_name user.get_username %}</span>
+          {% if site_url %}<a href="{{ site_url }}">Ver el sitio</a>{% endif %}
+          <a href="/api.md">API para agentes</a>
+          {% if user.has_usable_password %}<a href="{% url 'admin:password_change' %}">Cambiar contraseña</a>{% endif %}
+          <button type="submit" form="article-logout">Cerrar sesión</button>
+        </div>
+      </details>
+      {% if has_change_permission or add and has_add_permission %}<button class="button default desk-save" type="submit" name="_save">Guardar</button>{% endif %}
+    </header>
+    {% if errors %}<div class="desk-errors" role="alert"><p class="errornote">Corrija los campos indicados.</p>{{ adminform.form.non_field_errors }}<button class="button" type="button" data-open-details>Revisar detalles</button></div>{% endif %}
+    <div class="desk-title">
+      {% for fieldset in adminform %}{% for line in fieldset %}{% for field in line %}{% if field.field.name == 'title' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}{% endfor %}
+    </div>
+    <div class="desk-mobile-tabs" role="tablist" aria-label="Contenido del artículo">
+      <button class="button" type="button" role="tab" id="desk-source-tab" aria-controls="desk-source" aria-selected="true" data-pane="source">Markdown</button>
+      <button class="button" type="button" role="tab" id="desk-preview-tab" aria-controls="desk-preview" aria-selected="false" tabindex="-1" data-pane="preview">Vista previa</button>
+    </div>
+    <div class="desk-workspace" data-active-pane="source">
+      <section class="desk-pane desk-source" id="desk-source" aria-labelledby="desk-source-heading">
+        <div class="desk-pane-header"><h2 id="desk-source-heading">Markdown</h2><span id="desk-count"></span></div>
+        <div class="desk-source-field">
+          {% for fieldset in adminform %}{% for line in fieldset %}{% for field in line %}{% if field.field.name == 'body' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}{% endfor %}
+        </div>
+      </section>
+      <section class="desk-pane desk-preview" id="desk-preview" aria-labelledby="desk-preview-heading">
+        <div class="desk-pane-header"><h2 id="desk-preview-heading">Vista previa · en vivo</h2></div>
+        <div id="desk-preview-content" class="desk-preview-content" tabindex="0"><p class="desk-empty">La vista previa aparece al escribir Markdown.</p></div>
+      </section>
+    </div>
+    <footer id="desk-image-footer" class="desk-image-footer"></footer>
+    <dialog id="article-details" class="desk-dialog" open aria-labelledby="desk-dialog-title">
+      <div class="desk-dialog-header"><h2 id="desk-dialog-title">Detalles del artículo</h2><button class="button" type="button" data-close-details>Cerrar</button></div>
+      <p class="desk-dialog-help">Los cambios se guardan con Guardar.</p>
+      {% for fieldset in adminform %}
+        <fieldset class="module aligned"><h3>{{ fieldset.name|default:'Artículo' }}</h3>
+          {% for line in fieldset %}{% for field in line %}{% if field.field.name != 'title' and field.field.name != 'body' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}
+        </fieldset>
+      {% endfor %}
+    </dialog>
+    <script id="django-admin-form-add-constants" src="{% static 'admin/js/change_form.js' %}"{% if add %} data-model-name="{{ opts.model_name }}"{% endif %} async></script>
+    {% prepopulated_fields_js %}
+  </form>
+  <form id="article-logout" method="post" action="{% url 'admin:logout' %}">{% csrf_token %}</form>
+</div>
+{% endblock %}

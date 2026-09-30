@@ -37,6 +37,7 @@ function replaceSearchUrl(query, type) {
   const url = new URL(location.href);
   url.hash = buildSearchHash(query, type);
   history.replaceState(history.state, '', url);
+  updateSignInLinks();
 }
 
 function updatePageTreeCurrent() {
@@ -53,7 +54,7 @@ function buildPageTree() {
 
   const route = getRouteState().path;
   const article = document.querySelector('.markdown-section');
-  if (!route.startsWith('/content/') || !article) return;
+  if (!route.startsWith('/content/') || !article || article.querySelector('.unavailable-page')) return;
 
   const headings = [...article.querySelectorAll('h1[id],h2[id],h3[id]')];
   if (!headings.length) return;
@@ -81,7 +82,7 @@ function buildPageTree() {
 
   details.append(summary, list);
   nav.append(details);
-  article.insertBefore(nav, article.querySelector('h1') || article.firstChild);
+  article.insertBefore(nav, article.querySelector(':scope > h1') || article.firstChild);
   document.body.classList.add('has-page-tree');
   updatePageTreeCurrent();
 }
@@ -167,6 +168,7 @@ function buildRail() {
       });
       window.athenaRail?.decorate(nav);
       markRail();
+      updateSignInLinks();
     })
     .catch(() => {
       railPromise = null;
@@ -585,7 +587,14 @@ function syncView() {
   buildPageTree();
   buildPdfViewer();
   placeArticleTools();
+  updateSignInLinks();
   if (path === '/search') renderSearchPage();
+}
+
+function updateSignInLinks() {
+  document.querySelectorAll('a[href^="/accounts/login/"]').forEach((link) => {
+    link.href = '/accounts/login/?next=' + encodeURIComponent('/' + location.hash);
+  });
 }
 
 document.addEventListener('click', async (event) => {

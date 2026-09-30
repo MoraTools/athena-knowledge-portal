@@ -168,22 +168,40 @@ class AthenaUserAdmin(UserAdmin):
 @admin.register(Article)
 class ArticleAdmin(RowControlsAdmin):
     form = ArticleForm
-    list_display = ['title', 'kind', 'state', 'author', 'date', 'last_updated', 'controls']
-    list_filter = ['published', 'kind']
+    change_form_template = 'admin/athena/article/change_form.html'
+    list_display = ['title', 'kind', 'state', 'access', 'author', 'date', 'last_updated', 'controls']
+    list_filter = ['published', 'is_public', 'kind']
     search_fields = ['title', 'summary', 'author', 'body']
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ['last_updated', 'current_pdf']
     fieldsets = [
         (None, {'fields': ['title', 'slug', 'kind', 'summary', 'author', 'tags']}),
         ('Contenido', {'fields': ['markdown_file', 'body', 'pdf_file', 'current_pdf', 'remove_pdf', 'pdf_only']}),
-        ('Publicación', {'fields': ['published', 'date', 'last_updated']}),
+        ('Publicación', {'fields': ['published', 'is_public', 'date', 'last_updated']}),
         ('Herramientas', {'fields': ['status', 'url', 'download_file'], 'classes': ['collapse']}),
     ]
     save_on_top = True
 
+    class Media:
+        js = ['/vendor/marked.umd.js', '/vendor/purify.min.js', 'athena/article-images.js', 'athena/article-editor.js']
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.actor = request.user
+        if 'body' in form.base_fields and (self.has_change_permission(request, obj) if obj else self.has_add_permission(request)):
+            field = form.base_fields['body']
+            field.widget.attrs['data-image-upload-url'] = reverse('article_image_upload')
+            field.widget.attrs['data-image-article-id'] = str(obj.pk) if obj else ''
+            field.help_text = 'Pegue una imagen o use Insertar imagen. PNG, JPEG o WebP, hasta 10 MiB y 20 millones de píxeles. Se conserva el texto seleccionado.'
+        return form
+
     @admin.display(description='Estado', ordering='published')
     def state(self, obj):
         return flag(obj.published, 'Publicado', 'Borrador')
+
+    @admin.display(description='Acceso', ordering='is_public')
+    def access(self, obj):
+        return flag(obj.is_public, 'Público', 'Con cuenta')
 
     def controls(self, request, obj):
         return row_controls(self, request, obj, ('Ver', 'view', obj.get_absolute_url()))

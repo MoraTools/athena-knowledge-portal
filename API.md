@@ -56,6 +56,8 @@ A scope never grants more authority than its owner has. A key owned by an ordina
 | POST | `/articles/{slug}/markdown/` | Replace body from multipart field `file`; requires `If-Match` |
 | POST | `/articles/{slug}/pdf/` | Attach or replace PDF from multipart field `file`; requires `If-Match` |
 | GET | `/articles/{slug}/pdf/` | Download PDF |
+| POST | `/article-images/` | Stage an image from multipart field `file`; returns `id`, `url`, `markdown`, `content_type`, `size`, `width`, `height`, `sha256` |
+| GET | `/article-images/{id}/` | Read image bytes with the current key's article access |
 | GET | `/downloads/` | List downloads; `read` sees published files only |
 | POST | `/downloads/` | Upload a file from multipart fields `title`, `section`, `file`, optional `note` |
 | DELETE | `/downloads/{slug}/` | Remove a download and its stored file |
@@ -69,12 +71,29 @@ Article slugs remain fixed after creation. Optional fields: `url` (HTTPS), `down
 the PDF viewer only and no "Exportar PDF" button. Articles send and return it like `published`.
 Uploads accept UTF-8 `.md` up to 1 MiB and `.pdf` up to 25 MiB.
 Create a draft with a short body before uploading attachments through the API.
+Article images can be uploaded before the first article save. Use an `articles` or `admin` key whose owner has
+`add_article` or `change_article`. Send only the `file` field. The image endpoint does not change an article or its ETag.
+Use the returned `markdown` in a new article body, an article PATCH, or a Markdown upload. These saves check that each image still exists.
+The upload validates actual PNG, JPEG, or WebP bytes, with a maximum of 10 MiB and 20 million pixels. Animated files are rejected.
+Files are re-encoded with generated names. The original filename and metadata are discarded.
+The returned browser `url` inherits the access of articles that use the image. Use the API GET route to read bytes with a bearer key.
+Read-only keys see published references. Editors with an edit-capable key also see draft references.
+An image with no saved reference is visible only to its uploader while that account can still edit articles.
+Other authors can reuse an image only after an article they can read uses it. A public article makes its referenced images public.
+Unused images have a 24-hour grace period before cleanup. If an image is no longer available, upload it again before saving.
 Download sections: `framework`, `packages`, `exercises`, `previous`. Uploads are published at once and keep the original file name.
 The proxy accepts up to 512 MB on `/api/`. Each result has `size`, `sha256`, and `url`; the `url` works only in a signed-in browser session.
 
 ## Examples
 
 Store a key in the calling agent's secret store or in `ATHENA_API_KEY`. Do not put keys in articles or Git.
+
+```sh
+curl --fail-with-body https://athena.moratechnology.com/api/v1/article-images/ \
+  -H "Authorization: Bearer $ATHENA_API_KEY" -F 'file=@illustration.png'
+```
+
+Insert the returned `markdown` in the article's `body`. For an existing article, send its current `ETag` in `If-Match` when saving.
 
 ```sh
 curl --fail-with-body https://athena.moratechnology.com/api/v1/articles/ \
@@ -118,3 +137,12 @@ Setting `admin: true` also enables staff access. The acting administrator cannot
 Errors are JSON under `error`: 400 invalid input, 401 invalid key, 403 insufficient permission,
 404 missing resource or unknown path, 409 duplicate record, 412 missing/stale ETag, 405 unsupported method.
 A stale ETag means another edit was saved. Read the latest article before retrying; do not overwrite blindly.
+
+## Public article access
+
+Article responses include `is_public`. New articles default to `false`; PATCH accepts only a JSON boolean.
+Set `published: true` and `is_public: true` to permit anonymous reading through the existing reader URL, image URLs, and PDF routes.
+Setting only `is_public` does not publish a draft. `is_public: false` requires a user account again.
+All `/api/v1/articles/` operations still require a bearer key. Existing scopes, user edit permissions, and ETags still apply.
+A read-only key cannot change public access or read drafts, even when its owner is an editor.
+Package downloads remain restricted to signed-in users. Search-engine indexing remains disabled.

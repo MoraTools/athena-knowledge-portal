@@ -14,7 +14,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from .forms import ArticleForm, protect_admin
-from .models import ApiKey, Article, Download
+from .models import ApiKey, Article, Download, visible_articles
 
 
 DOCS = '/api/docs/'
@@ -24,6 +24,8 @@ ENDPOINTS = {
     '/api/v1/articles/{slug}/': ['GET', 'PATCH', 'DELETE'],
     '/api/v1/articles/{slug}/markdown/': ['POST'],
     '/api/v1/articles/{slug}/pdf/': ['GET', 'POST'],
+    '/api/v1/article-images/': ['POST'],
+    '/api/v1/article-images/{id}/': ['GET'],
     '/api/v1/downloads/': ['GET', 'POST'],
     '/api/v1/downloads/{slug}/': ['DELETE'],
     '/api/v1/users/': ['GET', 'POST'],
@@ -113,7 +115,7 @@ def me(request):
 
 def article_data(article, detail=True):
     result = {field: getattr(article, field) for field in
-              ('id', 'slug', 'title', 'kind', 'summary', 'author', 'tags', 'published', 'pdf_only', 'status', 'url', 'download_file')}
+              ('id', 'slug', 'title', 'kind', 'summary', 'author', 'tags', 'published', 'is_public', 'pdf_only', 'status', 'url', 'download_file')}
     result.update(date=article.date.isoformat(), updated_at=article.updated_at.isoformat(),
                   route=article.get_absolute_url(), pdf=f'/api/v1/articles/{article.slug}/pdf/' if article.pdf_name else None)
     if detail:
@@ -121,12 +123,12 @@ def article_data(article, detail=True):
     return result
 
 
-def article_form(data, instance=None, files=None):
+def article_form(data, instance=None, files=None, *, actor=None):
     fields = ArticleForm.Meta.fields
     unknown = set(data) - set(fields)
     if unknown:
         raise ValidationError('Unknown fields: ' + ', '.join(sorted(unknown)))
-    for field in ('published', 'pdf_only'):
+    for field in ('published', 'is_public', 'pdf_only'):
         if field in data and not isinstance(data[field], bool):
             raise ValidationError(f'{field} must be a boolean.')
     if 'tags' in data and (not isinstance(data['tags'], list) or any(not isinstance(t, str) or ',' in t for t in data['tags'])):
@@ -137,7 +139,7 @@ def article_form(data, instance=None, files=None):
     values = model_to_dict(obj, fields=fields)
     values.update(data)
     values['tags'] = ', '.join(values.get('tags') or [])
-    form = ArticleForm(values, files=files, instance=obj)
+    form = ArticleForm(values, files=files, instance=obj, actor=actor)
     if not form.is_valid():
         raise ValidationError({field: list(errors) for field, errors in form.errors.items()})
     return form
@@ -148,9 +150,7 @@ def articles(request, slug=None):
     if request.method not in ('GET', 'POST', 'PATCH', 'DELETE'):
         return method_not_allowed('GET, POST, PATCH, DELETE')
     if request.method == 'GET':
-        query = Article.objects.all().defer('pdf')
-        if not can_edit(request, 'change'):
-            query = query.filter(published=True)
+        query = visible_articles(request.user, include_drafts=can_edit(request, 'change')).defer('pdf')
         if slug:
             article = get_object_or_404(query, slug=slug)
             return JsonResponse(article_data(article), headers={'ETag': f'"{article.updated_at.isoformat()}"'})
@@ -179,7 +179,7 @@ def articles(request, slug=None):
         data = payload(request)
         if article and 'slug' in data and data['slug'] != article.slug:
             raise ValidationError('Article slugs cannot be changed.')
-        article = article_form(data, article).save()
+        article = article_form(data, article, actor=request.user).save()
         return JsonResponse(article_data(article), status=201 if request.method == 'POST' else 200,
                             headers={'ETag': f'"{article.updated_at.isoformat()}"'})
 
@@ -188,7 +188,7 @@ def articles(request, slug=None):
 def article_upload(request, slug, kind):
     article = get_object_or_404(Article, slug=slug)
     if request.method == 'GET' and kind == 'pdf':
-        if not article.published and not can_edit(request, 'change'):
+        if not visible_articles(request.user, include_drafts=can_edit(request, 'change')).filter(pk=article.pk).exists():
             return denied()
         if not article.pdf:
             raise Http404
@@ -204,8 +204,26 @@ def article_upload(request, slug, kind):
         article.refresh_from_db()
         if request.headers.get('If-Match') != f'"{article.updated_at.isoformat()}"':
             return JsonResponse({'error': 'Send the current article ETag in If-Match.'}, status=412)
-        article = article_form({}, article, {f'{kind}_file': request.FILES['file']}).save()
+        article = article_form({}, article, {f'{kind}_file': request.FILES['file']}, actor=request.user).save()
         return JsonResponse(article_data(article), headers={'ETag': f'"{article.updated_at.isoformat()}"'})
+
+
+@api
+def article_images(request, image_id=None):
+    from .images import create_image, image_data
+    from .views import send_article_image
+    if image_id:
+        if request.method != 'GET':
+            return method_not_allowed('GET')
+        return send_article_image(request, image_id, include_drafts=can_edit(request, 'change'),
+                                  allow_preview=can_edit(request, 'add') or can_edit(request, 'change'))
+    if request.method != 'POST':
+        return method_not_allowed('POST')
+    if not (can_edit(request, 'add') or can_edit(request, 'change')):
+        return denied()
+    if set(request.POST) or set(request.FILES) != {'file'}:
+        raise ValidationError('Send one multipart/form-data file field, with no other fields.')
+    return JsonResponse(image_data(create_image(request.FILES['file'], request.user)), status=201)
 
 
 def download_data(item):

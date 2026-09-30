@@ -1,6 +1,7 @@
 import hashlib
 import re
 import secrets
+import uuid
 from datetime import timedelta
 from pathlib import PurePath
 
@@ -34,6 +35,8 @@ class Article(models.Model):
     url = models.URLField('sitio oficial', blank=True)
     download_file = models.CharField('descarga aprobada', max_length=240, blank=True)
     published = models.BooleanField('publicado', default=False)
+    is_public = models.BooleanField('acceso público', default=False,
+                                    help_text='Si está publicado, cualquier persona puede leer el artículo, sus imágenes y sus PDF sin una cuenta. Los borradores siguen restringidos.')
     pdf = models.BinaryField(blank=True, default=bytes)
     pdf_name = models.CharField(max_length=240, blank=True, editable=False)
     pdf_only = models.BooleanField('solo PDF', default=False,
@@ -71,6 +74,50 @@ class Article(models.Model):
 
     def get_absolute_url(self):
         return '/#/content/' + self.slug
+
+    def save(self, *args, **kwargs):
+        from .images import check_references, sync_image_usage
+        # SQLite IMMEDIATE serializes this check with image cleanup, including admin/API outer transactions.
+        with transaction.atomic():
+            body = self.body
+            if self.pk and kwargs.get('update_fields') is not None and 'body' not in kwargs['update_fields']:
+                body = Article.objects.values_list('body', flat=True).get(pk=self.pk)
+            check_references(body, actor=getattr(self, '_image_actor', None))
+            super().save(*args, **kwargs)
+            sync_image_usage()
+
+
+class ManagedImage(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uploader = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    format = models.CharField(max_length=4, choices=[('png', 'PNG'), ('jpg', 'JPEG'), ('webp', 'WebP')])
+    size = models.PositiveIntegerField()
+    sha256 = models.CharField(max_length=64)
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    created_at = models.DateTimeField(default=timezone.now)
+    unused_since = models.DateTimeField(default=timezone.now, null=True)
+
+    @property
+    def filename(self):
+        return f'{self.pk.hex}.{self.format}'
+
+    @property
+    def content_type(self):
+        return {'png': 'image/png', 'jpg': 'image/jpeg', 'webp': 'image/webp'}[self.format]
+
+    def get_absolute_url(self):
+        return f'/article-images/{self.pk}/'
+
+
+def visible_articles(user, *, include_drafts=False):
+    """One reader policy; API callers must also restrict draft access by key scope."""
+    articles = Article.objects.all()
+    if not user.is_authenticated or not user.is_active:
+        return articles.filter(published=True, is_public=True)
+    if include_drafts and user.has_perm('athena.change_article'):
+        return articles
+    return articles.filter(published=True)
 
 
 class ApiKey(models.Model):
@@ -165,3 +212,9 @@ class Download(models.Model):
 def delete_download_file(sender, instance, **kwargs):
     name, storage = instance.file.name, instance.file.storage
     transaction.on_commit(lambda: storage.delete(name))
+
+
+@receiver(models.signals.post_delete, sender=Article)
+def update_image_usage_after_delete(sender, **kwargs):
+    from .images import sync_image_usage
+    sync_image_usage()

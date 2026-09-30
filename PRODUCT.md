@@ -2,7 +2,7 @@
 
 ## Product
 
-Athena is a curated internal knowledge portal for Automation Anywhere team members. It publishes practical guides, tools, updates, downloads, and source PDFs in one searchable place.
+Athena is a curated knowledge portal for Automation Anywhere team members. It publishes practical guides, tools, updates, downloads, and source PDFs in one searchable place.
 
 The portal is Spanish-first. Project collaboration and implementation notes can remain in English.
 
@@ -15,7 +15,7 @@ The portal is Spanish-first. Project collaboration and implementation notes can 
 
 ## Content model
 
-Markdown remains the authored content format. The VPS database is the source of truth for articles and attached PDFs. Athena supports pages, guides, tools, announcements, releases, downloads, and PDF-only guide records. OneDrive retains approved package downloads; imported documents are managed in Athena.
+Markdown remains the authored content format. The VPS database is the source of truth for articles and attached PDFs. Athena supports pages, guides, tools, announcements, releases, downloads, and PDF-only guide records. Package downloads are stored on the VPS and require sign-in; imported documents are managed in Athena.
 
 Existing article routes must remain stable.
 
@@ -26,7 +26,7 @@ Existing article routes must remain stable.
 - No Workers, Functions, R2, or metered Cloudflare feature. Django and SQLite provide accounts, article management, and REST access on the VPS.
 - Prefer native browser features and existing project code over new dependencies.
 - Article lists and indexes are generated from published database records at request time. Existing approved package catalogs are preserved.
-- Search and filtering run in the browser using the authenticated search index.
+- Search and filtering run in the browser using an access-filtered search index. Anonymous visitors receive only published public articles; signed-in readers also receive private published articles and approved download records.
 - Admins can add/remove users, rename accounts, reset passwords, edit/upload Markdown and PDFs, and publish drafts.
 - Agents use scoped, expiring bearer keys and the documented REST API.
 
@@ -46,3 +46,12 @@ Existing article routes must remain stable.
 - Include one simple content-type filter.
 - Matching is case-insensitive and accent-insensitive.
 - Do not add typo correction or fuzzy matching until real usage shows it is necessary.
+
+## Public articles
+
+Publication and access are separate: `published` controls release, and `is_public` controls anonymous reading.
+Existing and new articles default to access with an account. Drafts stay restricted.
+Public articles include metadata, referenced images, attached PDFs, and generated PDF exports.
+The existing reader, library, search, URLs, and article-edit permissions are reused.
+Package downloads and account functions require sign-in; the management API requires bearer keys.
+Public access does not enable search-engine indexing.

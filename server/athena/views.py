@@ -5,6 +5,8 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.defaultfilters import filesizeformat
@@ -13,12 +15,53 @@ from django.utils.html import escape, strip_tags
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from markdown_it import MarkdownIt
 
-from .models import ApiKey, Article, Download
+from .models import ApiKey, Article, Download, ManagedImage, visible_articles
 
 
-def visible_articles(user):
-    articles = Article.objects.all()
-    return articles if user.has_perm('athena.change_article') else articles.filter(published=True)
+def article_image_upload(request):
+    from .images import create_image, image_data
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Use POST para subir una imagen.'}, status=405, headers={'Allow': 'POST'})
+    user = request.user
+    article_id = request.POST.get('article_id', '')
+    permission = 'athena.change_article' if article_id else 'athena.add_article'
+    if not user.is_authenticated or not user.is_active or not user.has_perm(permission):
+        return JsonResponse({'error': 'Su cuenta no tiene permiso para insertar imágenes en este artículo.'}, status=403)
+    if article_id:
+        try:
+            if not Article.objects.filter(pk=int(article_id)).exists():
+                raise Http404
+        except (ValueError, OverflowError):
+            return JsonResponse({'error': 'El artículo no es válido.'}, status=400)
+    if set(request.POST) - {'article_id'} or set(request.FILES) != {'file'}:
+        return JsonResponse({'error': 'Seleccione una imagen PNG, JPEG o WebP.'}, status=400)
+    try:
+        return JsonResponse(image_data(create_image(request.FILES['file'], user)), status=201)
+    except ValidationError as error:
+        return JsonResponse({'error': ' '.join(error.messages)}, status=400)
+
+
+def send_article_image(request, image_id, *, include_drafts=True, allow_preview=True):
+    from .images import can_upload, image_path, referenced_image_ids
+    with transaction.atomic():
+        image = get_object_or_404(ManagedImage, pk=image_id)
+        readable = any(image.pk in referenced_image_ids(body) for body in
+                       visible_articles(request.user, include_drafts=include_drafts).values_list('body', flat=True))
+        if not readable:
+            attached = any(image.pk in referenced_image_ids(body) for body in Article.objects.values_list('body', flat=True))
+            if attached or not allow_preview or image.uploader_id != request.user.pk or not can_upload(request.user):
+                raise Http404
+        try:
+            file = image_path(image).open('rb')
+        except (OSError, ValidationError):
+            raise Http404
+        return FileResponse(file, content_type=image.content_type)
+
+
+def article_image(request, image_id):
+    if request.method not in ('GET', 'HEAD'):
+        return HttpResponse(status=405, headers={'Allow': 'GET, HEAD'})
+    return send_article_image(request, image_id)
 
 
 def search_text(body):
@@ -51,10 +94,11 @@ def download_entry(download):
     }
 
 
-@login_required
 def search_index(request):
-    return JsonResponse([search_entry(a) for a in Article.objects.filter(published=True).defer('pdf')]
-                        + [download_entry(d) for d in Download.objects.filter(published=True)], safe=False)
+    entries = [search_entry(a) for a in visible_articles(request.user).defer('pdf')]
+    if request.user.is_authenticated:
+        entries += [download_entry(d) for d in Download.objects.filter(published=True)]
+    return JsonResponse(entries, safe=False)
 
 
 def article_body(article):
@@ -74,9 +118,8 @@ EDIT_ICON = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-
 EXPORT_ICON = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11m-5-4 5 5 5-5M4 20h16"/></svg>'
 
 
-@login_required
 def article_markdown(request, slug):
-    article = get_object_or_404(visible_articles(request.user).defer('pdf'), slug=slug)
+    article = get_object_or_404(visible_articles(request.user, include_drafts=True).defer('pdf'), slug=slug)
     body = article_body(article)
     tools = []
     if request.user.has_perm('athena.change_article'):
@@ -130,11 +173,25 @@ def article_html(article, origin):
             f'<body>{body}</body></html>')
 
 
-def pdf_fetcher():
-    from weasyprint.urls import URLFetcher  # WeasyPrint loads Pango; only an export pays for it.
+def pdf_fetcher(image_versions=None):
+    from weasyprint.urls import URLFetcher, URLFetcherResponse  # Only an export loads Pango.
+    from .images import MAX_BYTES, image_id_from_url, image_path
+    import hashlib
+
+    # The parent exporter supplies only images in the requesting article, with immutable content hashes.
+    allowed = image_versions or {}
 
     class AllowlistFetcher(URLFetcher):
         def fetch(self, url, headers=None):
+            image_id = image_id_from_url(url)
+            if image_id and str(image_id) in allowed:
+                image = ManagedImage.objects.filter(pk=image_id, sha256=allowed[str(image_id)]).first()
+                if image:
+                    with image_path(image).open('rb') as file:
+                        data = file.read(MAX_BYTES + 1)
+                    if len(data) <= MAX_BYTES and hashlib.sha256(data).hexdigest() == image.sha256:
+                        return URLFetcherResponse(url, data, {'Content-Type': image.content_type})
+                raise ValueError('La imagen del artículo ya no está disponible.')
             if not url.startswith(PDF_RESOURCES):
                 raise ValueError(f'Recurso no permitido en el PDF: {url}')
             return super().fetch(url, headers)
@@ -143,22 +200,23 @@ def pdf_fetcher():
     return AllowlistFetcher(timeout=10, allow_redirects=False)
 
 
-@login_required
 def article_export(request, slug):
-    from weasyprint import HTML
-    article = get_object_or_404(visible_articles(request.user).defer('pdf'), slug=slug)
-    origin = request.build_absolute_uri('/').rstrip('/')
-    # The base is this export's URL, not origin + '/': WeasyPrint reads {origin}/#/... as an anchor of its base document.
-    pdf = HTML(string=article_html(article, origin), base_url=request.build_absolute_uri(request.path),
-               url_fetcher=pdf_fetcher()).write_pdf()
-    return HttpResponse(pdf, content_type='application/pdf',
-                        headers={'Content-Disposition': f'attachment; filename="{article.slug}.pdf"'})
+    from .pdf_export import cached_export, ExportBusy
+    article = get_object_or_404(visible_articles(request.user, include_drafts=True).defer('pdf'), slug=slug)
+    try:
+        file = cached_export(article)
+    except ExportBusy:
+        return HttpResponse('No se pudo preparar el PDF. Intente de nuevo en unos segundos.', status=503,
+                            headers={'Retry-After': '10'})
+    if not visible_articles(request.user, include_drafts=True).filter(pk=article.pk, updated_at=article.updated_at).exists():
+        file.close()
+        raise Http404
+    return FileResponse(file, as_attachment=True, filename=f'{article.slug}.pdf', content_type='application/pdf')
 
 
-@login_required
 @xframe_options_sameorigin  # The reader embeds the PDF in an iframe.
 def pdf(request, slug):
-    article = get_object_or_404(visible_articles(request.user), slug=slug)
+    article = get_object_or_404(visible_articles(request.user, include_drafts=True), slug=slug)
     if not article.pdf:
         raise Http404
     disposition = 'attachment' if request.GET.get('download') else 'inline'
@@ -201,10 +259,9 @@ def downloads_page(request):
     }, content_type='text/markdown; charset=utf-8')
 
 
-@login_required
 def library(request, section):
     kinds = {'guides': ['guide'], 'tools': ['tool'], 'updates': ['guide', 'announcement', 'release']}
-    articles = Article.objects.filter(published=True, kind__in=kinds[section]).defer('body', 'pdf')
+    articles = visible_articles(request.user).filter(kind__in=kinds[section]).defer('body', 'pdf')
     tags = sorted({tag for article in articles for tag in article.tags})
     return render(request, 'library.md', {'section': section, 'articles': articles, 'tags': tags},
                   content_type='text/markdown; charset=utf-8')
@@ -249,7 +306,7 @@ _sidebar_cache = (None, [])
 SIDEBAR_LINK = re.compile(r'\[([^\]]+)\]\(([^\s)]+)[^)]*\)')
 # The code owns the grouping; a link that is not listed here falls into Biblioteca.
 SIDEBAR_GROUPS = ['Biblioteca', 'Participar', 'Cuenta', 'Administración']
-SIDEBAR_GROUP = {'/content/contributing.md': 'Participar', '/account.md': 'Cuenta',
+SIDEBAR_GROUP = {'/content/contributing.md': 'Participar', '/account.md': 'Cuenta', '/accounts/login/': 'Cuenta',
                  '/admin/': 'Administración', '/api.md': 'Administración'}
 
 
@@ -261,7 +318,15 @@ def sidebar_markdown(user):
     if _sidebar_cache[0] != mtime:
         # Archivo is now the "Versiones anteriores" section of Descargas.
         _sidebar_cache = (mtime, [m[0] for m in SIDEBAR_LINK.finditer(file.read_text(encoding='utf-8-sig')) if m[1] != 'Archivo'])
-    links = _sidebar_cache[1] + ['[Mi cuenta](/account.md)']
+    links = list(_sidebar_cache[1])
+    if user.is_authenticated:
+        links += ['[Mi cuenta](/account.md)']
+    else:
+        hidden = {'/downloads.md'}
+        if not contributing_visible(user):
+            hidden.add('/content/contributing.md')
+        links = [link for link in links if SIDEBAR_LINK.match(link)[2] not in hidden]
+        links += ['[Ingresar](/accounts/login/)']
     if user.is_staff:
         links += ['[Administrar Athena](/admin/ ":ignore")', '[API para agentes](/api.md)']
     groups = {group: [] for group in SIDEBAR_GROUPS}
@@ -287,10 +352,15 @@ def robots(request):
     return HttpResponse('User-agent: *\nDisallow: /\n', content_type='text/plain; charset=utf-8')
 
 
+def contributing_visible(user):
+    return user.is_authenticated or visible_articles(user).filter(slug='contributing').exists()
+
+
 def static_portal(request, path='index.html'):
     # An explicit allowlist prevents serving a database, source file, or a removed article.
     assets = path.startswith(('fonts/', 'assets/', 'vendor/')) or path in ('styles.css', 'app.js', 'config.js')
-    if not assets and not request.user.is_authenticated:
+    public_pages = {'index.html', 'README.md', '_sidebar.md', 'search.md', 'not-found.md'}
+    if not assets and path not in public_pages and not request.user.is_authenticated:
         from django.contrib.auth.views import redirect_to_login
         return redirect_to_login(request.get_full_path())
     if assets:
@@ -299,9 +369,18 @@ def static_portal(request, path='index.html'):
         else:
             file = settings.BASE_DIR / 'src' / path
     else:
-        allowed = {'index.html', 'README.md', '_sidebar.md', 'search.md', 'catalog.json', 'api.md'}
+        allowed = public_pages | {'catalog.json', 'api.md'}
         if path not in allowed:
             raise Http404
+        if path == 'index.html':
+            return render(request, 'index.html')
+        if path == 'README.md':
+            return render(request, 'home.md', {
+                'has_articles': visible_articles(request.user).exists(),
+                'show_contribute': contributing_visible(request.user),
+            }, content_type='text/markdown; charset=utf-8')
+        if path in ('search.md', 'not-found.md'):
+            return render(request, path, content_type='text/markdown; charset=utf-8')
         file = settings.BASE_DIR / ('src' if path == 'index.html' else 'dist') / path
         if path == 'api.md':
             file = settings.BASE_DIR / 'API.md'  # The repository's API.md, the same file as /api/docs/.

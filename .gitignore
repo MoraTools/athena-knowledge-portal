@@ -9,6 +9,9 @@ data/
 staticfiles/
 __pycache__/
 .impeccable/review/
+.impeccable/build/
+.impeccable/questions/
+.impeccable/mocks/
 
 # local secrets (API key)
 .env

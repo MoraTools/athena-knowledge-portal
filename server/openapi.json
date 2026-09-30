@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Athena management API",
-    "version": "1.3.0",
+    "version": "1.5.0",
     "description": "Private knowledge base. Create a scoped key in /admin/athena/apikey/. Keys expire after 90 days by default and are revoked when the owning user is disabled, removed, or has their password reset. Browser cookies are not accepted by the API. Guide for agents: GET /api/docs/. Check a key with GET /me/."
   },
   "servers": [
@@ -818,6 +818,103 @@
           }
         }
       }
+    },
+    "/article-images/": {
+      "post": {
+        "operationId": "upload_article_image",
+        "summary": "Stage a private article image",
+        "description": "Requires articles or admin scope and add_article or change_article. Validates and re-encodes PNG/JPEG/WebP up to 10 MiB and 20 million pixels. No animation. Does not change an article or its ETag. Paste the returned markdown into an article body, then use the normal article create/PATCH or Markdown upload endpoint. An unattached image is visible only to its uploader while the uploader can still edit articles.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Validated image metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleImage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file or request fields"
+          },
+          "401": {
+            "description": "Invalid bearer key"
+          },
+          "403": {
+            "description": "Insufficient scope or article permissions"
+          }
+        }
+      }
+    },
+    "/article-images/{id}/": {
+      "get": {
+        "operationId": "read_article_image",
+        "summary": "Read an article image with a bearer key",
+        "description": "Read keys see images in published articles. Article editors with articles/admin keys can read draft images. Only the uploader with an edit-capable key can preview an unattached image. The returned url uses browser session/public article access; it does not accept bearer keys.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PNG/JPEG/WebP bytes.",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid bearer key"
+          },
+          "404": {
+            "description": "Missing image or no readable reference"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -891,6 +988,11 @@
             "type": "boolean",
             "default": false,
             "description": "The attached PDF is the whole article; the reader offers no Exportar PDF button."
+          },
+          "is_public": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow anonymous reading of the published article, its images, attached PDFs, and generated PDF exports. Drafts stay restricted. Existing API authentication and edit permissions still apply."
           }
         }
       },
@@ -920,6 +1022,52 @@
           },
           "admin": {
             "type": "boolean"
+          }
+        }
+      },
+      "ArticleImage": {
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "markdown",
+          "content_type",
+          "size",
+          "width",
+          "height",
+          "sha256"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string",
+            "description": "Root-relative reader image URL."
+          },
+          "markdown": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string",
+            "enum": [
+              "image/png",
+              "image/jpeg",
+              "image/webp"
+            ]
+          },
+          "size": {
+            "type": "integer"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "sha256": {
+            "type": "string"
           }
         }
       }

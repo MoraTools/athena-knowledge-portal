@@ -1,6 +1,6 @@
 {% extends 'admin/base.html' %}{% load static athena_nav %}
 {% block title %}{{ title }} · Athena{% endblock %}
-{% block extrahead %}{{ block.super }}<link rel="icon" href="/assets/favicon.svg"><meta name="robots" content="noindex, nofollow">{% if cl %}<script src="{% static 'athena/admin-list.js' %}" defer></script>{% endif %}{% endblock %}
+{% block extrahead %}{{ block.super }}<link rel="icon" href="/assets/favicon.svg"><meta name="robots" content="noindex, nofollow"><script src="/assets/session.js" data-session="{{ user.pk|default:0 }}" defer></script>{% if cl %}<script src="{% static 'athena/admin-list.js' %}" defer></script>{% endif %}{% endblock %}
 {# Loaded after Django's responsive.css so the Athena system wins at equal specificity; rail.js after the viewport meta so its narrow-screen check is right. #}
 {% block responsive %}{{ block.super }}<script src="/assets/rail.js"></script><link rel="stylesheet" href="{% static 'athena/admin.css' %}"><link rel="stylesheet" href="/assets/rail.css"><link rel="stylesheet" href="{% static 'athena/admin-sidebar.css' %}">{% endblock %}
 {# The rail carries the wordmark; the header shows it only when the rail is hidden or absent (admin.css). #}

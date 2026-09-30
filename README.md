@@ -1,7 +1,7 @@
 # Athena Knowledge Portal
 
 Athena runs on a DigitalOcean VPS with Django, SQLite, Gunicorn, and Caddy.
-The Spanish reader keeps its existing Docsify routes. All knowledge content requires a user account.
+The Spanish reader keeps its existing Docsify routes. Published articles can be public or require an account. Existing articles remain private by default.
 
 ## Production
 
@@ -28,16 +28,39 @@ Sign in and change the initial password. Credentials are not written to deployme
 ## Articles
 
 1. Open **Administración → Artículos → Añadir**.
-2. Enter title, summary, author, and optional comma-separated tags. The title creates the address automatically.
-3. Write Markdown in the editor or upload a `.md` file (up to 1 MiB). No metadata header is required.
-4. Optionally attach a PDF (up to 25 MiB). PDF-only articles are also supported.
-5. Save as a draft for review. Enable **Publicado** when ready.
+2. Enter the title. The title creates the address automatically. Open **Detalles** to enter the summary, author, and optional comma-separated tags.
+3. Write Markdown in the editor or choose **Importar Markdown** from **Más opciones**. Use a UTF-8 `.md` file (up to 1 MiB). No metadata header is required.
+4. In **Detalles**, optionally attach a PDF (up to 25 MiB). PDF-only articles are also supported.
+5. Save as a draft for review. Set **Acceso público** to **Público** only when the article, its images, and its attached PDFs are suitable for anyone to read. **Con cuenta** is the default.
+6. Enable **Publicado** when ready. Drafts stay restricted for both access settings.
+
+On desktop, the editor shows Markdown and a live reader preview side by side. On mobile, use the **Markdown** and **Vista previa** tabs.
+The **Detalles** dialog contains files, publication, and access settings. Select **Guardar** to save all changes.
+A Markdown import replaces the editor text. After the import, you can edit the text before saving; saving keeps those edits. Wait until the import or image upload finishes before saving.
 
 Changes appear in the library and search on the next page load; no build or redeploy is required.
 Open an article to edit, replace or remove its PDF, unpublish it, or delete it.
 **Ver en el sitio** previews saved drafts for editors. Existing article addresses cannot be changed.
 Jeiser Vargas remains the editorial reviewer.
 The database is now the source of truth for articles, accounts, keys, PDFs, and the download list.
+
+## Public library
+
+Visitors can use the home page, Guías, Herramientas, Actualizaciones, and search without signing in.
+These pages include only published public articles. Titles, tags, excerpts, and counts for private articles and download records are excluded.
+Signed-in readers see all published articles; existing article editors can preview drafts and set article access.
+The REST API still requires a bearer key. Use the boolean `is_public` field to change article access with the existing edit permission and ETag checks.
+
+Images, attached PDFs, and generated PDF exports follow the article access setting. Returning an article to **Con cuenta**, unpublishing it, or deleting it blocks subsequent anonymous requests, including cached PDF exports. A shared image stays public while another public published article uses it.
+Previously downloaded copies cannot be recalled.
+Search-engine indexing stays disabled through `robots.txt` and `X-Robots-Tag`; this is separate from public access.
+The existing reader URLs remain valid. Sign-in returns to the selected article; account changes refresh open portal tabs.
+
+PDF exports are cached under `/var/lib/athena/pdf-cache/`, outside public file serving and backups.
+PDF links and cache keys use `ATHENA_PUBLIC_ORIGIN` (default: `https://athena.moratechnology.com`), never the request's Host header. Set it to your local preview URL when testing PDF links locally.
+The single VPS permits one PDF render at a time, with a 30-second wall-clock timeout, 25 seconds of CPU, 768 MiB address-space limit, and 25 MiB output limit.
+Busy or failed exports return 503 with `Retry-After: 10`. An unchanged article reuses its PDF; changed content replaces the prior cached version.
+This cache can be deleted while the service is stopped; the next request regenerates it.
 
 ## Downloads
 
@@ -64,6 +87,34 @@ Five failed sign-ins within 15 minutes, for the same username or from the same a
 Each further lockout within a day doubles the wait (30, 60 minutes, and so on, up to 24 hours).
 The sign-in page shows the remaining wait. A successful sign-in clears the failure count; lockout history expires after 24 quiet hours.
 This applies to `/accounts/login/` and `/admin/login/`. An administrator cannot unlock an account early from the admin.
+
+## Article images
+
+In an article's Markdown field, paste a clipboard image or select **Insertar imagen**. This works before the first save.
+The image is inserted before any selected text. You can continue to write during upload. Save controls wait until the upload finishes.
+If an upload fails, the editor retains your text and shows an error. Normal text paste keeps its native behavior.
+Use PNG, JPEG, or WebP, up to 10 MiB and 20 million pixels. Animated images are rejected.
+The server checks the actual image bytes and stores a new image with a generated name, without the original metadata.
+
+Images are private files in `MEDIA_ROOT/article-images/`. Django serves them through `/article-images/{uuid}/`.
+A public published article makes its images public; a private published article requires an active account.
+Editors can see images in drafts. Only the uploader can preview an image with no saved reference, while that account can still edit articles.
+Shared images follow any readable article that uses them. Removing the uploader does not remove saved article images.
+The reader and PDF exporter use these images. The bounded PDF worker receives only this article's image IDs and content hashes.
+
+The daily `athena-image-gc.timer` removes unused managed images after a 24-hour grace period.
+Cleanup checks all saved bodies, including drafts, shared images, inline/reference Markdown, HTML image sources, and local absolute URLs.
+After the last reference is removed, a new 24-hour grace period starts. Backups, downloads, and PDF attachments are outside cleanup's scope.
+An interrupted upload can leave an orphan file; cleanup removes only generated orphan names in the managed-image directory after 24 hours.
+
+```sh
+.venv/bin/python server/manage.py collect_article_images --dry-run
+systemctl list-timers athena-image-gc.timer
+journalctl -u athena-image-gc.service -n 50 --no-pager
+```
+
+`--dry-run` lists removal candidates without changing files or metadata. Article saves and cleanup use the same SQLite write transaction.
+File deletion starts only after its metadata deletion commits. A stale article save rejects a missing image instead of saving a broken reference.
 
 ## Agent REST API
 
@@ -116,7 +167,7 @@ systemctl list-timers athena-backup.timer
 
 A daily timer creates verified SQLite backups in `/var/backups/athena` and retains 14 days.
 PDFs are inside the database, so a backup includes both article data and attachments.
-The same run mirrors download files to `/var/backups/athena/media/` with `rsync -a --delete`. The mirror has no history: a file deleted in the admin leaves the mirror on the next run.
+The same run mirrors all private media, including downloads and article images, to `/var/backups/athena/media/` with `rsync -a --delete`. The mirror has no history: a removed file leaves the mirror on the next run.
 Backups on the same VPS do not cover VPS loss. An initial backup is also copied to this workstation's private `.secrets/` directory.
 No paid DigitalOcean backup or other paid add-on is enabled.
 For disaster recovery, retain a separate copy of the database, the download files, the release bundle, and `/etc/athena/athena.env`.

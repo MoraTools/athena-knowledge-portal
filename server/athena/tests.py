@@ -22,6 +22,9 @@ from .views import article_html, pdf_fetcher, sidebar_links
 
 @override_settings(SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False)
 class PortalTests(TestCase):
+    def setUp(self):
+        self.enterContext(override_settings(DATA_DIR=Path(self.enterContext(tempfile.TemporaryDirectory()))))
+
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_superuser('administrator', password='Correct-Horse-Example-483!')
@@ -36,8 +39,12 @@ class PortalTests(TestCase):
         return {'HTTP_AUTHORIZATION': 'Bearer ' + raw}, key
 
     def test_protected_content_and_removed_routes(self):
-        for path in ['/', '/README.md', '/content/first-guide.md', '/search-index.json', '/catalog.json', '/pdf/first-guide.pdf']:
-            self.assertEqual(self.client.get(path).status_code, 302, path)
+        for path in ['/', '/README.md', '/search-index.json']:
+            self.assertEqual(self.client.get(path).status_code, 200, path)
+        self.assertEqual(self.client.get('/search-index.json').json(), [])
+        for path in ['/content/first-guide.md', '/pdf/first-guide.pdf']:
+            self.assertEqual(self.client.get(path).status_code, 404, path)
+        self.assertEqual(self.client.get('/catalog.json').status_code, 302)
         self.client.force_login(self.reader)
         self.assertEqual(self.client.get('/content/first-guide.md').status_code, 200)
         self.article.delete()
@@ -134,7 +141,7 @@ class PortalTests(TestCase):
         response = self.client.get('/api/docs/')
         self.assertEqual((response.status_code, response['Content-Type']), (200, 'text/markdown; charset=utf-8'))
         self.assertContains(response, '## Quick start')
-        self.assertEqual(self.client.get('/api.md').status_code, 302)
+        self.assertEqual(self.client.get('/api.md').status_code, 404)
         self.client.force_login(self.reader)
         self.assertContains(self.client.get('/api.md'), '## Quick start')
         self.assertNotIn('API para agentes', self.client.get('/_sidebar.md').content.decode())
@@ -199,7 +206,8 @@ class PortalTests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertTrue(self.client.login(username='renamed', password='Second-Password-3492!'))
         self.assertEqual(self.client.delete(url, **headers).status_code, 204)
-        self.assertEqual(self.client.get('/').status_code, 302)
+        self.assertContains(self.client.get('/'), 'BIBLIOTECA PÚBLICA')
+        self.assertEqual(self.client.get('/account.md').status_code, 404)
         self.assertEqual(self.client.delete(f'/api/v1/users/{self.admin.pk}/', **headers).status_code, 400)
         self.assertEqual(self.client.patch(f'/api/v1/users/{self.admin.pk}/', '{"admin":false}',
                                            content_type='application/json', **headers).status_code, 400)
@@ -299,16 +307,17 @@ class PortalTests(TestCase):
         self.client.force_login(self.reader)
         self.assertNotIn('article-tools', self.client.get('/content/first-guide.md').content.decode())
 
+    @override_settings(PUBLIC_ORIGIN='http://testserver')
     def test_article_pdf_export(self):
-        self.assertEqual(self.client.get('/content/first-guide.pdf').status_code, 302)
+        self.assertEqual(self.client.get('/content/first-guide.pdf').status_code, 404)
         self.client.force_login(self.reader)
         response = self.client.get('/content/first-guide.pdf')
         self.assertEqual((response.status_code, response['Content-Type']), (200, 'application/pdf'))
         self.assertEqual(response['Content-Disposition'], 'attachment; filename="first-guide.pdf"')
-        self.assertTrue(response.content.startswith(b'%PDF'))
+        self.assertTrue(b''.join(response.streaming_content).startswith(b'%PDF'))
         # A reader route stays a web link, not an internal anchor of the PDF.
         Article.objects.filter(pk=self.article.pk).update(body='[Tools](#/tools)')
-        pdf = self.client.get('/content/first-guide.pdf').content
+        pdf = b''.join(self.client.get('/content/first-guide.pdf').streaming_content)
         streams = [pdf] + [zlib.decompress(m[1]) for m in re.finditer(rb'stream\r?\n(.*?)\r?\nendstream', pdf, re.S)
                            if m[1][:1] == b'x']  # zlib streams; images may use other filters.
         self.assertTrue(any(b'/URI (http://testserver/#/tools)' in chunk for chunk in streams))
@@ -516,7 +525,7 @@ class PortalTests(TestCase):
         self.assertContains(response, '<title>Artículos · Athena</title>')
 
     def test_account_page(self):
-        self.assertEqual(self.client.get('/account.md').status_code, 302)
+        self.assertEqual(self.client.get('/account.md').status_code, 404)
         self.key(self.reader, 'read')
         self.key(self.admin, 'admin')
         ApiKey.objects.filter(user=self.admin).update(name='admin-key')
@@ -661,7 +670,7 @@ class DownloadTests(TestCase):
     def test_downloads_page_search_and_navigation(self):
         Download.objects.create(title='Versión 2025', section='previous', file=ContentFile(b'old', name='old.zip'))
         Download.objects.create(title='Oculto', section='packages', published=False, file=ContentFile(b'h', name='hidden.jar'))
-        self.assertEqual(self.client.get('/downloads.md').status_code, 302)
+        self.assertEqual(self.client.get('/downloads.md').status_code, 404)
         self.client.force_login(self.reader)
         page = self.client.get('/downloads.md').content.decode()
         self.assertTrue(page.startswith('# Descargas\n\nArchivos aprobados. Solo para usuarios de Athena.'))
@@ -754,4 +763,3 @@ class RobotsTests(TestCase):
         self.assertIn(b'Disallow: /', response.content)
         self.assertEqual(response['X-Robots-Tag'], 'noindex, nofollow, noarchive')
         self.assertEqual(self.client.get('/accounts/login/')['X-Robots-Tag'], 'noindex, nofollow, noarchive')
-

@@ -147,6 +147,11 @@ input::placeholder, textarea::placeholder { color: var(--quiet); opacity: 1; }
 textarea, .form-row textarea { width: 100%; padding: 10px 12px; line-height: 1.5; }
 /* Aligned textareas fill the row beside the label column; zero basis so the cols attribute cannot widen the row. */
 .aligned .form-row .flex-container > textarea { flex: 1 1 0; width: auto; min-width: 0; }
+.aligned .form-row .flex-container > .article-image-editor { flex: 1 1 0; min-width: 0; }
+.article-image-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin-top: var(--space-1); }
+.article-image-status { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.article-image-status--error { color: var(--error); }
+@media (max-width: 767px) { .aligned .form-row .flex-container > .article-image-editor { flex-basis: 100%; } }
 select, .form-row select {
   height: var(--control-height); padding-right: 40px; appearance: none; cursor: pointer;
   background: var(--bg) var(--chevron) no-repeat right 14px center / 12px 8px;

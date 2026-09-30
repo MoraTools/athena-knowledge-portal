@@ -5,9 +5,10 @@ from datetime import timedelta
 from django.contrib import admin
 from django.contrib.auth.forms import AuthenticationForm
 from django.db import transaction
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
-from django.utils.cache import patch_cache_control
+from django.utils.cache import patch_cache_control, patch_vary_headers
 
 from .models import LoginAttempt
 
@@ -65,12 +66,16 @@ class AccessMiddleware:
                         attempt.save()
         if response is None:
             response = self.get_response(request)
+        # Docsify must use its unavailable-page view instead of rendering a fetched login form as Markdown.
+        if path.endswith('.md') and response.status_code == 302 and response.get('Location', '').startswith('/accounts/login/'):
+            response = HttpResponse(status=404)
         if login and response.status_code == 302:
             LoginAttempt.objects.filter(key__in=keys).update(count=0, locked_until=None)
         if not path.startswith(('/static/', '/assets/', '/fonts/', '/vendor/')):
             patch_cache_control(response, private=True, no_store=True)
+            patch_vary_headers(response, ['Cookie'])
         # Docsify needs inline styles, but article scripts and remote scripts stay blocked.
-        # Private portal: never let search engines index or cache any page, including the login page.
+        # Public reading is allowed selectively, but search-engine indexing stays disabled site-wide.
         response.headers.setdefault('X-Robots-Tag', 'noindex, nofollow, noarchive')
         response.headers.setdefault('Content-Security-Policy', (
             "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "

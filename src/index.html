@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#000000">
-  <meta name="description" content="Portal interno de conocimiento y recursos de Automation Anywhere.">
+  <meta name="description" content="Guías y recursos de Automation Anywhere en Athena.">
   <title>Athena — Knowledge Portal</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
@@ -36,7 +36,7 @@
       </div>
     </form>
   </template>
-  <span class="access-label">ACCESO INTERNO</span>
+  <span class="access-label">{% if user.is_authenticated %}ACCESO CON CUENTA{% else %}BIBLIOTECA PÚBLICA{% endif %}</span>
   <div id="main">
     <div id="app" aria-live="polite">Cargando Athena…</div>
   </div>
@@ -44,5 +44,6 @@
   <script src="/config.js"></script>
   <script src="/vendor/docsify.min.js"></script>
   <script src="/app.js"></script>
+  <script src="/assets/session.js" data-session="{{ user.pk|default:0 }}"></script>
 </body>
 </html>

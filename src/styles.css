@@ -191,3 +191,6 @@ body .markdown-section .account-panel tr:nth-child(2n) *{color:var(--text)!impor
 .account-button.danger{border-color:#6b3a33;color:#ffb8ac!important}
 .account-button.danger:hover{border-color:#ffb8ac}
 @media (max-width:1100px){.account-grid{grid-template-columns:1fr}}
+
+.visitor-note{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);margin:var(--space-3) 0;color:var(--muted)}
+.visitor-note p{margin:0;flex:1 1 24rem}
