@@ -90,7 +90,7 @@ class Article(models.Model):
 class ManagedImage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     uploader = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
-    format = models.CharField(max_length=4, choices=[('png', 'PNG'), ('jpg', 'JPEG'), ('webp', 'WebP')])
+    format = models.CharField(max_length=4, choices=[('png', 'PNG'), ('jpg', 'JPEG'), ('webp', 'WebP'), ('gif', 'GIF')])
     size = models.PositiveIntegerField()
     sha256 = models.CharField(max_length=64)
     width = models.PositiveIntegerField()
@@ -104,7 +104,7 @@ class ManagedImage(models.Model):
 
     @property
     def content_type(self):
-        return {'png': 'image/png', 'jpg': 'image/jpeg', 'webp': 'image/webp'}[self.format]
+        return {'png': 'image/png', 'jpg': 'image/jpeg', 'webp': 'image/webp', 'gif': 'image/gif'}[self.format]
 
     def get_absolute_url(self):
         return f'/article-images/{self.pk}/'

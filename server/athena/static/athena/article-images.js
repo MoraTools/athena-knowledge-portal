@@ -16,7 +16,7 @@
     button.textContent = 'Insertar imagen';
     const picker = document.createElement('input');
     picker.type = 'file';
-    picker.accept = 'image/png,image/jpeg,image/webp';
+    picker.accept = 'image/png,image/jpeg,image/webp,image/gif';
     picker.multiple = true;
     picker.hidden = true;
     const status = document.createElement('span');
@@ -63,10 +63,15 @@
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+    // Some clipboard files have no MIME type. The server still checks their actual bytes.
+    const knownFile = file => (!file.type || file.type === 'application/octet-stream') && /\.(png|jpe?g|webp|gif)$/i.test(file.name || '');
+    const imageFile = file => file && (file.type.startsWith('image/') || knownFile(file));
+
     async function upload(file, marker) {
       try {
-        if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
-          throw new Error('Use PNG, JPEG o WebP de hasta 10 MiB.');
+        if (!(allowedTypes.includes(file.type) || knownFile(file)) || file.size > 10 * 1024 * 1024) {
+          throw new Error('Use PNG, JPEG, WebP o GIF de hasta 10 MiB.');
         }
         const data = new FormData();
         data.append('file', file);
@@ -111,9 +116,10 @@
     }
 
     textarea.addEventListener('paste', event => {
-      const images = Array.from(event.clipboardData ? event.clipboardData.items : [])
-        .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
-        .map(item => item.getAsFile()).filter(Boolean);
+      const clipboard = event.clipboardData;
+      let images = Array.from(clipboard?.files || []).filter(imageFile);
+      if (!images.length) images = Array.from(clipboard?.items || [])
+        .filter(item => item.kind === 'file').map(item => item.getAsFile()).filter(imageFile);
       if (!images.length) return;
       event.preventDefault();
       insert(images);

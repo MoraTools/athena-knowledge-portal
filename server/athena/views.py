@@ -34,7 +34,7 @@ def article_image_upload(request):
         except (ValueError, OverflowError):
             return JsonResponse({'error': 'El artículo no es válido.'}, status=400)
     if set(request.POST) - {'article_id'} or set(request.FILES) != {'file'}:
-        return JsonResponse({'error': 'Seleccione una imagen PNG, JPEG o WebP.'}, status=400)
+        return JsonResponse({'error': 'Seleccione una imagen PNG, JPEG, WebP o GIF.'}, status=400)
     try:
         return JsonResponse(image_data(create_image(request.FILES['file'], user)), status=201)
     except ValidationError as error:

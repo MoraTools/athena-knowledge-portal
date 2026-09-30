@@ -93,14 +93,16 @@ This applies to `/accounts/login/` and `/admin/login/`. An administrator cannot 
 In an article's Markdown field, paste a clipboard image or select **Insertar imagen**. This works before the first save.
 The image is inserted before any selected text. You can continue to write during upload. Save controls wait until the upload finishes.
 If an upload fails, the editor retains your text and shows an error. Normal text paste keeps its native behavior.
-Use PNG, JPEG, or WebP, up to 10 MiB and 20 million pixels. Animated images are rejected.
-The server checks the actual image bytes and stores a new image with a generated name, without the original metadata.
+Use PNG, JPEG, WebP, or GIF, up to 10 MiB and 20 million pixels. GIF can be static or animated.
+GIF limits are 2000 frames and 2000 million processed pixels (canvas width × height × frame count). Reduce the frame count or resolution if a GIF exceeds these limits. Animated PNG and WebP are rejected.
+The server checks the actual image bytes and uses a generated name. PNG, JPEG, and WebP are re-encoded without their original metadata.
+GIF image blocks, frame timing, transparency, disposal, and loop settings are preserved. A separate worker decodes each frame in sequence, without storing all frames in memory. Validation is limited to 10 CPU seconds, 12 elapsed seconds, and 512 MiB of worker memory. Comments, other application metadata, and data after the GIF trailer are removed. Unsupported rendering extensions are rejected.
 
 Images are private files in `MEDIA_ROOT/article-images/`. Django serves them through `/article-images/{uuid}/`.
 A public published article makes its images public; a private published article requires an active account.
 Editors can see images in drafts. Only the uploader can preview an image with no saved reference, while that account can still edit articles.
 Shared images follow any readable article that uses them. Removing the uploader does not remove saved article images.
-The reader and PDF exporter use these images. The bounded PDF worker receives only this article's image IDs and content hashes.
+The reader plays animated GIFs. PDF exports use the first GIF frame. The bounded PDF worker receives only this article's image IDs and content hashes.
 
 The daily `athena-image-gc.timer` removes unused managed images after a 24-hour grace period.
 Cleanup checks all saved bodies, including drafts, shared images, inline/reference Markdown, HTML image sources, and local absolute URLs.

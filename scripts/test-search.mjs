@@ -98,8 +98,10 @@ assert.equal(returnTarget(), '/#/search?q=submitted&type=guide');
 
 const schema = JSON.parse(readFileSync(new URL('../server/openapi.json', import.meta.url), 'utf8'));
 const [apiMajor, apiMinor] = schema.info.version.split('.').map(Number);
-assert.ok(apiMajor > 1 || (apiMajor === 1 && apiMinor >= 3), 'The API must not regress below its existing 1.3.0 version.');
+assert.ok(apiMajor > 1 || (apiMajor === 1 && apiMinor >= 6), 'The API must not regress below its existing 1.6.0 version.');
 assert.equal(schema.components.schemas.ArticleInput.properties.is_public.type, 'boolean');
+assert.ok(schema.components.schemas.ArticleImage.properties.content_type.enum.includes('image/gif'));
+assert.ok(schema.paths['/article-images/{id}/'].get.responses['200'].content['image/gif']);
 
 // An unavailable article is not a document outline; its heading is nested inside a section.
 vm.runInContext(`

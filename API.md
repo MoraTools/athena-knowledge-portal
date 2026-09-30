@@ -74,8 +74,8 @@ Create a draft with a short body before uploading attachments through the API.
 Article images can be uploaded before the first article save. Use an `articles` or `admin` key whose owner has
 `add_article` or `change_article`. Send only the `file` field. The image endpoint does not change an article or its ETag.
 Use the returned `markdown` in a new article body, an article PATCH, or a Markdown upload. These saves check that each image still exists.
-The upload validates actual PNG, JPEG, or WebP bytes, with a maximum of 10 MiB and 20 million pixels. Animated files are rejected.
-Files are re-encoded with generated names. The original filename and metadata are discarded.
+The upload validates actual PNG, JPEG, WebP, or GIF bytes, with a maximum of 10 MiB and 20 million pixels. GIF can be static or animated, with at most 2000 frames and 2000 million processed pixels (canvas width × height × frame count). Reduce the frame count or resolution if a GIF exceeds these limits. Animated PNG and WebP are rejected.
+Files use generated names. PNG, JPEG, and WebP are re-encoded without their original metadata. GIF rendering blocks, frame timing, transparency, disposal, and loop settings are preserved. Every GIF frame is decoded in sequence by a separate worker limited to 10 CPU seconds, 12 elapsed seconds, and 512 MiB of memory. Comments, other application metadata, and data after the GIF trailer are removed. Unsupported rendering extensions are rejected. PDF exports use the first GIF frame.
 The returned browser `url` inherits the access of articles that use the image. Use the API GET route to read bytes with a bearer key.
 Read-only keys see published references. Editors with an edit-capable key also see draft references.
 An image with no saved reference is visible only to its uploader while that account can still edit articles.

@@ -190,7 +190,36 @@ async function failure(request, error = 'La imagen no es válida.') {
   paste(state.textarea, [{ name: 'bad.svg', type: 'image/svg+xml', size: 20 }]);
   assert.equal(state.textarea.value, original);
   assert.equal(state.requests.length, 1);
-  assert.match(state.status.textContent, /Use PNG, JPEG o WebP/);
+  assert.match(state.status.textContent, /Use PNG, JPEG, WebP o GIF/);
+}
+
+// GIF files from clipboard files/items and the chooser share upload and save protection.
+{
+  const state = setup();
+  assert.ok(state.picker.accept.includes('image/gif'));
+  const gif = { name: 'animation.gif', type: 'image/gif', size: 123 };
+  assert.equal(paste(state.textarea, [gif]), true);
+  assert.equal(state.requests[0].options.body.fields.get('file'), gif);
+  assert.equal(submit(state.form), true);
+  await success(state.requests[0], 1);
+  for (const type of ['image/gif', '', 'application/octet-stream']) {
+    const clipboardGif = { ...gif, type };
+    let prevented = false;
+    state.textarea.dispatchEvent({ type: 'paste',
+      clipboardData: { files: [clipboardGif], items: [{ kind: 'file', getAsFile: () => clipboardGif }] },
+      preventDefault() { prevented = true; }
+    });
+    assert.equal(prevented, true);
+    const request = state.requests.at(-1);
+    assert.equal(request.options.body.fields.get('file'), clipboardGif);
+    await success(request, 2);
+  }
+  assert.equal(state.requests.length, 4, 'Clipboard files/items must not upload the same file twice.');
+  state.picker.files = [gif];
+  state.picker.dispatchEvent({ type: 'change' });
+  assert.equal(state.requests.at(-1).options.body.fields.get('file'), gif);
+  await success(state.requests.at(-1), 3);
+  assert.equal(submit(state.form), false);
 }
 
 console.log('Article image paste, async order, selection, failure, text, CSRF and native chooser checks passed.');

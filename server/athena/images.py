@@ -6,6 +6,8 @@ from io import BytesIO
 import os
 from pathlib import Path
 import re
+import subprocess
+import sys
 from datetime import timedelta
 from urllib.parse import unquote, urlsplit
 from uuid import UUID
@@ -23,9 +25,11 @@ from .models import Article, ManagedImage, visible_articles
 
 MAX_BYTES = 10 * 1024 * 1024
 MAX_PIXELS = 20_000_000
+MAX_GIF_FRAMES = 2_000
+MAX_GIF_PIXELS = 2_000_000_000
 GRACE = timedelta(hours=24)
 IMAGE_PATH = re.compile(r'/article-images/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/?')
-GENERATED_FILE = re.compile(r'[0-9a-f]{32}\.(?:png|jpg|webp)')
+GENERATED_FILE = re.compile(r'[0-9a-f]{32}\.(?:png|jpg|webp|gif)')
 MARKDOWN = MarkdownIt('commonmark', {'html': True}).enable(['table', 'strikethrough'])
 
 
@@ -73,7 +77,7 @@ def all_references():
 
 
 def image_path(image):
-    if image.format not in ('png', 'jpg', 'webp'):
+    if image.format not in ('png', 'jpg', 'webp', 'gif'):
         raise ValidationError('Formato de imagen no permitido.')
     root = Path(settings.MEDIA_ROOT) / 'article-images'
     path = root / image.filename
@@ -109,9 +113,107 @@ def can_upload(user):
         user.has_perm('athena.add_article') or user.has_perm('athena.change_article'))
 
 
+def clean_gif(raw):
+    """Keep GIF rendering blocks, strip metadata, then decode one frame at a time."""
+    position = 0
+
+    def take(length):
+        nonlocal position
+        end = position + length
+        if end > len(raw):
+            raise ValueError('Truncated GIF block')
+        block = raw[position:end]
+        position = end
+        return block
+
+    def subblocks():
+        start = position
+        while length := take(1)[0]:
+            take(length)
+        return raw[start:position]
+
+    header = take(13)
+    if header[:6] not in (b'GIF87a', b'GIF89a'):
+        raise ValueError('Invalid GIF header')
+    width, height = int.from_bytes(header[6:8], 'little'), int.from_bytes(header[8:10], 'little')
+    pixels = width * height
+    if not pixels or pixels > MAX_PIXELS:
+        raise ValidationError('Use una imagen de hasta 20 millones de píxeles.')
+    output = bytearray(header)
+    global_colors = 2 ** ((header[10] & 7) + 1) if header[10] & 128 else 0
+    if global_colors:
+        output.extend(take(3 * global_colors))
+    frames = 0
+    control = b''
+    loop = False
+    while True:
+        marker = take(1)
+        if marker == b';':
+            if not frames or control:
+                raise ValueError('Invalid GIF trailer')
+            output.extend(marker)
+            break  # Bytes after the GIF trailer are not image data.
+        if marker == b'!':
+            label = take(1)
+            if label == b'\xf9':
+                block = take(6)
+                if control or block[0] != 4 or block[-1] or block[1] & 224 or ((block[1] >> 2) & 7) > 3:
+                    raise ValueError('Invalid GIF graphic control')
+                control = marker + label + block
+            elif label == b'\xfe':
+                subblocks()  # Comments never affect rendering.
+            elif label == b'\xff':
+                if take(1) != b'\x0b':
+                    raise ValueError('Invalid GIF application header')
+                application, data = take(11), subblocks()
+                if application in (b'NETSCAPE2.0', b'ANIMEXTS1.0'):
+                    if loop or data[:2] != b'\x03\x01' or len(data) != 5:
+                        raise ValueError('Invalid GIF loop extension')
+                    output.extend(marker + label + b'\x0b' + application + data)
+                    loop = True
+            else:
+                raise ValueError('Unsupported GIF extension')
+        elif marker == b',':
+            descriptor = take(9)
+            left, top, frame_width, frame_height = (int.from_bytes(descriptor[n:n + 2], 'little') for n in (0, 2, 4, 6))
+            if (not frame_width or not frame_height or left + frame_width > width or top + frame_height > height
+                    or descriptor[8] & 24):
+                raise ValueError('Invalid GIF frame dimensions')
+            frames += 1
+            if frames > MAX_GIF_FRAMES or frames * pixels > MAX_GIF_PIXELS:
+                raise ValidationError('El GIF es demasiado largo o grande. Reduzca la duración o la resolución.')
+            local_colors = 2 ** ((descriptor[8] & 7) + 1) if descriptor[8] & 128 else 0
+            palette = take(3 * local_colors) if local_colors else b''
+            colors = local_colors or global_colors
+            if not colors or (control and control[3] & 1 and control[6] >= colors):
+                raise ValueError('Invalid GIF palette')
+            code_size = take(1)
+            if not 2 <= code_size[0] <= 8:
+                raise ValueError('Invalid GIF LZW code size')
+            compressed = subblocks()
+            if compressed == b'\x00':
+                raise ValueError('Empty GIF frame')
+            output.extend(control + marker + descriptor + palette + code_size + compressed)
+            control = b''
+        else:
+            raise ValueError('Invalid GIF block')
+    data = bytes(output)
+    # WeasyPrint enables truncated Pillow images globally. Validate in an isolated strict, bounded worker.
+    try:
+        subprocess.run([sys.executable, str(Path(__file__).with_name('gif_validation.py')), str(frames)],
+                       input=data, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=12, check=True)
+    except subprocess.TimeoutExpired as error:
+        raise ValidationError('El GIF es demasiado largo o grande. Reduzca la duración o la resolución.') from error
+    except subprocess.CalledProcessError as error:
+        if error.returncode < 0:
+            raise ValidationError('El GIF es demasiado largo o grande. Reduzca la duración o la resolución.') from error
+        raise OSError('Invalid GIF frame pixels') from error
+    return data, width, height
+
+
 def create_image(upload, user):
     if upload.size > MAX_BYTES:
-        raise ValidationError('Use una imagen PNG, JPEG o WebP de hasta 10 MiB.')
+        raise ValidationError('Use una imagen PNG, JPEG, WebP o GIF de hasta 10 MiB.')
     raw = upload.read(MAX_BYTES + 1)
     if len(raw) > MAX_BYTES:
         raise ValidationError('La imagen supera 10 MiB.')
@@ -119,24 +221,28 @@ def create_image(upload, user):
         with warnings.catch_warnings():
             warnings.simplefilter('error', Image.DecompressionBombWarning)
             with Image.open(BytesIO(raw)) as source:
-                fmt = {'PNG': 'png', 'JPEG': 'jpg', 'WEBP': 'webp'}.get(source.format)
+                fmt = {'PNG': 'png', 'JPEG': 'jpg', 'WEBP': 'webp', 'GIF': 'gif'}.get(source.format)
                 if not fmt or source.width * source.height > MAX_PIXELS:
-                    raise ValidationError('Use una imagen PNG, JPEG o WebP de hasta 20 millones de píxeles.')
-                if getattr(source, 'n_frames', 1) != 1:
+                    raise ValidationError('Use una imagen PNG, JPEG, WebP o GIF de hasta 20 millones de píxeles.')
+                if fmt != 'gif' and getattr(source, 'n_frames', 1) != 1:
                     raise ValidationError('Use una imagen sin animación.')
-                source.verify()
-            with Image.open(BytesIO(raw)) as source:
-                source.load()
-                clean = ImageOps.exif_transpose(source).convert('RGBA' if 'A' in source.getbands() or 'transparency' in source.info else 'RGB')
-                if fmt == 'jpg':
-                    clean = clean.convert('RGB')
-                output = BytesIO()
-                # Re-encode actual pixels to discard metadata and any appended HTML or other data.
-                clean.save(output, format={'png': 'PNG', 'jpg': 'JPEG', 'webp': 'WEBP'}[fmt])
-                data = output.getvalue()
-                width, height = clean.size
-    except (UnidentifiedImageError, OSError, SyntaxError, ValueError, Image.DecompressionBombWarning, Image.DecompressionBombError) as error:
-        raise ValidationError('La imagen no es válida. Use PNG, JPEG o WebP.') from error
+                if fmt != 'gif':
+                    source.verify()
+            if fmt == 'gif':
+                data, width, height = clean_gif(raw)
+            else:
+                with Image.open(BytesIO(raw)) as source:
+                    source.load()
+                    clean = ImageOps.exif_transpose(source).convert('RGBA' if 'A' in source.getbands() or 'transparency' in source.info else 'RGB')
+                    if fmt == 'jpg':
+                        clean = clean.convert('RGB')
+                    output = BytesIO()
+                    # Re-encode actual pixels to discard metadata and any appended HTML or other data.
+                    clean.save(output, format={'png': 'PNG', 'jpg': 'JPEG', 'webp': 'WEBP'}[fmt])
+                    data = output.getvalue()
+                    width, height = clean.size
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError, EOFError, Image.DecompressionBombWarning, Image.DecompressionBombError) as error:
+        raise ValidationError('La imagen no es válida. Use PNG, JPEG, WebP o GIF.') from error
     if len(data) > MAX_BYTES:
         raise ValidationError('La imagen procesada supera 10 MiB. Reduzca su tamaño e intente de nuevo.')
     image = ManagedImage(uploader=user, format=fmt, size=len(data), sha256=hashlib.sha256(data).hexdigest(),

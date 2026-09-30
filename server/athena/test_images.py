@@ -35,6 +35,20 @@ def picture(fmt='PNG', *, name='image.png', content_type='image/png'):
     return SimpleUploadedFile(name, data.getvalue(), content_type=content_type)
 
 
+def animation():
+    frames = []
+    for row, color in enumerate([(255, 0, 0, 255), (0, 0, 255, 255), (0, 255, 0, 255), (255, 255, 0, 255)]):
+        frame = Image.new('RGBA', (5, 4), (0, 0, 0, 0))
+        for column in range(row + 1):
+            frame.putpixel((column, row), color)
+        frames.append(frame)
+    output = BytesIO()
+    frames[0].save(output, format='GIF', save_all=True, append_images=frames[1:],
+                   duration=[40, 60, 80, 100], disposal=[1, 2, 3, 1], loop=2, optimize=True,
+                   comment=b'<script>private comment</script>')
+    return output.getvalue()
+
+
 @override_settings(SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False)
 class ArticleImageTests(TestCase):
     @classmethod
@@ -73,7 +87,7 @@ class ArticleImageTests(TestCase):
         self.article.save()
 
     def test_actual_bytes_safe_names_and_metadata(self):
-        for fmt, extension in [('PNG', 'png'), ('JPEG', 'jpg'), ('WEBP', 'webp')]:
+        for fmt, extension in [('PNG', 'png'), ('JPEG', 'jpg'), ('WEBP', 'webp'), ('GIF', 'gif')]:
             image = self.image(fmt=fmt, name='../../attack.html', content_type='text/html')
             self.assertRegex(image.filename, r'^[0-9a-f]{32}\.' + extension + '$')
             path = image_path(image)
@@ -101,6 +115,151 @@ class ArticleImageTests(TestCase):
         raw = picture().read() + b'<script>attack</script>'
         image = create_image(SimpleUploadedFile('a.png', raw), self.editor)
         self.assertNotIn(b'<script>', image_path(image).read_bytes())
+
+    def test_gif_preserves_rendered_frames_timing_disposal_transparency_and_loop(self):
+        raw = animation()
+        # An unrelated application extension and appended HTML must not enter the stored file.
+        metadata = b'\x21\xff\x0bPRIVATE0001\x03key\x00'
+        uploaded = raw[:-1] + metadata + raw[-1:] + b'<html>trailing payload</html>'
+        image = create_image(SimpleUploadedFile('animation.png', uploaded, content_type='image/png'), self.editor)
+        self.assertEqual(image.content_type, 'image/gif')
+        saved = image_path(image).read_bytes()
+        for value in [b'private comment', b'PRIVATE0001', b'key', b'<html>']:
+            self.assertNotIn(value, saved)
+        self.assertTrue(saved.endswith(b';'))
+        with Image.open(BytesIO(raw)) as original, Image.open(BytesIO(saved)) as clean:
+            self.assertEqual(original.n_frames, clean.n_frames)
+            self.assertEqual(original.info['loop'], clean.info['loop'])
+            for index in range(original.n_frames):
+                original.seek(index)
+                clean.seek(index)
+                self.assertEqual(original.info['duration'], clean.info['duration'])
+                self.assertEqual(original.disposal_method, clean.disposal_method)
+                self.assertEqual(original.convert('RGBA').tobytes(), clean.convert('RGBA').tobytes())
+
+    def test_gif_rejects_truncated_bad_late_frames_and_unsupported_rendering(self):
+        raw = animation()
+        separator = raw.rfind(b'\x21\xf9\x04') + 8
+        self.assertEqual(raw[separator], 44)
+        palette_bytes = 3 * 2 ** ((raw[separator + 9] & 7) + 1) if raw[separator + 9] & 128 else 0
+        code_size = separator + 10 + palette_bytes
+        bad_bounds = bytearray(raw)
+        bad_bounds[separator + 5:separator + 7] = (65535).to_bytes(2, 'little')
+        bad_disposal = bytearray(raw)
+        bad_disposal[separator - 5] = 7 << 2
+        candidates = [raw[:-1], raw[:-5], bytes(bad_bounds), bytes(bad_disposal),
+                      raw[:code_size + 1] + b'\x02\xff\xff\x00;',  # Broken LZW in the final frame.
+                      raw[:code_size + 1] + b'\x01\x00\x00;',  # Truncated pixels in the final frame.
+                      raw[:-1] + b'\x21\x01\x0c' + bytes(12) + b'\x00;',
+                      raw.replace(b'\x03\x01\x02\x00\x00', b'\x03\x00\x02\x00\x00', 1)]
+        with patch('PIL.ImageFile.LOAD_TRUNCATED_IMAGES', True):
+            for candidate in candidates:
+                with self.subTest(candidate=candidate[-20:]), self.assertRaises(ValidationError):
+                    create_image(SimpleUploadedFile('bad.gif', candidate), self.editor)
+            self.client.force_login(self.editor)
+            response = self.client.post('/article-images/upload/', {'file': SimpleUploadedFile('bad.gif', candidates[5])})
+            self.assertEqual(response.status_code, 400)
+        self.assertFalse(ManagedImage.objects.exists())
+        self.assertFalse((self.root / 'media/article-images').exists())
+
+    def test_gif_worker_failure_preserves_editor_errors_without_files(self):
+        for error in [subprocess.TimeoutExpired('gif', 12), subprocess.CalledProcessError(-9, 'gif')]:
+            with self.subTest(error=type(error).__name__), patch('athena.images.subprocess.run', side_effect=error):
+                self.client.force_login(self.editor)
+                response = self.client.post('/article-images/upload/', {'file': SimpleUploadedFile('large.gif', animation())})
+                self.assertEqual(response.status_code, 400)
+                self.assertIn('duración o la resolución', response.json()['error'])
+        self.assertFalse(ManagedImage.objects.exists())
+        self.assertFalse((self.root / 'media/article-images').exists())
+
+    def test_gif_byte_canvas_frame_and_total_work_limits(self):
+        raw = animation()
+        for limit, value in [('MAX_BYTES', len(raw) - 1), ('MAX_PIXELS', 19),
+                             ('MAX_GIF_FRAMES', 3), ('MAX_GIF_PIXELS', 79)]:
+            with self.subTest(limit=limit), patch('athena.images.' + limit, value), self.assertRaises(ValidationError):
+                create_image(SimpleUploadedFile('large.gif', raw), self.editor)
+        # The exact frame/work boundary is accepted, with no list of decoded frames.
+        with patch('athena.images.MAX_GIF_FRAMES', 4), patch('athena.images.MAX_GIF_PIXELS', 80):
+            self.assertEqual(create_image(SimpleUploadedFile('ok.gif', raw), self.editor).format, 'gif')
+
+    def test_gif_session_api_reference_visibility_and_collection(self):
+        headers = self.key(self.editor)
+        response = self.client.post('/api/v1/article-images/',
+                                    {'file': SimpleUploadedFile('animation.gif', animation(), content_type='image/gif')}, **headers)
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()['content_type'], 'image/gif')
+        image = ManagedImage.objects.get(pk=response.json()['id'])
+        image_api = '/api/v1/article-images/' + str(image.pk) + '/'
+        self.client.force_login(self.editor)
+        uploaded = self.client.post('/article-images/upload/',
+                                   {'file': SimpleUploadedFile('animation.gif', animation(), content_type='application/octet-stream')})
+        self.assertEqual(uploaded.status_code, 201)
+        self.assertEqual(uploaded.json()['content_type'], 'image/gif')
+        for user, expected in [(self.editor, 200), (self.other, 404), (self.reader, 404), (None, 404)]:
+            self.client.logout()
+            if user:
+                self.client.force_login(user)
+            response = self.client.get(image.get_absolute_url())
+            self.assertEqual(response.status_code, expected)
+            if expected == 200:
+                self.assertEqual(response['Content-Type'], 'image/gif')
+            response.close()
+        body = f'![Animation]({image.get_absolute_url()})'
+        self.assertFalse(ArticleForm(self.values(body), actor=self.other).is_valid())
+        self.attach(image)
+        self.assertTrue(ArticleForm(self.values(body), actor=self.other).is_valid())
+        self.assertEqual(collect_images()['images'], [])  # A draft keeps its animation.
+        self.assertEqual(self.client.get(image_api, **self.key(self.reader, 'read')).status_code, 404)
+        self.attach(image, published=True, public=True)
+        response = self.client.get(image_api, **self.key(self.reader, 'read'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'image/gif')
+        response.close()
+        self.client.logout()
+        response = self.client.get(image.get_absolute_url())
+        self.assertEqual(response.status_code, 200)
+        response.close()
+        self.attach(image, published=True, public=False)
+        self.assertEqual(self.client.get(image.get_absolute_url()).status_code, 404)
+        self.article.body = 'Removed'
+        self.article.save()
+        old = timezone.now() - timedelta(days=2)
+        ManagedImage.objects.filter(pk=image.pk).update(created_at=old, unused_since=old)
+        orphan = image_path(image).parent / f'{uuid4().hex}.gif'
+        orphan.write_bytes(b'orphan')
+        os.utime(orphan, (old.timestamp(), old.timestamp()))
+        with self.captureOnCommitCallbacks(execute=True):
+            report = collect_images()
+            self.assertEqual(report['images'], [str(image.pk)])
+            self.assertEqual(report['orphans'], [orphan.name])
+        self.assertFalse(image_path(image).exists())
+        self.assertFalse(orphan.exists())
+
+    def test_gif_pdf_renders_only_first_frame(self):
+        from weasyprint import HTML
+        from .views import article_html
+        image = create_image(SimpleUploadedFile('animation.gif', animation()), self.editor)
+        self.attach(image, published=True)
+        fetcher = pdf_fetcher({str(image.pk): image.sha256})
+        self.assertEqual(fetcher.fetch(settings.PUBLIC_ORIGIN + image.get_absolute_url()).read(), image_path(image).read_bytes())
+        opened_frames = []
+        original_open = Image.open
+        def open_first_frame(*args, **kwargs):
+            result = original_open(*args, **kwargs)
+            if result.format == 'GIF':
+                opened_frames.append(result.tell())
+                original_seek = result.seek
+                def seek_first(frame):
+                    self.assertEqual(frame, 0, 'PDF must not render a later animation frame.')
+                    return original_seek(frame)
+                result.seek = seek_first
+            return result
+        with patch('weasyprint.images.Image.open', side_effect=open_first_frame):
+            pdf = HTML(string=article_html(self.article, settings.PUBLIC_ORIGIN), base_url=settings.PUBLIC_ORIGIN,
+                       url_fetcher=fetcher).write_pdf()
+        self.assertEqual(opened_frames, [0])
+        self.assertTrue(pdf.startswith(b'%PDF-'))
+        self.assertIn(b'/Subtype /Image', pdf)
 
     def test_failed_database_write_removes_only_its_new_file(self):
         with patch.object(ManagedImage, 'save', side_effect=RuntimeError('database failure')):
