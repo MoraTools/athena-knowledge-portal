@@ -317,7 +317,8 @@ def sidebar_markdown(user):
     mtime = file.stat().st_mtime
     if _sidebar_cache[0] != mtime:
         # Archivo is now the "Versiones anteriores" section of Descargas.
-        _sidebar_cache = (mtime, [m[0] for m in SIDEBAR_LINK.finditer(file.read_text(encoding='utf-8-sig')) if m[1] != 'Archivo'])
+        _sidebar_cache = (mtime, [m[0].replace(f'[{m[1]}]', '[Feed]', 1) if m[2] == '/updates.md' else m[0]
+                                 for m in SIDEBAR_LINK.finditer(file.read_text(encoding='utf-8-sig')) if m[1] != 'Archivo'])
     links = list(_sidebar_cache[1])
     if user.is_authenticated:
         links += ['[Mi cuenta](/account.md)']

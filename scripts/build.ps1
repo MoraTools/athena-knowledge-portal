@@ -379,7 +379,7 @@ Write-Utf8 (Join-Path $dist 'README.md') $homePage
 $sidebar = @'
 - [Inicio](/)
 - [Guías](/guides.md)
-- [Actualizaciones](/updates.md)
+- [Feed](/updates.md)
 - [Herramientas](/tools.md)
 - [Descargas](/downloads.md)
 - [Contribuir](/content/contributing.md)

@@ -6,6 +6,7 @@ import tempfile
 import zlib
 from datetime import timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
@@ -487,7 +488,7 @@ class PortalTests(TestCase):
         self.assertTrue(self.client.get('/_sidebar.md').content.decode().endswith(
             '- Administración\n  - [Administrar Athena](/admin/ ":ignore")\n  - [API para agentes](/api.md)\n'))
         self.assertEqual(sidebar_links(self.admin), [
-            ('Biblioteca', [('Inicio', '/'), ('Guías', '/#/guides'), ('Actualizaciones', '/#/updates'),
+            ('Biblioteca', [('Inicio', '/'), ('Guías', '/#/guides'), ('Feed', '/#/updates'),
                             ('Herramientas', '/#/tools'), ('Descargas', '/#/downloads')]),
             ('Participar', [('Contribuir', '/#/content/contributing')]), ('Cuenta', [('Mi cuenta', '/#/account')]),
             ('Administración', [('Administrar Athena', '/admin/'), ('API para agentes', '/#/api')])])
@@ -513,6 +514,26 @@ class PortalTests(TestCase):
         self.assertContains(self.client.get('/admin/athena/article/add/'),
                             item('/admin/athena/article/', ' aria-current="page"', 'Artículos'))
         self.assertNotContains(self.client.get('/admin/auth/user/add/?_popup=1'), 'class="rail"')
+
+    def test_sidebar_uses_feed_label_for_spanish_and_english(self):
+        root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        (root / 'dist').mkdir()
+        sidebar = root / 'dist/_sidebar.md'
+        with override_settings(BASE_DIR=root):
+            for label in ['Actualizaciones', 'Updates']:
+                with self.subTest(label=label), patch('athena.views._sidebar_cache', (None, [])):
+                    sidebar.write_text(f'- [Inicio](/)\n- [{label}](/updates.md "Feed timeline")\n'
+                                       '- [Updates guide](/content/updates-guide.md)\n', encoding='utf-8')
+                    self.client.force_login(self.reader)
+                    reader = self.client.get('/_sidebar.md')
+                    self.assertContains(reader, '[Feed](/updates.md "Feed timeline")')
+                    self.assertNotContains(reader, f'[{label}](/updates.md')
+                    self.assertContains(reader, '[Updates guide](/content/updates-guide.md)')
+                    self.assertIn(('Feed', '/#/updates'), dict(sidebar_links(self.admin))['Biblioteca'])
+                    self.client.force_login(self.admin)
+                    admin = self.client.get('/admin/')
+                    self.assertContains(admin, '<a class="rail-item" href="/#/updates"><span class="rail-label">Feed</span></a>')
+                    self.assertNotContains(admin, f'>{label}</span>')
 
     def test_changelist_uses_text_pills(self):
         Article.objects.create(title='Draft', slug='draft', summary='Draft', author='Author')
