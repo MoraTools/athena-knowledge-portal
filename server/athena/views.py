@@ -286,20 +286,11 @@ def api_schema(request):
     return FileResponse((settings.BASE_DIR / 'server/openapi.json').open('rb'), content_type='application/json')
 
 
-_api_docs_cache = (None, '')
-
-
-def api_markdown():
-    global _api_docs_cache
-    file = settings.BASE_DIR / 'API.md'
-    mtime = file.stat().st_mtime
-    if _api_docs_cache[0] != mtime:
-        _api_docs_cache = (mtime, file.read_text(encoding='utf-8'))
-    return _api_docs_cache[1]
-
-
 def api_docs(request):
-    return HttpResponse(api_markdown(), content_type='text/markdown; charset=utf-8')
+    try:
+        return FileResponse((settings.BASE_DIR / 'API.md').open('rb'), content_type='text/markdown; charset=utf-8')
+    except FileNotFoundError:
+        raise Http404
 
 
 _sidebar_cache = (None, [])
@@ -391,5 +382,5 @@ def static_portal(request, path='index.html'):
     if path == '_sidebar.md':
         return HttpResponse(sidebar_markdown(request.user), content_type='text/markdown; charset=utf-8')
     if path == 'api.md':
-        return HttpResponse(api_markdown(), content_type='text/markdown; charset=utf-8')
+        return api_docs(request)
     return FileResponse(file.open('rb'), content_type=mimetypes.guess_type(file)[0] or 'application/octet-stream')

@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
-from django.test import Client, TestCase, override_settings
+from django.test import TestCase, override_settings
 
 from .forms import ArticleForm, permissions
 from .models import ApiKey, Article, Download

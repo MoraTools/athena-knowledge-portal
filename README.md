@@ -147,8 +147,14 @@ npm test
 Restore it from `.secrets/athena-vps-release.tar.gz` or the VPS before the first build on a fresh checkout.
 `import_portal` is transactional and skips existing slugs. It does not overwrite edits or republish deleted content during normal operation.
 Do not rerun it after deleting imported articles: migration input still contains those old records.
-The original Windows build remains available as `npm run build:legacy`; it is not the production publishing workflow.
-Cloudflare deployment scripts and `ALLOWLIST.md` describe the former hosting setup.
+The original Windows build and checks remain available as `npm run build:legacy` and `npm run test:legacy`, with PowerShell 7 (`pwsh`).
+The build keeps its `-Source` and `-IgnoreLinks` flags, optional private `.secrets/onedrive-links.json` input, and route, content, PDF, catalog, and validation behavior.
+Run these commands in a separate disposable project: both replace that project's `dist/`, which must not contain the approved migration input.
+Docsify stays at `5.0.0`, DOMPurify at `3.4.15`, and marked at the locked version `18.0.9`.
+
+The retired Cloudflare tools (`deploy.ps1`, `wrangler.jsonc`, and the Wrangler dependency) and OneDrive sharing tools (`scripts/set-link.ps1` and `scripts/sync-onedrive-links.ps1`) have been removed.
+Use the VPS deployment workflow below. Upload downloads through Athena's admin or API, or load them with `import_downloads` as described above.
+`ALLOWLIST.md` remains as documentation of the former hosting setup.
 
 ## Deployment and backup
 

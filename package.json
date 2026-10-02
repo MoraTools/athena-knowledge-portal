@@ -11,7 +11,6 @@
   },
   "devDependencies": {
     "docsify": "5.0.0",
-    "dompurify": "3.4.15",
-    "wrangler": "4.123.0"
+    "dompurify": "3.4.15"
   }
 }

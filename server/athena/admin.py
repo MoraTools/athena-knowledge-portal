@@ -91,15 +91,6 @@ class RowControlsAdmin(admin.ModelAdmin):
 @admin.register(User)
 class AthenaUserAdmin(UserAdmin):
     form = SafeUserChangeForm
-    list_display = ['username', 'email', 'active', 'superuser', 'last_login']
-
-    @admin.display(description='Activa', ordering='is_active')
-    def active(self, obj):
-        return flag(obj.is_active, 'Activa', 'Inactiva')
-
-    @admin.display(description='Admin', ordering='is_staff')
-    def superuser(self, obj):
-        return flag(obj.is_staff, 'Admin', 'Lector')
 
     def may_touch(self, request, obj):  # A superuser account is off limits to a partial administrator.
         return obj is None or request.user.is_superuser or not obj.is_superuser

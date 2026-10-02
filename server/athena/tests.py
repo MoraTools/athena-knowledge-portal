@@ -1,6 +1,7 @@
 import hashlib
 import io
 import json
+import os
 import re
 import tempfile
 import zlib
@@ -12,6 +13,7 @@ from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
+from django.http import FileResponse
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
@@ -149,6 +151,35 @@ class PortalTests(TestCase):
         self.client.force_login(self.admin)
         self.assertIn('  - [Administrar Athena](/admin/ ":ignore")\n  - [API para agentes](/api.md)',
                       self.client.get('/_sidebar.md').content.decode())
+
+    def test_api_docs_stream_current_utf8_file_and_close_it(self):
+        root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        file = root / 'API.md'
+        with override_settings(BASE_DIR=root):
+            for body in ['# API\n\nGuía pública.\r\n', '# API\n\nVersión recién actualizada.\n']:
+                content = body.encode('utf-8')
+                file.write_bytes(content)
+                os.utime(file, (1, 1))  # A document change must be visible even if the mtime stays the same.
+                self.client.logout()
+                self.assertEqual(self.client.get('/api.md').status_code, 404)
+                for user, paths in [(None, ['/api/docs/']), (self.reader, ['/api/docs/', '/api.md'])]:
+                    if user:
+                        self.client.force_login(user)
+                    for path in paths:
+                        with self.subTest(path=path, body=body, user=user), \
+                                patch('athena.views.FileResponse', wraps=FileResponse) as send_file:
+                            response = self.client.get(path)
+                            self.addCleanup(response.close)
+                            self.assertEqual((response.status_code, response['Content-Type']),
+                                             (200, 'text/markdown; charset=utf-8'))
+                            stream = send_file.call_args.args[0]
+                            self.assertFalse(stream.closed)
+                            self.assertEqual(b''.join(response.streaming_content), content)
+                            response.close()
+                            self.assertTrue(stream.closed)
+            file.unlink()
+            for path in ['/api/docs/', '/api.md']:
+                self.assertEqual(self.client.get(path).status_code, 404, path)
 
     def test_api_key_admin_shows_setup(self):
         self.client.force_login(self.admin)
