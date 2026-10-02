@@ -155,6 +155,8 @@ class DirectoryUserForm(forms.ModelForm):
 
     def clean(self):
         data = super().clean()
+        if data.get('role') == 'reader':
+            data['edits'] = []
         if self.instance.pk:
             protect_admin(User.objects.get(pk=self.instance.pk), actor=self.actor, active=data.get('is_active', False),
                           admin=data.get('role') == 'admin' and 'users' in data.get('edits', []))

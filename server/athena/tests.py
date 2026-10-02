@@ -284,6 +284,82 @@ class PortalTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         return form.save()
 
+    def test_partial_admin_creates_reader_with_stale_edits(self):
+        self.client.force_login(self.directory_admin('manager', ['users']))
+        url = '/admin/auth/user/?new=1'
+        panel = re.search(r'<form class="directory-panel".*?</form>', self.client.get(url).content.decode(), re.S).group()
+        for name in ['password1', 'password2']:
+            self.assertRegex(panel, rf'<input[^>]*type="password"[^>]*name="{name}"[^>]*autocomplete="new-password"[^>]*required')
+        password = 'Fresh-Reader-Pass-8824!'
+        response = self.client.post(url, {'username': 'new-reader', 'role': 'reader', 'is_active': 'on',
+                                          'edits': ['articles', 'downloads', 'users'],
+                                          'password1': password, 'password2': password})
+        created = User.objects.get(username='new-reader')
+        self.assertRedirects(response, f'/admin/auth/user/?user={created.pk}')
+        self.assertEqual((created.is_staff, created.is_superuser, created.user_permissions.count()), (False, False, 0))
+        login = Client()
+        self.assertRedirects(login.post('/accounts/login/', {'username': created.username, 'password': password}), '/')
+        self.assertEqual(int(login.session['_auth_user_id']), created.pk)
+
+    def test_partial_admin_updates_and_demotes_readers_with_stale_edits(self):
+        manager = self.directory_admin('manager', ['users'])
+        editor = self.directory_admin('editor', ['articles', 'users'])
+        self.client.force_login(manager)
+        for user in [self.reader, editor]:
+            with self.subTest(user=user.username):
+                url = f'/admin/auth/user/?user={user.pk}'
+                response = self.client.post(url, {'username': user.username, 'email': 'updated@example.com',
+                                                  'role': 'reader', 'edits': ['articles', 'downloads', 'users'],
+                                                  'is_active': 'on'})
+                self.assertRedirects(response, url)
+                user.refresh_from_db()
+                self.assertEqual((user.email, user.is_staff, user.is_superuser, user.user_permissions.count()),
+                                 ('updated@example.com', False, False, 0))
+        response = self.client.post(f'/admin/auth/user/?user={manager.pk}', {
+            'username': manager.username, 'role': 'reader', 'edits': ['articles', 'downloads', 'users'], 'is_active': 'on'})
+        self.assertContains(response, 'No puede quitar su propio acceso de administrador.')
+        manager.refresh_from_db()
+        self.assertTrue(manager.is_staff and manager.has_perm('auth.change_user'))
+
+    def test_partial_admin_reader_creation_validates_passwords(self):
+        self.client.force_login(self.directory_admin('manager', ['users']))
+        valid = 'Fresh-Reader-Pass-8824!'
+        cases = [('', '', {'password1': 'required', 'password2': 'required'}),
+                 ('', valid, {'password1': 'required'}), (valid, '', {'password2': 'required'}),
+                 (valid, 'Other-Reader-Pass-3921!', {'password2': 'password_mismatch'}),
+                 ('X7!aQ', 'X7!aQ', {'password2': 'password_too_short'})]
+        count = User.objects.count()
+        for first, second, errors in cases:
+            with self.subTest(errors=errors):
+                response = self.client.post('/admin/auth/user/?new=1', {
+                    'username': 'invalid-reader', 'role': 'reader', 'is_active': 'on',
+                    'edits': ['articles', 'downloads', 'users'], 'password1': first, 'password2': second})
+                self.assertEqual(response.status_code, 200)
+                actual = response.context['form'].errors.as_data()
+                for field, code in errors.items():
+                    self.assertIn(code, [error.code for error in actual[field]])
+                self.assertFalse(response.context['form'].non_field_errors())
+                self.assertEqual(User.objects.count(), count)
+                self.assertFalse(User.objects.filter(username='invalid-reader').exists())
+                for password in [first, second]:
+                    if password:
+                        self.assertNotContains(response, password)
+
+    def test_directory_rejects_unknown_reader_edits(self):
+        self.client.force_login(self.directory_admin('manager', ['users']))
+        count = User.objects.count()
+        for query in ['new=1', f'user={self.reader.pk}']:
+            with self.subTest(query=query):
+                response = self.client.post('/admin/auth/user/?' + query, {
+                    'username': 'invalid-reader', 'role': 'reader', 'is_active': 'on', 'edits': ['unknown'],
+                    'password1': 'Fresh-Reader-Pass-8824!', 'password2': 'Fresh-Reader-Pass-8824!'})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.context['form'].errors.as_data()['edits'][0].code, 'invalid_choice')
+                self.assertEqual(User.objects.count(), count)
+                self.assertFalse(User.objects.filter(username='invalid-reader').exists())
+        self.reader.refresh_from_db()
+        self.assertEqual((self.reader.username, self.reader.is_staff, self.reader.is_superuser), ('reader', False, False))
+
     def test_new_article_button_on_guides_for_editors(self):
         self.client.force_login(self.reader)
         self.assertNotContains(self.client.get('/guides.md'), 'Nuevo artículo')
@@ -382,11 +458,18 @@ class PortalTests(TestCase):
         self.assertEqual(self.client.get(f'/admin/auth/user/{self.admin.pk}/delete/').status_code, 403)
         self.assertTrue(User.objects.get(pk=self.admin.pk).is_superuser)
         # Only the areas the actor holds can be granted, so a superuser can never be minted.
-        post = {'username': 'reader', 'role': 'admin', 'edits': ['users', 'articles'], 'is_active': 'on'}
-        response = self.client.post(directory + f'?user={self.reader.pk}', post)
-        self.assertContains(response, 'que usted tiene')
-        self.assertFalse(User.objects.get(pk=self.reader.pk).is_staff)
-        post['edits'] = ['users']
+        for edits in [['users', 'articles'], ['users', 'downloads'], ['articles', 'downloads', 'users']]:
+            with self.subTest(edits=edits):
+                post = {'username': 'reader', 'role': 'admin', 'edits': edits, 'is_active': 'on'}
+                response = self.client.post(directory + f'?user={self.reader.pk}', post)
+                self.assertContains(response, 'que usted tiene')
+                self.assertFalse(User.objects.get(pk=self.reader.pk).is_staff)
+                response = self.client.post(directory + '?new=1', {
+                    **post, 'username': 'denied-admin', 'password1': 'Fresh-Reader-Pass-8824!',
+                    'password2': 'Fresh-Reader-Pass-8824!'})
+                self.assertContains(response, 'que usted tiene')
+                self.assertFalse(User.objects.filter(username='denied-admin').exists())
+        post = {'username': 'reader', 'role': 'admin', 'edits': ['users'], 'is_active': 'on'}
         self.assertEqual(self.client.post(directory + f'?user={self.reader.pk}', post).status_code, 302)
         promoted = User.objects.get(pk=self.reader.pk)
         self.assertEqual((promoted.is_staff, promoted.is_superuser), (True, False))
