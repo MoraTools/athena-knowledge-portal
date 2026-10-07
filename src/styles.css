@@ -99,8 +99,13 @@ body .markdown-section pre code,body .markdown-section pre code .token{backgroun
 body .markdown-section pre code .token.comment,body .markdown-section pre code .token.prolog,body .markdown-section pre code .token.doctype,body .markdown-section pre code .token.cdata{color:#d0d0d0}
 body .markdown-section p.tip,body .markdown-section p.tip em,body .markdown-section p.tip code{color:#111!important}
 body .markdown-section p.tip:before{color:#000}
-body .markdown-section tr:nth-child(2n),body .markdown-section tr:nth-child(2n) *{color:#111!important}
-body .markdown-section tr:nth-child(2n) code{color:#5c4300!important;background:#fff3c9}
+/* Docsify keeps wide tables in their own scroll area; all reader tables use the dark reading surface. */
+.markdown-section table{display:block;width:100%;max-width:100%;margin:var(--space-3) 0;overflow:auto;scrollbar-color:var(--line-strong) var(--surface)}
+.markdown-section tr,.markdown-section tr:nth-child(2n){background:var(--surface);border-color:var(--line)}
+.markdown-section td,.markdown-section th{padding:var(--space-1) var(--space-2);border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.markdown-section th{background:var(--surface-2);color:var(--muted);font-weight:700}
+.markdown-section td{color:var(--text)}
+.markdown-section table code{overflow-wrap:normal;white-space:nowrap}
 .markdown-section blockquote{background:var(--surface);color:var(--muted);margin:var(--space-3) 0;padding:var(--space-2) var(--space-3)}
 .source-note{display:block;margin:0 0 var(--space-3);color:var(--muted);font-size:.85rem}
 .source-note code{background:transparent}
@@ -142,7 +147,6 @@ body .markdown-section tr:nth-child(2n) code{color:#5c4300!important;background:
 .folder-files{list-style:none;margin:.85rem 0 0;padding:0}.folder-files li{display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0}.folder-files li small{flex:none;margin:0}
 .download-link,.download-pending{display:inline-block;min-width:96px;padding:.55rem .75rem;text-align:center;text-decoration:none;font:700 12px var(--font-mono);text-transform:uppercase}
 .download-link{background:var(--accent);color:#000!important}.download-pending{background:#333;color:var(--muted)}
-table{display:table!important;width:100%;border-collapse:collapse}th,td{border:0!important;padding:.7rem!important}th{background:var(--surface-2);color:var(--accent);text-align:left}
 @media (min-width:1200px){body.has-page-tree div#main{padding-right:240px}.page-tree{position:fixed;top:2rem;right:1rem;z-index:5;width:220px;max-height:calc(100vh - 4rem);margin:0;overflow:auto;background:transparent}.page-tree summary{cursor:default}}
 @media (max-width:768px){.brand span{font-size:27px}.access-label{font-size:9px}.markdown-section{padding:var(--space-3) var(--space-2) var(--space-4)}.hero{grid-template-columns:1fr;min-height:0}.hero-copy{padding:var(--space-3)}.hero img{min-height:260px;max-height:360px;grid-row:1}.portal-grid,.library-grid,.library-controls{grid-template-columns:1fr}.catalog-item{grid-template-columns:1fr}.contribute-note{align-items:flex-start;flex-direction:column}div#main{padding-bottom:var(--space-4)}.search .input-wrap{grid-template-columns:1fr}.search-result{grid-template-columns:1fr;gap:.65rem}.search-toolbar{align-items:stretch;flex-direction:column}.search-toolbar select{width:100%}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
@@ -180,10 +184,6 @@ table{display:table!important;width:100%;border-collapse:collapse}th,td{border:0
 .markdown-section .account-admin h2{margin-top:var(--space-4)}
 .account-panel p{color:var(--muted)}
 .account-panel table{margin:0 0 var(--space-3)}
-/* Key rows are ruled, not zebra-striped: the light stripe of article tables would glare inside a dark panel. */
-.markdown-section .account-panel tr{border-top:1px solid var(--line)}
-body .markdown-section .account-panel tr:nth-child(2n){background:transparent}
-body .markdown-section .account-panel tr:nth-child(2n) *{color:var(--text)!important}
 .account-actions{display:flex;flex-wrap:wrap;gap:12px;margin:0}
 .account-actions form{margin:0}
 .account-button{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 16px;border:1px solid var(--line-strong);border-radius:4px;background:transparent;color:var(--accent-soft)!important;font:700 13px/1 var(--font-ui);letter-spacing:.04em;text-transform:uppercase;text-decoration:none;white-space:nowrap;cursor:pointer;transition:border-color .15s}

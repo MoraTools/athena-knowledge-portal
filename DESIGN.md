@@ -3,7 +3,9 @@
 ## Scope
 
 Preserve the existing Spanish knowledge reader and its black-and-gold identity.
-Mi cuenta is a reader page (`/#/account`, served as `/account.md`); the password pages use the same rail and widths. Only sign-in is a standalone centred page. Administration keeps Django's native forms and lists, restyled by one control system in `server/athena/static/athena/admin.css`; the user directory (`admin/auth/user/`) is a single list-plus-panel screen on the same tokens.
+Mi cuenta is a reader page (`/#/account`, served as `/account.md`); the password pages use the same rail and widths. Only sign-in is a standalone centred page. Administration keeps Django's native forms and lists, restyled by one control system in `server/athena/static/athena/admin.css`; the user directory (`admin/auth/user/`) uses a semantic roster table and inspector on the same tokens.
+Ordinary authenticated admin pages omit the top `#header` and start with breadcrumbs and content.
+The directory starts with its own Usuarios task heading and omits breadcrumbs and the duplicate global title.
 
 ## Tokens
 
@@ -46,9 +48,10 @@ The reader declares Sigurd Variable and Rules Variable first, with locally serve
 Courier Prime is locally served for code and compact labels. Reader body text is 18px with 1.55 line height.
 Reader headings use the serif display stack. Account headings scale from 2.6rem to 4rem.
 Admin body and inputs use Archivo Narrow at 16px/1.5; help text is 14px in quiet text. Page titles use Cormorant at 34px, weight 500.
-The admin header names the section ("Administración") in the label voice, aligned with the breadcrumbs; the ATHENA wordmark belongs to the rail (see Navigation).
+The admin sign-in header shows ATHENA in the display voice and "Administración" in the label voice.
 Admin labels, fieldset and table headers, breadcrumbs, pills, meta, and dates use Courier Prime at 13px, uppercase, 0.06em tracking, in muted or quiet text.
 Button text is Archivo Narrow 700 at 13px, uppercase, 0.04em tracking.
+The directory has local display-size overrides: Usuarios is 47px/56px; the inspector heading is 44px/1.2. At 767px and below, these become 40px/48px and 36px/1.2. Its roster headers use Archivo Narrow at 14px, weight 500.
 
 ## Layout
 
@@ -57,6 +60,7 @@ Content starts at the left content edge beside the portal rail and fills the spa
 Prose, cards, timelines, grids, tables and the downloads catalog all fill the content width; only `--content-max` (1320px, centred above 1600px) bounds them.
 `.library-grid` uses `repeat(auto-fill, minmax(360px, 1fr))`, so a full-width content area shows 3 columns.
 No page scrolls horizontally from 375px to 2560px; a table that is too wide scrolls inside its own container.
+Reader tables use Surface for rows, Secondary surface for headers, and 1px Line rules below cells. Cells align at the top; code identifiers stay on one line.
 `.markdown-section` pads `--space-4 --space-4 --space-5`; at 768px and below `--space-3 --space-2 --space-4`.
 At 1200px and above, article headings appear in a fixed right-hand page tree.
 At 768px and below, reader grids, search results, controls, and catalog entries use one column.
@@ -74,13 +78,16 @@ When the changelist area is narrower than 1200px (a container query, so the rail
 Admin forms retain Django's responsive layout. Flex rows wrap and child containers use zero minimum width.
 At 767px and below, `body .aligned .form-row > div` uses `width: 100%; max-width: 100%`.
 Preserve this override; Django's default viewport-based width can extend beyond the available space when scrollbars are present.
-Admin controls are 44px high; the header toolbar buttons are 40px at 767px and below.
+Admin controls are 44px high.
+The directory keeps the 1320px cap and full 280px rail. Its wide grid divides the roster and inspector 1.55:1, with a 360px minimum inspector width. At a content-container width of 1140px and below, the two sections stack.
+The roster table has a 620px minimum width and scrolls inside its own container. A scroll cue appears only when the roster interior is below 620px wide.
 
 ## Navigation
 
 The reader and the admin share one portal rail: markup in `src/index.html` and `admin/portal_sidebar.html`, styles in `src/assets/rail.css`, behavior in `src/assets/rail.js`.
 Its links come from `sidebar_markdown()`: groups Biblioteca, Participar, Cuenta (Mi cuenta, `/#/account`), and Administración (staff only). In the admin, the model pages follow the Administración links. On `/accounts/` pages Mi cuenta is current.
-The rail carries the only ATHENA wordmark. When the rail is hidden (or absent, as on the admin sign-in), the admin header shows a small ATHENA link before its section label, and the password pages show the sign-in header's wordmark.
+The rail carries the ATHENA wordmark. Hiding the rail does not add an admin header. Admin sign-in keeps the ATHENA link and "Administración" section label; the password pages keep the sign-in header's wordmark.
+The rail provides site navigation and API para agentes. Mi cuenta keeps Cambiar contraseña and Cerrar sesión; logout uses a CSRF-protected POST form.
 Each item is a 20px line icon and an uppercase Archivo Narrow 13px label on a 40px row; group labels are gold Courier Prime 11px with 0.18em tracking. The current page is gold with a 2px right bar.
 
 | State | Rail | Behavior |
@@ -93,6 +100,7 @@ The control at the bottom of the rail switches Contraer and Expandir; its chevro
 One 360ms `cubic-bezier(.2, .8, .2, 1)` transition moves the rail width, the page offset, the labels, and the chevron; reduced motion removes it.
 The state is kept in `localStorage` (`athena.rail`), so the choice carries between the reader and the admin.
 At 768px and below the rail is an overlay drawer that starts closed and is never stored: the bottom-left menu button opens it, and Escape, a followed link, or a tap outside closes it.
+On the directory at 768px and below, `.rail-reveal` occupies a normal-flow row above the content, so it cannot cover fields. The shared overlay opening and closing behavior stays the same.
 
 ## Controls and states
 
@@ -103,11 +111,17 @@ Save controls stay disabled during upload. The helper wraps below the textarea o
 Keep visible labels, skip links, focus outlines, and reduced-motion support.
 Account and reader focus outlines are 3px gold; admin outlines use soft gold.
 Most reader surfaces are square. Admin and account controls share one shape: 44px high, 4px radius, 1px `#555` border; buttons pad 0 16px and inputs 0 12px.
-Primary buttons (default submit, Añadir, Guardar) are gold with gold-ink text; hover is soft gold. Secondary buttons (other submits, Historial and the other object tools, header tools, Buscar, Cancelar) are transparent with soft-gold text; hover turns the border gold. Danger buttons (Eliminar) are transparent with `#6b3a33` border and error text. Disabled controls are 50% opacity.
+Primary buttons (default submit, Añadir, Guardar) are gold with gold-ink text; hover is soft gold. Secondary buttons (other submits, Historial and the other object tools, Buscar, Cancelar) are transparent with soft-gold text; hover turns the border gold. Danger buttons (Eliminar) are transparent with `#6b3a33` border and error text. Disabled controls are 50% opacity.
 Changelists end with an unlabeled controls column of 36px square icon links (Ver or Descargar, Editar, Eliminar) in the secondary style, Eliminar in the danger colors; `title` and `aria-label` name each one. The column stays pinned to the right edge when the table scrolls. Eliminar opens Django's confirmation page.
 Django's action select is hidden. Checking rows shows a sticky bar above the table (count, Eliminar seleccionados, Cancelar; 36px buttons) that runs `delete_selected` through the hidden action form, so the confirmation page still protects it (`static/athena/admin-list.js`).
 Selects use a gold chevron; checkboxes and radios are 18px with a gold accent. Changelist booleans render as text pills (gold border for true, dashed quiet border for false), never icons.
 All admin colors, fonts, spacing, and control sizes are custom properties in `admin.css`; the directory stylesheet consumes them and defines none. The shared rail stylesheet defines only its own sizes and timing (`--rail-*`) and reads the page tokens.
+
+The directory roster has Usuario, Acceso, Estado, and Sesión columns. Actual accounts appear in username order. Username links select the inspector; the selected row has a gold outline and dark gold fill. Role and active status stay separate. Sesión shows the actual `last_login` date and time, or `nunca`.
+Search uses a native GET form and a live filter; both ignore case and accents. Usernames, full names, and email values are searchable. Full names also appear in username tooltips.
+The inspector uses native role radios and an active checkbox. The administrator role shows Permisos de edición; hiding that area does not reset checked values. Native field and form errors stay visible, including edit-area errors.
+When editing is permitted, one full-width gold Guardar button is the primary action. Manual password reset, API keys, and individual deletion use quieter links with 20px line icons and thin separators; the separators are horizontal on mobile. Native deletion confirmation and self/last-admin protections remain.
+Email is disabled; an empty field shows `No disponible`. The short visible help is "Servicio de correo no configurado." The full existing reason remains in the tooltip and accessible help. Existing email values stay; new email values are not saved.
 
 ## Boundaries
 

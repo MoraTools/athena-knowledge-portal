@@ -2,67 +2,91 @@
 {% block responsive %}{{ block.super }}<link rel="stylesheet" href="{% static 'athena/admin-directory.css' %}">{% endblock %}
 {% block extrahead %}{{ block.super }}<script src="{% static 'athena/admin-directory.js' %}" defer></script>{% endblock %}
 {% block bodyclass %}{{ block.super }} directory-page{% endblock %}
-{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Inicio</a> &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a> &rsaquo; {{ opts.verbose_name_plural|capfirst }}</div>{% endblock %}
+{% block breadcrumbs %}{% endblock %}
+{% block content_title %}{% endblock %}
 {% block content %}
 <div class="directory">
-  <div class="directory-list">
-    <div class="directory-search">
-      <label class="visually-hidden" for="directory-q">Buscar usuario</label>
-      <input id="directory-q" type="search" placeholder="Buscar usuario…" autocomplete="off">
+  <section class="directory-list" aria-labelledby="directory-title">
+    <h1 id="directory-title">Usuarios</h1>
+    <div class="directory-toolbar">
+      <form class="directory-search" method="get" action="{{ request.path }}" role="search">
+        {% if selected %}<input type="hidden" name="user" value="{{ selected.pk }}">{% else %}<input type="hidden" name="new" value="1">{% endif %}
+        <label class="visually-hidden" for="directory-q">Buscar usuario</label>
+        <input id="directory-q" name="q" type="search" value="{{ query }}" placeholder="Buscar usuario…" autocomplete="off" aria-controls="directory-table" aria-describedby="directory-search-help">
+        <button type="submit" aria-label="Buscar usuario"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+        <span class="visually-hidden" id="directory-search-help">Buscar por nombre de usuario, nombre o correo electrónico.</span>
+      </form>
+      <a class="button ghost directory-add" href="?new=1#user-inspector"{% if not selected %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v16M4 12h16"/></svg>Nuevo usuario</a>
     </div>
-    <ul>
-      {% for user, seen, role in users %}
-      <li data-search="{{ user.username }} {{ user.get_full_name }} {{ user.email }}"><a href="?user={{ user.pk }}"{% if user.pk == selected.pk %} aria-current="true"{% endif %}>{{ user.username }}<small>{{ seen }}</small><span class="pill{% if role == 'Admin' %} gold{% elif role == 'Inactivo' %} off{% endif %}">{{ role }}</span></a></li>
-      {% endfor %}
-    </ul>
-    <p class="directory-empty" hidden>Sin coincidencias.</p>
-    <a class="button ghost directory-add" href="?new=1"{% if not selected %} aria-current="page"{% endif %}>+ Nuevo usuario</a>
-  </div>
-  <form class="directory-panel" method="post" action="{% if selected %}?user={{ selected.pk }}{% else %}?new=1{% endif %}" novalidate>{% csrf_token %}
+    <p class="directory-scroll-hint"><span>Desplace la tabla para ver Estado y Sesión.</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h16m-4-4 4 4-4 4"/></svg></p>
+    <div class="directory-results" tabindex="0" role="region" aria-label="Directorio de usuarios">
+      <table class="directory-table" id="directory-table">
+        <caption class="visually-hidden">Seleccione un usuario para editar su perfil y acceso.</caption>
+        <colgroup><col class="directory-user-column"><col class="directory-role-column"><col class="directory-status-column"><col class="directory-session-column"></colgroup>
+        <thead><tr><th scope="col">Usuario</th><th scope="col">Acceso</th><th scope="col">Estado</th><th scope="col">Sesión</th></tr></thead>
+        <tbody>
+          {% for user, seen, role, matches in users %}
+          <tr data-search="{{ user.username }} {{ user.get_full_name }} {{ user.email }}"{% if user.pk == selected.pk %} class="is-selected"{% endif %}{% if not matches %} hidden{% endif %}>
+            <th scope="row"><a href="?user={{ user.pk }}#user-inspector"{% if user.pk == selected.pk %} aria-current="true"{% endif %}{% if user.get_full_name %} title="{{ user.get_full_name }}"{% endif %}>{{ user.username }}</a></th>
+            <td><span class="pill{% if user.is_staff %} gold{% endif %}">{{ role }}</span></td>
+            <td><span class="directory-status{% if not user.is_active %} off{% endif %}">{% if user.is_active %}Activa{% else %}Inactiva{% endif %}</span></td>
+            <td class="directory-session">{% if user.last_login %}<time datetime="{{ user.last_login|date:'c' }}" title="{{ seen }}">{{ user.last_login|date:'d/m/Y H:i' }}</time>{% else %}nunca{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="directory-empty" role="status"{% if has_matches %} hidden{% endif %}>No hay usuarios que coincidan con la búsqueda. Pruebe otro nombre.</p>
+  </section>
+  <form class="directory-panel" id="user-inspector" aria-labelledby="inspector-title" method="post" action="{% if selected %}?user={{ selected.pk }}{% else %}?new=1{% endif %}" novalidate>{% csrf_token %}
     <header>
       {% if selected %}
-      <h2>{{ form.initial.username }}</h2>
-      <span class="mono">alta {{ selected.date_joined|date:'d/m/Y' }} · sesión {% if selected.last_login %}{{ selected.last_login|date:'d/m/Y H:i' }}{% else %}nunca{% endif %}</span>
+      <h2 id="inspector-title">{% if selected.get_full_name %}{{ selected.get_full_name }}{% else %}{{ selected.username }}{% endif %}</h2>
+      <p class="mono">alta {{ selected.date_joined|date:'d/m/Y' }} · sesión {% if selected.last_login %}{{ selected.last_login|date:'d/m/Y H:i' }}{% else %}nunca{% endif %}</p>
       {% else %}
-      <h2>Nuevo usuario</h2>
+      <h2 id="inspector-title">Nuevo usuario</h2>
       {% endif %}
     </header>
+    {{ form.non_field_errors }}
     <div class="compact">
       <div class="full"><label class="label" for="{{ form.username.id_for_label }}">Nombre de usuario</label>{{ form.username }}{{ form.username.errors }}</div>
       {% if not selected %}
-      <div><label class="label" for="{{ form.password1.id_for_label }}">Contraseña</label>{{ form.password1 }}{{ form.password1.errors }}<div class="help" id="{{ form.password1.auto_id }}_helptext">{{ form.password1.help_text|safe }}</div></div>
-      <div><label class="label" for="{{ form.password2.id_for_label }}">Confirmar contraseña</label>{{ form.password2 }}{{ form.password2.errors }}<div class="help" id="{{ form.password2.auto_id }}_helptext">{{ form.password2.help_text|safe }}</div></div>
+      <div class="full"><label class="label" for="{{ form.password1.id_for_label }}">Contraseña</label>{{ form.password1 }}{{ form.password1.errors }}<div class="help" id="{{ form.password1.auto_id }}_helptext">{{ form.password1.help_text|safe }}</div></div>
+      <div class="full"><label class="label" for="{{ form.password2.id_for_label }}">Confirmar contraseña</label>{{ form.password2 }}{{ form.password2.errors }}<div class="help" id="{{ form.password2.auto_id }}_helptext">{{ form.password2.help_text|safe }}</div></div>
       {% endif %}
       <div><label class="label" for="{{ form.first_name.id_for_label }}">Nombre</label>{{ form.first_name }}{{ form.first_name.errors }}</div>
       <div><label class="label" for="{{ form.last_name.id_for_label }}">Apellidos</label>{{ form.last_name }}{{ form.last_name.errors }}</div>
-      <div class="full"><label class="label" for="{{ form.email.id_for_label }}">Correo electrónico</label>{{ form.email }}{{ form.email.errors }}<p class="help" id="{{ form.email.auto_id }}_helptext">{{ form.email.help_text }}</p></div>
-      <fieldset class="full">
+      <div class="full"><label class="label" for="{{ form.email.id_for_label }}">Correo electrónico</label>{{ form.email }}{{ form.email.errors }}<p class="help">Servicio de correo no configurado.</p><p class="visually-hidden" id="{{ form.email.auto_id }}_helptext">{{ form.email.help_text }}</p></div>
+      <fieldset class="full directory-access">
         <legend class="label">Acceso</legend>
-        <div class="chips">
-          {% for radio in form.role %}<label class="chip">{{ radio.tag }}{{ radio.choice_label }}</label>{% endfor %}
-          <label class="chip chip-apart">{{ form.is_active }}Activa</label>
+        <div class="directory-choices">
+          {% for radio in form.role %}<label class="directory-choice">{{ radio.tag }}{{ radio.choice_label }}</label>{% endfor %}
         </div>
-        {{ form.role.errors }}{{ form.is_active.errors }}{{ form.non_field_errors }}
+        {{ form.role.errors }}
+        <label class="directory-choice directory-active">{{ form.is_active }}Usuario activo</label>
+        {{ form.is_active.errors }}
       </fieldset>
-      <fieldset class="full directory-edits">
-        <legend class="label">Permisos de edición</legend>
-        <div class="chips">
-          {% for box in form.edits %}<label class="chip">{{ box.tag }}{{ box.choice_label }}</label>{% endfor %}
-        </div>
-        <p class="help">Sin marcar, el administrador solo consulta.</p>
+      <div class="full directory-edit-area">
         {{ form.edits.errors }}
-      </fieldset>
+        <fieldset class="directory-edits">
+          <legend class="label">Permisos de edición</legend>
+          {% for box in form.edits %}<label class="directory-choice">{{ box.tag }}{{ box.choice_label }}</label>{% endfor %}
+          <p class="help">Sin marcar, el administrador solo consulta.</p>
+        </fieldset>
+      </div>
     </div>
     <div class="bar">
-      {% if can_edit %}<button class="button default" type="submit">Guardar</button>{% else %}<span class="help">Solo un administrador con todos los permisos puede editar esta cuenta.</span>{% endif %}
+      {% if can_edit %}<button class="button default" type="submit">Guardar</button>{% else %}<p class="help">Solo un administrador con todos los permisos puede editar esta cuenta.</p>{% endif %}
       {% if selected and can_edit %}
-      <a class="button ghost" href="{% url 'admin:auth_user_password_change' selected.pk %}">Restablecer contraseña</a>
-      <a class="link" href="{% url 'admin:athena_apikey_changelist' %}?user__id__exact={{ selected.pk }}">{{ api_keys }} clave{{ api_keys|pluralize:'s' }} de API</a>
-      {% if selected.pk == request.user.pk %}
-      <span class="link danger" aria-disabled="true" title="No puedes eliminar tu propia cuenta">Eliminar</span>
-      {% else %}
-      <a class="link danger" href="{% url 'admin:auth_user_delete' selected.pk %}">Eliminar</a>
-      {% endif %}
+      <div class="directory-actions">
+        <a class="link" href="{% url 'admin:auth_user_password_change' selected.pk %}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3"/></svg>Restablecer contraseña</a>
+        <a class="link" href="{% url 'admin:athena_apikey_changelist' %}?user__id__exact={{ selected.pk }}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg>{{ api_keys }} clave{{ api_keys|pluralize:'s' }} de API</a>
+        {% if selected.pk == request.user.pk %}
+        <span class="link danger" aria-disabled="true" title="No puedes eliminar tu propia cuenta"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Eliminar</span>
+        {% else %}
+        <a class="link danger" href="{% url 'admin:auth_user_delete' selected.pk %}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Eliminar</a>
+        {% endif %}
+      </div>
       {% endif %}
     </div>
   </form>

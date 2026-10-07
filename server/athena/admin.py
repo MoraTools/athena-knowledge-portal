@@ -1,3 +1,5 @@
+import unicodedata
+
 from django.contrib import admin, messages
 from django.contrib.admin.options import IS_POPUP_VAR
 from django.contrib.auth.admin import UserAdmin
@@ -38,10 +40,8 @@ def since(moment, now):
     return 'ayer' if days == 1 else f'hace {days} días'
 
 
-def pill(user):
-    if not user.is_active:
-        return 'Inactivo'
-    return 'Admin' if user.is_staff else 'Lector'
+def fold(text):
+    return ''.join(char for char in unicodedata.normalize('NFD', text) if not unicodedata.combining(char)).lower()
 
 
 def flag(value, yes, no):
@@ -145,12 +145,18 @@ class AthenaUserAdmin(UserAdmin):
                 return redirect(request.path + f'?user={saved.pk}')
         else:
             form = form_class(instance=selected, actor=request.user)
+        form.fields['email'].widget.attrs['placeholder'] = 'No disponible'
         now = timezone.now()
+        query = request.GET.get('q', '').strip()
+        needle = fold(query)
         # ponytail: whole user list in one page; paginate or search server-side past a few hundred accounts.
-        users = [(user, since(user.last_login, now), pill(user)) for user in User.objects.order_by('username')]
+        users = [(user, since(user.last_login, now), 'Administrador' if user.is_staff else 'Lector',
+                  needle in fold(f'{user.username} {user.get_full_name()} {user.email}'))
+                 for user in User.objects.order_by('username')]
         return TemplateResponse(request, 'admin/auth/user/directory.html', {
             **self.admin_site.each_context(request), **(extra_context or {}),
-            'title': 'Directorio', 'opts': self.opts, 'form': form, 'selected': selected, 'users': users,
+            'title': 'Usuarios', 'opts': self.opts, 'form': form, 'selected': selected, 'users': users,
+            'query': query, 'has_matches': any(row[3] for row in users),
             'api_keys': ApiKey.objects.filter(user=selected).count() if selected else 0,
             'can_edit': self.has_add_permission(request) if creating else self.has_change_permission(request, selected),
         })

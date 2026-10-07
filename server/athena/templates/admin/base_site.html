@@ -3,15 +3,7 @@
 {% block extrahead %}{{ block.super }}<link rel="icon" href="/assets/favicon.svg"><meta name="robots" content="noindex, nofollow"><script src="/assets/session.js" data-session="{{ user.pk|default:0 }}" defer></script>{% if cl %}<script src="{% static 'athena/admin-list.js' %}" defer></script>{% endif %}{% endblock %}
 {# Loaded after Django's responsive.css so the Athena system wins at equal specificity; rail.js after the viewport meta so its narrow-screen check is right. #}
 {% block responsive %}{{ block.super }}<script src="/assets/rail.js"></script><link rel="stylesheet" href="{% static 'athena/admin.css' %}"><link rel="stylesheet" href="/assets/rail.css"><link rel="stylesheet" href="{% static 'athena/admin-sidebar.css' %}">{% endblock %}
-{# The rail carries the wordmark; the header shows it only when the rail is hidden or absent (admin.css). #}
+{# Signed-in administration uses the portal rail; sign-in keeps its branding. #}
+{% block header %}{% if not has_permission %}{{ block.super }}{% endif %}{% endblock %}
 {% block branding %}<div id="site-name"><a class="site-brand" href="/">ATHENA</a><a class="site-section" href="{% url 'admin:index' %}">Administración</a></div>{% endblock %}
-{% block usertools %}{% if has_permission %}
-<div id="user-tools">
-  <span class="user-chip">{% firstof user.get_short_name user.get_username %}</span>
-  {% if site_url %}<a class="button" href="{{ site_url }}">Ver el sitio</a>{% endif %}
-  <a class="button" href="/api.md">API para agentes</a>
-  {% if user.has_usable_password %}<a class="button" href="{% url 'admin:password_change' %}">Cambiar contraseña</a>{% endif %}
-  <form id="logout-form" method="post" action="{% url 'admin:logout' %}">{% csrf_token %}<button class="button" type="submit">Cerrar sesión</button></form>
-</div>
-{% endif %}{% endblock %}
 {% block nav-sidebar %}{% portal_sidebar %}{% endblock %}

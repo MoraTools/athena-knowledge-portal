@@ -267,8 +267,8 @@ class PortalTests(TestCase):
 
         self.client.force_login(self.admin)
         response = self.client.get(url)
-        self.assertContains(response, 'administrator<small>ahora</small><span class="pill gold">Admin</span>')
-        self.assertContains(response, 'reader<small>ahora</small><span class="pill">Lector</span>')
+        self.assertContains(response, '<span class="pill gold">Administrador</span>')
+        self.assertContains(response, '<span class="pill">Lector</span>')
         self.assertContains(response, 'title="No puedes eliminar tu propia cuenta"')
         self.assertNotContains(response, f'/admin/auth/user/{self.admin.pk}/delete/')
         self.assertRedirects(self.client.get(f'/admin/auth/user/{self.reader.pk}/change/'), f'{url}?user={self.reader.pk}')
@@ -278,7 +278,7 @@ class PortalTests(TestCase):
         self.reader.save()
         response = self.client.get(f'{url}?user={self.reader.pk}')
         self.assertContains(response, 'value="reader@example.com"')
-        self.assertContains(response, f'href="?user={self.reader.pk}" aria-current="true"')
+        self.assertContains(response, f'href="?user={self.reader.pk}#user-inspector" aria-current="true"')
         self.assertContains(response, f'/admin/auth/user/{self.reader.pk}/delete/')
         self.assertContains(response, f'/admin/auth/user/{self.reader.pk}/password/')
         self.assertContains(response, '0 claves de API')
@@ -309,6 +309,43 @@ class PortalTests(TestCase):
         self.assertTrue(Client().login(username='nueva', password='Fresh-Reader-Pass-8824!'))
         self.assertEqual(self.client.get(f'/admin/athena/apikey/?user__id__exact={created.pk}').status_code, 200)
 
+    def test_directory_table_keeps_role_status_and_session_separate(self):
+        inactive = User.objects.create_user('inactive-admin', first_name='María', last_name='Salas',
+                                             is_staff=True, is_active=False)
+        never = User.objects.create_user('long-' + 'u' * 145, first_name='Nombre largo', last_name='Apellido largo')
+        self.client.force_login(self.admin)
+        response = self.client.get(f'/admin/auth/user/?user={inactive.pk}')
+        table = re.search(r'<table class="directory-table".*?</table>', response.content.decode(), re.S).group()
+        for heading in ['Usuario', 'Acceso', 'Estado', 'Sesión']:
+            self.assertIn(f'<th scope="col">{heading}</th>', table)
+        row = re.search(r'<tr[^>]*data-search="inactive-admin.*?</tr>', table, re.S).group()
+        self.assertIn('class="is-selected"', row)
+        self.assertIn(f'href="?user={inactive.pk}#user-inspector" aria-current="true"', row)
+        self.assertIn('title="María Salas"', row)
+        self.assertIn('<span class="pill gold">Administrador</span>', row)
+        self.assertIn('<span class="directory-status off">Inactiva</span>', row)
+        self.assertIn('<td class="directory-session">nunca</td>', row)
+        self.assertNotIn('Lector', row)
+        self.assertIn(never.username, table)
+        self.assertNotContains(response, 'Datos de ejemplo')
+        self.assertNotContains(response, 'action-toggle')
+
+    def test_directory_native_search_ignores_case_and_accents(self):
+        self.reader.first_name, self.reader.last_name = 'María', 'Salas'
+        self.reader.save()
+        self.client.force_login(self.admin)
+        url = f'/admin/auth/user/?user={self.reader.pk}'
+        response = self.client.get(url, {'q': '  MARIA salas  ', 'user': self.reader.pk})
+        self.assertEqual(response.context['query'], 'MARIA salas')
+        matches = {user.pk: match for user, _, _, match in response.context['users']}
+        self.assertEqual(matches, {self.admin.pk: False, self.reader.pk: True})
+        self.assertContains(response, 'name="q" type="search" value="MARIA salas"')
+        self.assertContains(response, '<p class="directory-empty" role="status" hidden>')
+        response = self.client.get(url, {'q': 'Sin coincidencias', 'user': self.reader.pk})
+        self.assertFalse(response.context['has_matches'])
+        self.assertContains(response, '<p class="directory-empty" role="status">')
+        self.assertTrue(all(not row[3] for row in response.context['users']))
+
     def directory_admin(self, username, edits):
         form = DirectoryUserForm({'username': username, 'role': 'admin', 'edits': edits, 'is_active': 'on'},
                                  instance=User.objects.create_user(username, password='Staff-Example-7215!'), actor=self.admin)
@@ -325,6 +362,9 @@ class PortalTests(TestCase):
         self.assertTrue(response.context['form'].fields['email'].disabled)
         self.assertRegex(response.content.decode(), r'<input[^>]*name="email"[^>]*disabled')
         self.assertContains(response, f'title="{EMAIL_UNAVAILABLE}"')
+        self.assertContains(response, 'placeholder="No disponible"')
+        self.assertContains(response, '<p class="help">Servicio de correo no configurado.</p>')
+        self.assertContains(response, f'<p class="visually-hidden" id="id_email_helptext">{EMAIL_UNAVAILABLE}</p>')
         self.assertContains(response, 'tabindex="0" role="group" aria-label="Correo electrónico no disponible" aria-describedby="id_email_helptext"')
         self.assertContains(response, 'id="id_email_helptext"')
         for posted in [{'email': 'malicious@example.com'}, {}]:
@@ -470,6 +510,8 @@ class PortalTests(TestCase):
                     'password1': 'Fresh-Reader-Pass-8824!', 'password2': 'Fresh-Reader-Pass-8824!'})
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.context['form'].errors.as_data()['edits'][0].code, 'invalid_choice')
+                self.assertRegex(response.content.decode(),
+                                 r'<div class="full directory-edit-area">\s*<ul class="errorlist"[^>]*>')
                 self.assertEqual(User.objects.count(), count)
                 self.assertFalse(User.objects.filter(username='invalid-reader').exists())
         self.reader.refresh_from_db()
@@ -694,12 +736,15 @@ class PortalTests(TestCase):
         item = '<a class="rail-item" href="{}"{}><span class="rail-label">{}</span></a>'.format
         reader_links = [item('/', '', 'Inicio'), item('/#/guides', '', 'Guías'), item('/#/content/contributing', '', 'Contribuir'),
                         item('/#/account', '', 'Mi cuenta')]
-        for path in ['/admin/', '/admin/auth/user/']:
+        for path in ['/admin/', '/admin/auth/user/', '/admin/athena/article/', '/admin/athena/apikey/', '/admin/athena/download/']:
             response = self.client.get(path)
+            self.assertNotContains(response, 'id="header"')
+            self.assertNotContains(response, 'id="user-tools"')
+            self.assertNotContains(response, 'class="site-brand"')
             self.assertNotContains(response, 'id="nav-sidebar"')
             self.assertNotContains(response, '>Administrar</h2>')
             self.assertContains(response, '<script src="/assets/rail.js"></script>')
-            for link in reader_links + ['>Artículos</span></a>', '>Claves de API</span></a>']:
+            for link in reader_links + [item('/#/api', '', 'API para agentes'), '>Artículos</span></a>', '>Claves de API</span></a>']:
                 self.assertContains(response, link, html=False)
             page = response.content.decode()
             labels = re.findall(r'<h2 class="rail-group-label"[^>]*>([^<]+)</h2>', page)
@@ -708,11 +753,15 @@ class PortalTests(TestCase):
             self.assertLess(admin_group.index('>API para agentes</span>'), admin_group.index('>Artículos</span>'))
             self.assertEqual(page.count('aria-current="page"'), 1)
         self.assertContains(response, item('/admin/', '', 'Administrar Athena'))
-        self.assertContains(response, item('/admin/auth/user/', ' aria-current="page"', 'Usuarios'))
+        self.assertContains(self.client.get('/admin/auth/user/'), item('/admin/auth/user/', ' aria-current="page"', 'Usuarios'))
         self.assertContains(self.client.get('/admin/'), item('/admin/', ' aria-current="page"', 'Administrar Athena'))
         self.assertContains(self.client.get('/admin/athena/article/add/'),
                             item('/admin/athena/article/', ' aria-current="page"', 'Artículos'))
         self.assertNotContains(self.client.get('/admin/auth/user/add/?_popup=1'), 'class="rail"')
+        response = Client().get('/admin/login/')
+        self.assertContains(response, 'id="header"')
+        self.assertContains(response, '<a class="site-brand" href="/">ATHENA</a>')
+        self.assertContains(response, '<a class="site-section" href="/admin/">Administración</a>')
 
     def test_sidebar_uses_feed_label_for_spanish_and_english(self):
         root = Path(self.enterContext(tempfile.TemporaryDirectory()))
@@ -764,10 +813,21 @@ class PortalTests(TestCase):
         self.client.force_login(self.admin)
         page = self.client.get('/account.md').content.decode()
         self.assertIn('Administrador · Última sesión', page)
+        self.assertIn('href="/accounts/password_change/">Cambiar contraseña</a>', page)
         self.assertIn('admin-key', page)
         self.assertIn('href="/admin/athena/apikey/add/">Crear clave</a>', page)
         for link in ['/admin/athena/article/', '/admin/athena/apikey/', '/admin/athena/download/', '/admin/auth/user/']:
             self.assertIn(f'href="{link}"', page)
+
+    def test_account_logout_requires_post_and_csrf(self):
+        strict = Client(enforce_csrf_checks=True)
+        strict.force_login(self.admin)
+        page = strict.get('/account.md').content.decode()
+        token = re.search(r'name="csrfmiddlewaretoken" value="(\w+)"', page)[1]
+        self.assertEqual(strict.get('/accounts/logout/').status_code, 405)
+        self.assertEqual(strict.post('/accounts/logout/').status_code, 403)
+        self.assertEqual(strict.post('/accounts/logout/', {'csrfmiddlewaretoken': token}).status_code, 302)
+        self.assertEqual(strict.get('/account.md').status_code, 404)
 
     def test_account_redirects_and_password_pages(self):
         self.assertRedirects(self.client.get('/accounts/profile/'), '/#/account', fetch_redirect_response=False)
@@ -804,7 +864,7 @@ class PortalTests(TestCase):
             self.assertLess(page.index('<select name="action"'), page.index('<table id="result_list">'))
         self.assertNotContains(self.client.get(f'/admin/athena/article/{self.article.pk}/change/'), 'admin-list.js')
         response = self.client.get('/admin/athena/article/')
-        self.assertContains(response, '<a class="site-brand" href="/">ATHENA</a>')  # Shown by CSS only without a visible rail.
+        self.assertNotContains(response, '<a class="site-brand" href="/">ATHENA</a>')
         self.assertNotContains(response, 'ATHENA <span>')
 
     def test_relative_last_login(self):
