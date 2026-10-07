@@ -35,7 +35,7 @@
       {% endif %}
       <div><label class="label" for="{{ form.first_name.id_for_label }}">Nombre</label>{{ form.first_name }}{{ form.first_name.errors }}</div>
       <div><label class="label" for="{{ form.last_name.id_for_label }}">Apellidos</label>{{ form.last_name }}{{ form.last_name.errors }}</div>
-      <div class="full"><label class="label" for="{{ form.email.id_for_label }}">Correo electrónico</label>{{ form.email }}{{ form.email.errors }}</div>
+      <div class="full"><label class="label" for="{{ form.email.id_for_label }}">Correo electrónico</label>{{ form.email }}{{ form.email.errors }}<p class="help" id="{{ form.email.auto_id }}_helptext">{{ form.email.help_text }}</p></div>
       <fieldset class="full">
         <legend class="label">Acceso</legend>
         <div class="chips">

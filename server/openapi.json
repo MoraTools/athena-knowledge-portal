@@ -1010,7 +1010,8 @@
             "type": "string"
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "description": "Temporarily unavailable for new or changed values because Athena email is not configured. On creation omit this field or send an empty string. On PATCH omit it to preserve the stored address, or send the identical existing value. Changes return 400. Read responses still include existing addresses; password recovery is through an administrator."
           },
           "password": {
             "type": "string",

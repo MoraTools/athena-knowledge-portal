@@ -9,6 +9,17 @@ from django.db.models import Q
 from .models import Article
 
 
+EMAIL_UNAVAILABLE = ('El servicio de correo de Athena aún no está configurado. Por ahora no se pueden ingresar ni guardar correos. '
+                     'Para recuperar su contraseña, contacte al administrador.')
+
+
+def disable_email_field(field):
+    field.disabled = True
+    field.help_text = EMAIL_UNAVAILABLE
+    field.widget.attrs['title'] = EMAIL_UNAVAILABLE
+    field.widget.template_name = 'admin/auth/user/disabled_email.html'
+
+
 def read_upload(upload, extension, limit):
     if not upload.name.lower().endswith(extension) or upload.size > limit:
         raise ValidationError(f'Use un archivo {extension} de hasta {limit // 1024 // 1024} MiB.')
@@ -91,6 +102,16 @@ def protect_admin(user, *, actor, active=True, admin=True, deleting=False):
 
 
 class SafeUserChangeForm(UserChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'email' in self.fields:
+            disable_email_field(self.fields['email'])
+
+    def save(self, commit=True):
+        if 'email' in self.fields:
+            self.instance.email = self.initial.get('email', '') if self.instance.pk else ''
+        return super().save(commit)
+
     def clean(self):
         data = super().clean()
         if self.instance.pk:
@@ -150,6 +171,7 @@ class DirectoryUserForm(forms.ModelForm):
             self.initial.setdefault('edits', sorted(held_areas(user)))
         for name in ['first_name', 'last_name', 'email']:
             self.fields[name].widget.attrs['placeholder'] = 'Opcional'
+        disable_email_field(self.fields['email'])
         self.fields['username'].help_text = self.fields['is_active'].help_text = ''
 
     def clean(self):
@@ -164,6 +186,7 @@ class DirectoryUserForm(forms.ModelForm):
         return data
 
     def save(self, commit=True):
+        self.instance.email = self.initial.get('email', '') if self.instance.pk else ''
         admin = self.cleaned_data['role'] == 'admin'
         self.instance.is_staff = admin
         self.instance.is_superuser = admin and set(self.cleaned_data['edits']) == set(EDIT_AREAS)

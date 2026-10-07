@@ -285,6 +285,8 @@ def users(request, user_id=None):
             raise ValidationError('Unknown user fields.')
         if any(not isinstance(v, bool) if k in ('active', 'admin') else not isinstance(v, str) for k, v in data.items()):
             raise ValidationError('User fields must be strings; active and admin must be booleans.')
+        if 'email' in data and data['email'] != user.email:
+            raise ValidationError('Email entry and changes are temporarily unavailable because Athena email is not configured. Omit email; new accounts use a blank value.')
         active, admin = data.get('active', user.is_active), data.get('admin', user.is_superuser)
         # admin means a full superuser; an unchanged value keeps an administrator's granular edit areas.
         changed = admin != user.is_superuser

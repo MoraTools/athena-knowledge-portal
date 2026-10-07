@@ -18,7 +18,7 @@ from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
 from .admin import since
-from .forms import ArticleForm, DirectoryUserForm
+from .forms import ArticleForm, DirectoryUserForm, EMAIL_UNAVAILABLE
 from .models import ApiKey, Article, Download, LoginAttempt
 from .views import article_html, pdf_fetcher, sidebar_links
 
@@ -315,6 +315,90 @@ class PortalTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         return form.save()
 
+    def test_directory_blocks_email_writes_and_preserves_existing_addresses(self):
+        original_email = ' Existing@EXAMPLE.com '
+        self.reader.email = original_email
+        self.reader.save()
+        self.client.force_login(self.admin)
+        url = f'/admin/auth/user/?user={self.reader.pk}'
+        response = self.client.get(url)
+        self.assertTrue(response.context['form'].fields['email'].disabled)
+        self.assertRegex(response.content.decode(), r'<input[^>]*name="email"[^>]*disabled')
+        self.assertContains(response, f'title="{EMAIL_UNAVAILABLE}"')
+        self.assertContains(response, 'tabindex="0" role="group" aria-label="Correo electrónico no disponible" aria-describedby="id_email_helptext"')
+        self.assertContains(response, 'id="id_email_helptext"')
+        for posted in [{'email': 'malicious@example.com'}, {}]:
+            with self.subTest(posted=posted):
+                data = {'username': self.reader.username, 'first_name': 'Changed', 'role': 'reader', 'is_active': 'on', **posted}
+                self.assertRedirects(self.client.post(url, data), url)
+                self.reader.refresh_from_db()
+                self.assertEqual((self.reader.email, self.reader.first_name), (original_email, 'Changed'))
+        response = self.client.post('/admin/auth/user/?new=1', {'username': 'email-blocked-new',
+            'email': 'malicious@example.com', 'role': 'reader', 'is_active': 'on',
+            'password1': 'Fresh-Reader-Pass-8824!', 'password2': 'Fresh-Reader-Pass-8824!'})
+        user = User.objects.get(username='email-blocked-new')
+        self.assertRedirects(response, f'/admin/auth/user/?user={user.pk}')
+        self.assertEqual((user.email, user.is_staff, user.is_superuser), ('', False, False))
+        self.assertTrue(Client().login(username=user.username, password='Fresh-Reader-Pass-8824!'))
+
+    def test_native_user_popups_block_email_writes_and_keep_manual_creation(self):
+        original_email = ' Existing@EXAMPLE.com '
+        self.reader.email = original_email
+        self.reader.save()
+        self.client.force_login(self.admin)
+        url = f'/admin/auth/user/{self.reader.pk}/change/?_popup=1'
+        response = self.client.get(url)
+        self.assertTrue(response.context['adminform'].form.fields['email'].disabled)
+        self.assertContains(response, f'title="{EMAIL_UNAVAILABLE}"')
+        self.assertContains(response, 'tabindex="0" role="group" aria-label="Correo electrónico no disponible" aria-describedby="id_email_helptext"')
+        self.assertContains(response, 'id="id_email_helptext"')
+        joined = timezone.localtime(self.reader.date_joined)
+        for posted in [{'email': 'malicious@example.com'}, {}]:
+            with self.subTest(posted=posted):
+                response = self.client.post(url, {'username': self.reader.username, 'first_name': 'Popup',
+                    '_popup': '1', 'is_active': 'on', 'date_joined_0': joined.strftime('%Y-%m-%d'),
+                    'date_joined_1': joined.strftime('%H:%M:%S'), **posted})
+                self.assertEqual(response.status_code, 200)
+                self.reader.refresh_from_db()
+                self.assertEqual((self.reader.email, self.reader.first_name), (original_email, 'Popup'))
+        url = '/admin/auth/user/add/?_popup=1'
+        self.assertNotContains(self.client.get(url), 'name="email"')
+        response = self.client.post(url, {'username': 'popup-email-blocked', 'email': 'malicious@example.com',
+            '_popup': '1', 'usable_password': 'true', 'password1': 'Fresh-Reader-Pass-8824!', 'password2': 'Fresh-Reader-Pass-8824!'})
+        self.assertEqual(response.status_code, 200)
+        user = User.objects.get(username='popup-email-blocked')
+        self.assertEqual(user.email, '')
+        self.assertTrue(Client().login(username=user.username, password='Fresh-Reader-Pass-8824!'))
+
+    def test_user_api_rejects_email_changes_and_preserves_read_values(self):
+        headers, _ = self.key(self.admin, 'admin')
+        url = f'/api/v1/users/{self.reader.pk}/'
+        self.reader.email = 'existing@example.com'
+        self.reader.save()
+        for value in ['new@example.com', '', None, [], {}]:
+            with self.subTest(email=value):
+                response = self.client.patch(url, json.dumps({'email': value, 'first_name': 'Rejected'}),
+                                             content_type='application/json', **headers)
+                self.assertEqual(response.status_code, 400)
+                self.reader.refresh_from_db()
+                self.assertEqual((self.reader.email, self.reader.first_name), ('existing@example.com', ''))
+        for data in [{'first_name': 'API'}, {'email': 'existing@example.com', 'first_name': 'API'}]:
+            response = self.client.patch(url, json.dumps(data), content_type='application/json', **headers)
+            self.assertEqual(response.status_code, 200, response.content)
+            self.assertEqual((response.json()['email'], response.json()['first_name']), ('existing@example.com', 'API'))
+        self.assertEqual(self.client.get(url, **headers).json()['email'], 'existing@example.com')
+        create = {'username': 'api-email-rejected', 'email': 'new@example.com', 'password': 'Fresh-Reader-Pass-8824!'}
+        response = self.client.post('/api/v1/users/', json.dumps(create), content_type='application/json', **headers)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('temporarily unavailable', str(response.json()['error']))
+        self.assertFalse(User.objects.filter(username='api-email-rejected').exists())
+        for username, email in [('api-email-omitted', {}), ('api-email-blank', {'email': ''})]:
+            response = self.client.post('/api/v1/users/', json.dumps({'username': username,
+                'password': 'Fresh-Reader-Pass-8824!', **email}), content_type='application/json', **headers)
+            self.assertEqual(response.status_code, 201, response.content)
+            self.assertEqual(User.objects.get(username=username).email, '')
+        self.assertEqual(self.client.post('/api/v1/users/invitations/', '{}', content_type='application/json', **headers).status_code, 404)
+
     def test_partial_admin_creates_reader_with_stale_edits(self):
         self.client.force_login(self.directory_admin('manager', ['users']))
         url = '/admin/auth/user/?new=1'
@@ -345,7 +429,7 @@ class PortalTests(TestCase):
                 self.assertRedirects(response, url)
                 user.refresh_from_db()
                 self.assertEqual((user.email, user.is_staff, user.is_superuser, user.user_permissions.count()),
-                                 ('updated@example.com', False, False, 0))
+                                 ('', False, False, 0))
         response = self.client.post(f'/admin/auth/user/?user={manager.pk}', {
             'username': manager.username, 'role': 'reader', 'edits': ['articles', 'downloads', 'users'], 'is_active': 'on'})
         self.assertContains(response, 'No puede quitar su propio acceso de administrador.')
@@ -469,7 +553,7 @@ class PortalTests(TestCase):
         self.client.force_login(self.admin)
         self.assertContains(self.client.get('/admin/'), 'Todavía no hay actividad')
         self.client.post('/admin/auth/user/?user=%s' % self.reader.pk,
-                         {'username': 'reader', 'role': 'reader', 'edits': [], 'is_active': 'on', 'email': 'r@example.com'})
+                         {'username': 'reader', 'role': 'reader', 'edits': [], 'is_active': 'on'})
         page = self.client.get('/admin/')
         self.assertContains(page, 'Última actividad')
         self.assertContains(page, '<strong>administrator</strong> editó usuario · ahora')
@@ -583,10 +667,11 @@ class PortalTests(TestCase):
                                      content_type='application/json', **headers)
         self.assertEqual(response.status_code, 400)
         # An API update that leaves admin unchanged keeps an administrator's edit areas.
-        response = self.client.patch(f'/api/v1/users/{editor.pk}/', '{"email":"editor@example.com","admin":false}',
+        response = self.client.patch(f'/api/v1/users/{editor.pk}/', '{"first_name":"Updated","admin":false}',
                                      content_type='application/json', **headers)
         self.assertEqual(response.status_code, 200, response.content)
         editor = User.objects.get(pk=editor.pk)
+        self.assertEqual(editor.first_name, 'Updated')
         self.assertTrue(editor.is_staff and editor.has_perm('athena.change_article'))
 
     def test_portal_sidebar(self):

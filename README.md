@@ -21,6 +21,7 @@ The user directory shows every account on the left and the selected account on t
 The current administrator cannot remove their own administrative access.
 Password changes invalidate other sessions and the user's API keys. Disabling or deleting a user blocks both browser and API access.
 There is no public registration or email password-reset service. Users contact an administrator for recovery.
+Email entry is temporarily disabled in user forms and the API because Athena email is not configured. New users have a blank email; existing addresses are preserved.
 
 Initial production credentials are saved outside Git in `.secrets/production-admin.txt` and on the VPS in `/etc/athena/initial-admin.txt`.
 Sign in and change the initial password. Credentials are not written to deployment output.

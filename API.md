@@ -131,6 +131,9 @@ curl --fail-with-body https://athena.moratechnology.com/api/v1/downloads/ \
 Create a user with `username` and a password of at least 12 characters.
 PATCH user fields `username`, `password`, `email`, `first_name`, `last_name`, `active`, or `admin`.
 Setting `admin: true` also enables staff access. The acting administrator cannot delete or demote their own account.
+Email entry is temporarily disabled because Athena email is not configured. On creation, omit `email` or send `""`.
+On PATCH, omit `email` to preserve the stored address; an identical existing value is also accepted. A new or changed value returns `400`.
+Read responses still include existing email addresses. An administrator handles password recovery.
 
 ## Errors
 

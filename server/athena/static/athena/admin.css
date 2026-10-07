@@ -128,6 +128,8 @@ input[type=button]:hover, input[type=button]:focus, .submit-row a.closelink:hove
 .delete-confirmation form input[type=submit]:focus, .button.danger:hover, .button.danger:focus { background: transparent; border-color: var(--error); color: var(--error); }
 .button[disabled], input[type=submit][disabled], input[type=button][disabled], button[disabled],
 input[disabled], select[disabled], textarea[disabled] { opacity: .5; cursor: not-allowed; }
+.email-unavailable { display: inline-block; max-width: 100%; }
+.directory .email-unavailable { display: block; }
 /* Django icon sprites on links are replaced by text. */
 .addlink, .changelink, .viewlink, .inlineviewlink, .deletelink, .hidelink, .inlinechangelink { background-image: none; padding-left: 0; }
 .object-tools a.addlink, .object-tools a.viewsitelink { background-image: none; padding: 0 16px; }
