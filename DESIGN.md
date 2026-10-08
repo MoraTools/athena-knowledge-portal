@@ -60,7 +60,8 @@ Content starts at the left content edge beside the portal rail and fills the spa
 Prose, cards, timelines, grids, tables and the downloads catalog all fill the content width; only `--content-max` (1320px, centred above 1600px) bounds them.
 `.library-grid` uses `repeat(auto-fill, minmax(360px, 1fr))`, so a full-width content area shows 3 columns.
 No page scrolls horizontally from 375px to 2560px; a table that is too wide scrolls inside its own container.
-Reader tables use Surface for rows, Secondary surface for headers, and 1px Line rules below cells. Cells align at the top; code identifiers stay on one line.
+Reader tables use Surface for rows, Secondary surface for headers, and 1px Line rules below cells. Cells align at the top with 4px vertical and 16px side padding; code identifiers stay on one line.
+In sortable reader tables, a column with body text longer than 60 characters has a 32ch minimum width. Long descriptions wrap inside the table's local scroll area; short tables keep their natural widths.
 `.markdown-section` pads `--space-4 --space-4 --space-5`; at 768px and below `--space-3 --space-2 --space-4`.
 At 1200px and above, article headings appear in a fixed right-hand page tree.
 At 768px and below, reader grids, search results, controls, and catalog entries use one column.
@@ -72,15 +73,16 @@ The password pages pad like `.markdown-section`; their form is at most 40rem wid
 Sign-in uses a centred 650px column padded `--space-4 --space-3`; headings leave `--space-2` below.
 Inputs and buttons follow the admin control system: 44px high, 4px radius.
 
-Admin pages pad `--space-4` (`--space-3` at 1024px and below; `--space-2` sides at 767px and below); fieldsets and form rows inset `--space-3`; table modules keep their 16px cell inset.
+Admin pages pad `--space-4` (`--space-3` at 1024px and below; `--space-2` sides at 767px and below); fieldsets and form rows inset `--space-3`; ordinary table body cells use 4px vertical and 16px side padding. Row-control cells use 4px vertical and 12px side padding.
 `#content` follows the width rule. Change forms use the full width: aligned textareas fill the row beside the 180px label column.
 When the changelist area is narrower than 1200px (a container query, so the rail's width counts), the filter moves under the table with its groups side by side.
 Admin forms retain Django's responsive layout. Flex rows wrap and child containers use zero minimum width.
 At 767px and below, `body .aligned .form-row > div` uses `width: 100%; max-width: 100%`.
 Preserve this override; Django's default viewport-based width can extend beyond the available space when scrollbars are present.
-Admin controls are 44px high.
+Admin form controls are 44px high.
 The directory keeps the 1320px cap and full 280px rail. Its wide grid divides the roster and inspector 1.55:1, with a 360px minimum inspector width. At a content-container width of 1140px and below, the two sections stack.
 The roster table has a 620px minimum width and scrolls inside its own container. A scroll cue appears only when the roster interior is below 620px wide.
+Roster cells have no vertical padding. Username and header links have a 40px minimum height (44px for a coarse pointer). Roster rows with one line measure 41px on desktop and 45px for a coarse pointer. Keep the thin row rules, existing text size, pills, status marks, selection, and focus outlines.
 
 ## Navigation
 
@@ -104,7 +106,7 @@ On the directory at 768px and below, `.rail-reveal` occupies a normal-flow row a
 
 ## Controls and states
 
-Use native inputs, selects, file uploads, and Django validation messages.
+Use native inputs, selects, date and calendar controls, file uploads, and Django validation messages.
 The article Markdown textarea supports pasted PNG/JPEG/WebP images and a secondary **Insertar imagen** button below the field.
 Keep its native text behavior. Image insertion preserves selected text; progress and upload errors appear beside the button with a live status.
 Save controls stay disabled during upload. The helper wraps below the textarea on narrow screens and uses the existing control and spacing tokens.
@@ -112,13 +114,16 @@ Keep visible labels, skip links, focus outlines, and reduced-motion support.
 Account and reader focus outlines are 3px gold; admin outlines use soft gold.
 Most reader surfaces are square. Admin and account controls share one shape: 44px high, 4px radius, 1px `#555` border; buttons pad 0 16px and inputs 0 12px.
 Primary buttons (default submit, Añadir, Guardar) are gold with gold-ink text; hover is soft gold. Secondary buttons (other submits, Historial and the other object tools, Buscar, Cancelar) are transparent with soft-gold text; hover turns the border gold. Danger buttons (Eliminar) are transparent with `#6b3a33` border and error text. Disabled controls are 50% opacity.
-Changelists end with an unlabeled controls column of 36px square icon links (Ver or Descargar, Editar, Eliminar) in the secondary style, Eliminar in the danger colors; `title` and `aria-label` name each one. The column stays pinned to the right edge when the table scrolls. Eliminar opens Django's confirmation page.
+Changelists end with an unlabeled controls column of 36px square icon links (44px for a coarse pointer; Ver or Descargar, Editar, Eliminar) in the secondary style, Eliminar in the danger colors; `title` and `aria-label` name each one. Regular rows with one line and these controls measure 45px. The column stays pinned to the right edge when the table scrolls. Eliminar opens Django's confirmation page. Existing Django header sorting stays native.
 Django's action select is hidden. Checking rows shows a sticky bar above the table (count, Eliminar seleccionados, Cancelar; 36px buttons) that runs `delete_selected` through the hidden action form, so the confirmation page still protects it (`static/athena/admin-list.js`).
 Selects use a gold chevron; checkboxes and radios are 18px with a gold accent. Changelist booleans render as text pills (gold border for true, dashed quiet border for false), never icons.
 All admin colors, fonts, spacing, and control sizes are custom properties in `admin.css`; the directory stylesheet consumes them and defines none. The shared rail stylesheet defines only its own sizes and timing (`--rail-*`) and reads the page tokens.
 
-The directory roster has Usuario, Acceso, Estado, and Sesión columns. Actual accounts appear in username order. Username links select the inspector; the selected row has a gold outline and dark gold fill. Role and active status stay separate. Sesión shows the actual `last_login` date and time, or `nunca`.
+Ordinary reader tables, including account API keys, API reference tables, and simple article tables, receive native header buttons after rendering. Buttons have a 40px minimum height (44px for a coarse pointer), drawn direction indicators, and `aria-sort`. The initial author or server order stays until a header is selected; each header alternates ascending and descending order. Text sorting uses numeric-aware Spanish comparison. Explicit ISO values or `time[datetime]` provide date order; account expiry cells carry ISO values. Sorting moves the existing rows and keeps links, forms, and the footer. Setup runs once per table. Merged cells, multiple header rows, nested tables, presentation tables, interactive headers, and `data-sortable="false"` tables retain their existing behavior.
+
+The directory roster has Usuario, Acceso, Estado, and Sesión columns. Actual accounts start in ascending username order. All four headers are native GET links that alternate ascending and descending order, with drawn direction indicators and `aria-sort`. Equal roles, statuses, and session dates keep stable username order; accounts with no session date stay last in both date orders. Username links select the inspector; the selected row has a gold outline and dark gold fill. Role and active status stay separate. Sesión shows the actual `last_login` date and time, or `nunca`.
 Search uses a native GET form and a live filter; both ignore case and accents. Usernames, full names, and email values are searchable. Full names also appear in username tooltips.
+Native search, selection, new user navigation, and saving retain the submitted search and sort parameters. Header links retain the current selection; the live filter also updates their search query.
 The inspector uses native role radios and an active checkbox. The administrator role shows Permisos de edición; hiding that area does not reset checked values. Native field and form errors stay visible, including edit-area errors.
 When editing is permitted, one full-width gold Guardar button is the primary action. Manual password reset, API keys, and individual deletion use quieter links with 20px line icons and thin separators; the separators are horizontal on mobile. Native deletion confirmation and self/last-admin protections remain.
 Email is disabled; an empty field shows `No disponible`. The short visible help is "Servicio de correo no configurado." The full existing reason remains in the tooltip and accessible help. Existing email values stay; new email values are not saved.

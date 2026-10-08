@@ -36,12 +36,15 @@
 .directory-role-column { width: 25%; }
 .directory-status-column { width: 18%; }
 .directory-session-column { width: 29%; }
-.directory-table th, .directory-table td { padding: var(--space-2); border-bottom: 1px solid var(--line); vertical-align: middle; text-align: left; }
-.directory-table thead th { height: 56px; box-sizing: border-box; background: var(--surface-2); font: 500 14px var(--font-ui); letter-spacing: .06em; }
-.directory-table tbody th, .directory-table tbody td { height: 71px; box-sizing: border-box; }
+.directory-table th, .directory-table td { padding: 0 var(--space-2); border-bottom: 1px solid var(--line); vertical-align: middle; text-align: left; }
+.directory-table thead th { box-sizing: border-box; background: var(--surface-2); font: 500 14px var(--font-ui); letter-spacing: .06em; }
+.directory-table tbody th, .directory-table tbody td { height: 40px; box-sizing: border-box; }
 .directory-table tbody th { font-weight: 400; }
-.directory-table th a { display: inline-flex; align-items: center; min-height: var(--control-height); color: var(--text); overflow-wrap: anywhere; text-decoration: none; }
+.directory-table th a { box-sizing: border-box; display: flex; align-items: center; min-height: 40px; padding: calc(var(--space-1) / 2) 0; color: var(--text); overflow-wrap: anywhere; text-decoration: none; }
+.directory-table thead th a { gap: var(--space-1); color: var(--muted); }
+.directory-table thead th[aria-sort]:not([aria-sort=none]) a { color: var(--gold-soft); }
 .directory-table th a:hover { color: var(--gold-soft); text-decoration: underline; }
+@media (pointer: coarse) { .directory-table th a { min-height: var(--control-height); } }
 .directory-table tr:hover { background: var(--row-hover); }
 .directory-table tr.is-selected { background: var(--row-selected); outline: 1px solid var(--gold); outline-offset: -1px; }
 .directory-table tr.is-selected th a { color: var(--gold-soft); }

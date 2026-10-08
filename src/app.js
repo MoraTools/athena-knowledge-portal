@@ -129,6 +129,65 @@ function filterDownloads() {
   if (empty) empty.hidden = visible !== 0;
 }
 
+function buildTableSorting() {
+  const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
+  document.querySelectorAll('.markdown-section table').forEach((table) => {
+    if (table.dataset.sortReady || table.dataset.sortable === 'false' || table.getAttribute('role') === 'presentation'
+      || table.parentElement.closest('table') || table.querySelector('table')
+      || table.tHead?.rows.length !== 1 || table.tBodies.length !== 1) return;
+    const headers = [...table.tHead.rows[0].cells];
+    const body = table.tBodies[0];
+    const rows = [...body.rows];
+    const cells = [...headers, ...rows.flatMap((row) => [...row.cells])];
+    if (!headers.length || cells.some((cell) => cell.colSpan !== 1 || cell.rowSpan !== 1)
+      || rows.some((row) => row.cells.length !== headers.length)
+      || headers.some((header) => header.tagName !== 'TH' || !header.textContent.trim()
+        || header.querySelector('a,button,input,select,textarea,summary,[tabindex],[contenteditable]'))) return;
+    table.dataset.sortReady = 'true';
+    headers.forEach((header, column) => {
+      const label = header.textContent.trim();
+      // ponytail: infer long text from content; authored column widths if short prose needs a fixed width.
+      if (rows.some((row) => row.cells[column].textContent.trim().length > 60)) header.dataset.longText = 'true';
+      header.setAttribute('scope', 'col');
+      header.setAttribute('aria-sort', 'none');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'table-sort';
+      button.setAttribute('aria-label', 'Ordenar ' + label + ' en orden ascendente');
+      const text = document.createElement('span');
+      text.append(...header.childNodes);
+      const indicator = document.createElement('span');
+      indicator.className = 'table-sort-direction';
+      indicator.setAttribute('aria-hidden', 'true');
+      button.append(text, indicator);
+      header.append(button);
+      button.addEventListener('click', () => {
+        const descending = header.getAttribute('aria-sort') === 'ascending';
+        const value = (row) => row.cells[column].dataset.sortValue
+          ?? row.cells[column].querySelector('time[datetime]')?.getAttribute('datetime')
+          ?? row.cells[column].textContent.trim();
+        rows.map((row, index) => {
+          const key = value(row);
+          const date = /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(key) ? Date.parse(key) : NaN;
+          return { row, index, value: key, date };
+        })
+          .sort((left, right) => {
+            const dateOrder = Number.isFinite(right.date) - Number.isFinite(left.date);
+            const compared = dateOrder || (Number.isFinite(left.date) ? left.date - right.date : collator.compare(left.value, right.value));
+            return (descending ? -1 : 1) * compared || left.index - right.index;
+          })
+          .forEach(({ row }) => body.append(row));
+        headers.forEach((other) => {
+          other.setAttribute('aria-sort', 'none');
+          other.querySelector('button').setAttribute('aria-label', 'Ordenar ' + other.querySelector('button').textContent.trim() + ' en orden ascendente');
+        });
+        header.setAttribute('aria-sort', descending ? 'descending' : 'ascending');
+        button.setAttribute('aria-label', 'Ordenar ' + label + ' en orden ' + (descending ? 'ascendente' : 'descendente'));
+      });
+    });
+  });
+}
+
 let railPromise;
 
 // The portal rail comes from /_sidebar.md: "- Group" lines, then indented "- [Label](href)" links.
@@ -587,6 +646,7 @@ function syncView() {
   buildPageTree();
   buildPdfViewer();
   placeArticleTools();
+  buildTableSorting();
   updateSignInLinks();
   if (path === '/search') renderSearchPage();
 }

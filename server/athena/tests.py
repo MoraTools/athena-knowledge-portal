@@ -8,6 +8,7 @@ import zlib
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
@@ -317,7 +318,7 @@ class PortalTests(TestCase):
         response = self.client.get(f'/admin/auth/user/?user={inactive.pk}')
         table = re.search(r'<table class="directory-table".*?</table>', response.content.decode(), re.S).group()
         for heading in ['Usuario', 'Acceso', 'Estado', 'Sesión']:
-            self.assertIn(f'<th scope="col">{heading}</th>', table)
+            self.assertRegex(table, rf'<th scope="col" aria-sort="(?:none|ascending)"><a class="directory-sort"[^>]+>{heading}<span')
         row = re.search(r'<tr[^>]*data-search="inactive-admin.*?</tr>', table, re.S).group()
         self.assertIn('class="is-selected"', row)
         self.assertIn(f'href="?user={inactive.pk}#user-inspector" aria-current="true"', row)
@@ -345,6 +346,52 @@ class PortalTests(TestCase):
         self.assertFalse(response.context['has_matches'])
         self.assertContains(response, '<p class="directory-empty" role="status">')
         self.assertTrue(all(not row[3] for row in response.context['users']))
+
+    def test_directory_sorting_and_native_query_links(self):
+        first = User.objects.create_user('Álvaro', first_name='María', is_staff=True, is_active=False)
+        later = User.objects.create_user('beta', is_active=False)
+        never = User.objects.create_user('zeta')
+        self.client.force_login(self.admin)
+        now = timezone.now()
+        User.objects.filter(pk__in=[self.admin.pk, first.pk]).update(last_login=now - timedelta(days=2))
+        User.objects.filter(pk=later.pk).update(last_login=now - timedelta(days=1))
+        url = '/admin/auth/user/'
+        expected = {
+            'username': (['administrator', 'Álvaro', 'beta', 'reader', 'zeta'],
+                         ['zeta', 'reader', 'beta', 'Álvaro', 'administrator']),
+            'role': (['administrator', 'Álvaro', 'beta', 'reader', 'zeta'],
+                     ['beta', 'reader', 'zeta', 'administrator', 'Álvaro']),
+            'status': (['administrator', 'reader', 'zeta', 'Álvaro', 'beta'],
+                       ['Álvaro', 'beta', 'administrator', 'reader', 'zeta']),
+            'session': (['administrator', 'Álvaro', 'beta', 'reader', 'zeta'],
+                        ['beta', 'administrator', 'Álvaro', 'reader', 'zeta']),
+        }
+        for field, orders in expected.items():
+            for direction, order in zip(['asc', 'desc'], orders):
+                with self.subTest(field=field, direction=direction):
+                    response = self.client.get(url, {'user': first.pk, 'q': 'MARIA', 'sort': field, 'direction': direction})
+                    self.assertEqual([user.username for user, *_ in response.context['users']], order)
+                    self.assertEqual(response.context['selected'].pk, first.pk)
+                    self.assertEqual([user.pk for user, *_, matches in response.context['users'] if matches], [first.pk])
+                    for column, header in zip(expected, response.context['headers']):
+                        params = parse_qs(urlsplit(header['url']).query)
+                        self.assertEqual(params['user'], [str(first.pk)])
+                        self.assertEqual(params['q'], ['MARIA'])
+                        self.assertEqual(params['sort'], [column])
+                        next_direction = 'desc' if field == column and direction == 'asc' else 'asc'
+                        self.assertEqual(params['direction'], [next_direction])
+                        state = ('ascending' if direction == 'asc' else 'descending') if field == column else 'none'
+                        self.assertEqual(header['aria_sort'], state)
+                    self.assertContains(response, f'name="sort" value="{field}"')
+                    self.assertContains(response, f'name="direction" value="{direction}"')
+        for invalid in [{'sort': 'email', 'direction': 'desc'}, {'sort': 'session', 'direction': 'drop table'},
+                        {'sort': '-last_login', 'direction': 'asc'}]:
+            response = self.client.get(url, invalid)
+            self.assertEqual((response.context['sort'], response.context['direction']), ('username', 'asc'))
+            self.assertEqual([user.username for user, *_ in response.context['users']], expected['username'][0])
+        response = self.client.get(url, {'new': '1', 'sort': 'role', 'direction': 'desc', 'q': 'beta'})
+        self.assertTrue(all(parse_qs(urlsplit(header['url']).query)['new'] == ['1'] for header in response.context['headers']))
+        self.assertFalse(any('user' in parse_qs(urlsplit(header['url']).query) for header in response.context['headers']))
 
     def directory_admin(self, username, edits):
         form = DirectoryUserForm({'username': username, 'role': 'admin', 'edits': edits, 'is_active': 'on'},
@@ -805,6 +852,7 @@ class PortalTests(TestCase):
         self.assertTrue(page.startswith('# reader\n'), page)
         self.assertIn('Lector · Última sesión', page)
         self.assertIn('<td>test</td><td>Lectura</td>', page)
+        self.assertRegex(page, r'<td data-sort-value="\d{4}-\d{2}-\d{2}T[^"]+">\d{2}/\d{2}/\d{4}</td>')
         self.assertNotIn('admin-key', page)  # Only the user's own keys.
         self.assertIn('Pida una clave a un administrador.', page)
         self.assertNotIn('/admin/', page)

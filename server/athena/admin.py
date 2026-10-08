@@ -1,4 +1,5 @@
 import unicodedata
+from urllib.parse import urlencode
 
 from django.contrib import admin, messages
 from django.contrib.admin.options import IS_POPUP_VAR
@@ -127,6 +128,21 @@ class AthenaUserAdmin(UserAdmin):
     def changelist_view(self, request, extra_context=None):
         if not self.has_view_permission(request):
             raise PermissionDenied
+        sort_fields = {
+            'username': ('Usuario', lambda user: fold(user.username)),
+            'role': ('Acceso', lambda user: not user.is_staff),
+            'status': ('Estado', lambda user: not user.is_active),
+            'session': ('Sesión', lambda user: user.last_login),
+        }
+        sort = request.GET.get('sort', 'username')
+        direction = request.GET.get('direction', 'asc')
+        if sort not in sort_fields or direction not in {'asc', 'desc'}:
+            sort, direction = 'username', 'asc'
+        query = request.GET.get('q', '').strip()
+        roster_params = {'q': query} if query else {}
+        if (sort, direction) != ('username', 'asc'):
+            roster_params.update(sort=sort, direction=direction)
+        roster_query = urlencode(roster_params)
         creating = 'new' in request.GET
         selected = None if creating else self.get_object(request, request.GET.get('user', request.user.pk))
         if not creating and selected is None:
@@ -142,21 +158,37 @@ class AthenaUserAdmin(UserAdmin):
                 message = self.construct_change_message(request, form, None, creating)
                 (self.log_addition if creating else self.log_change)(request, saved, message)
                 messages.success(request, 'Usuario guardado.')
-                return redirect(request.path + f'?user={saved.pk}')
+                return redirect(request.path + '?' + urlencode({'user': saved.pk, **roster_params}))
         else:
             form = form_class(instance=selected, actor=request.user)
         form.fields['email'].widget.attrs['placeholder'] = 'No disponible'
         now = timezone.now()
-        query = request.GET.get('q', '').strip()
         needle = fold(query)
+        # Stable username ties keep equal roles, statuses and dates in a predictable order.
+        roster = sorted(User.objects.all(), key=lambda user: (fold(user.username), user.username, user.pk))
+        dated = [user for user in roster if user.last_login] if sort == 'session' else roster
+        ordered = sorted(dated, key=sort_fields[sort][1], reverse=direction == 'desc')
+        if sort == 'session':
+            ordered.extend(user for user in roster if not user.last_login)
         # ponytail: whole user list in one page; paginate or search server-side past a few hundred accounts.
         users = [(user, since(user.last_login, now), 'Administrador' if user.is_staff else 'Lector',
                   needle in fold(f'{user.username} {user.get_full_name()} {user.email}'))
-                 for user in User.objects.order_by('username')]
+                 for user in ordered]
+        selection = {'new': 1} if creating else {'user': selected.pk}
+        headers = []
+        for field, (label, _) in sort_fields.items():
+            next_direction = 'desc' if field == sort and direction == 'asc' else 'asc'
+            headers.append({
+                'label': label,
+                'url': '?' + urlencode({**selection, **roster_params, 'sort': field, 'direction': next_direction}),
+                'aria_sort': ('ascending' if direction == 'asc' else 'descending') if field == sort else 'none',
+                'next_label': 'descendente' if next_direction == 'desc' else 'ascendente',
+            })
         return TemplateResponse(request, 'admin/auth/user/directory.html', {
             **self.admin_site.each_context(request), **(extra_context or {}),
             'title': 'Usuarios', 'opts': self.opts, 'form': form, 'selected': selected, 'users': users,
             'query': query, 'has_matches': any(row[3] for row in users),
+            'headers': headers, 'sort': sort, 'direction': direction, 'roster_query': roster_query,
             'api_keys': ApiKey.objects.filter(user=selected).count() if selected else 0,
             'can_edit': self.has_add_permission(request) if creating else self.has_change_permission(request, selected),
         })

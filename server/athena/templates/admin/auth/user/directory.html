@@ -11,23 +11,24 @@
     <div class="directory-toolbar">
       <form class="directory-search" method="get" action="{{ request.path }}" role="search">
         {% if selected %}<input type="hidden" name="user" value="{{ selected.pk }}">{% else %}<input type="hidden" name="new" value="1">{% endif %}
+        <input type="hidden" name="sort" value="{{ sort }}"><input type="hidden" name="direction" value="{{ direction }}">
         <label class="visually-hidden" for="directory-q">Buscar usuario</label>
         <input id="directory-q" name="q" type="search" value="{{ query }}" placeholder="Buscar usuario…" autocomplete="off" aria-controls="directory-table" aria-describedby="directory-search-help">
         <button type="submit" aria-label="Buscar usuario"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
         <span class="visually-hidden" id="directory-search-help">Buscar por nombre de usuario, nombre o correo electrónico.</span>
       </form>
-      <a class="button ghost directory-add" href="?new=1#user-inspector"{% if not selected %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v16M4 12h16"/></svg>Nuevo usuario</a>
+      <a class="button ghost directory-add" href="?new=1{% if roster_query %}&amp;{{ roster_query }}{% endif %}#user-inspector"{% if not selected %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v16M4 12h16"/></svg>Nuevo usuario</a>
     </div>
     <p class="directory-scroll-hint"><span>Desplace la tabla para ver Estado y Sesión.</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h16m-4-4 4 4-4 4"/></svg></p>
     <div class="directory-results" tabindex="0" role="region" aria-label="Directorio de usuarios">
       <table class="directory-table" id="directory-table">
         <caption class="visually-hidden">Seleccione un usuario para editar su perfil y acceso.</caption>
         <colgroup><col class="directory-user-column"><col class="directory-role-column"><col class="directory-status-column"><col class="directory-session-column"></colgroup>
-        <thead><tr><th scope="col">Usuario</th><th scope="col">Acceso</th><th scope="col">Estado</th><th scope="col">Sesión</th></tr></thead>
+        <thead><tr>{% for header in headers %}<th scope="col" aria-sort="{{ header.aria_sort }}"><a class="directory-sort" href="{{ header.url }}" aria-label="Ordenar {{ header.label }} en orden {{ header.next_label }}">{{ header.label }}<span class="table-sort-direction" aria-hidden="true"></span></a></th>{% endfor %}</tr></thead>
         <tbody>
           {% for user, seen, role, matches in users %}
           <tr data-search="{{ user.username }} {{ user.get_full_name }} {{ user.email }}"{% if user.pk == selected.pk %} class="is-selected"{% endif %}{% if not matches %} hidden{% endif %}>
-            <th scope="row"><a href="?user={{ user.pk }}#user-inspector"{% if user.pk == selected.pk %} aria-current="true"{% endif %}{% if user.get_full_name %} title="{{ user.get_full_name }}"{% endif %}>{{ user.username }}</a></th>
+            <th scope="row"><a href="?user={{ user.pk }}{% if roster_query %}&amp;{{ roster_query }}{% endif %}#user-inspector"{% if user.pk == selected.pk %} aria-current="true"{% endif %}{% if user.get_full_name %} title="{{ user.get_full_name }}"{% endif %}>{{ user.username }}</a></th>
             <td><span class="pill{% if user.is_staff %} gold{% endif %}">{{ role }}</span></td>
             <td><span class="directory-status{% if not user.is_active %} off{% endif %}">{% if user.is_active %}Activa{% else %}Inactiva{% endif %}</span></td>
             <td class="directory-session">{% if user.last_login %}<time datetime="{{ user.last_login|date:'c' }}" title="{{ seen }}">{{ user.last_login|date:'d/m/Y H:i' }}</time>{% else %}nunca{% endif %}</td>
@@ -38,7 +39,7 @@
     </div>
     <p class="directory-empty" role="status"{% if has_matches %} hidden{% endif %}>No hay usuarios que coincidan con la búsqueda. Pruebe otro nombre.</p>
   </section>
-  <form class="directory-panel" id="user-inspector" aria-labelledby="inspector-title" method="post" action="{% if selected %}?user={{ selected.pk }}{% else %}?new=1{% endif %}" novalidate>{% csrf_token %}
+  <form class="directory-panel" id="user-inspector" aria-labelledby="inspector-title" method="post" action="{% if selected %}?user={{ selected.pk }}{% else %}?new=1{% endif %}{% if roster_query %}&amp;{{ roster_query }}{% endif %}" novalidate>{% csrf_token %}
     <header>
       {% if selected %}
       <h2 id="inspector-title">{% if selected.get_full_name %}{{ selected.get_full_name }}{% else %}{{ selected.username }}{% endif %}</h2>

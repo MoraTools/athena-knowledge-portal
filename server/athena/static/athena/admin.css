@@ -263,28 +263,38 @@ a.delete-related { --icon: url('/static/admin/img/icon-deletelink.svg'); }
 
 /* Tables */
 table { border-color: var(--line); }
-td, th { padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; line-height: 1.5; }
+td, th { padding: calc(var(--space-1) / 2) var(--space-2); border-bottom: 1px solid var(--line); vertical-align: middle; line-height: 1.5; }
 tbody th { font-weight: 400; }
 thead th, tfoot td, #changelist table thead th {
   background: var(--surface-2); color: var(--quiet); border-top: 0; border-bottom: 1px solid var(--line); line-height: 1.5;
 }
-thead th { padding: 12px 16px; }
+thead th { padding: var(--space-1) var(--space-2); }
 thead th a:link, thead th a:visited { color: var(--quiet); }
 thead th a:hover, thead th a:focus { color: var(--gold-soft); }
 thead th.sorted { background: #222; }
 thead th.sorted .text a, thead th.sorted .text span { color: var(--muted); }
-table thead th .text span, table thead th .text a { padding: 12px 16px; }
+table thead th .text span, table thead th .text a { padding: var(--space-1) var(--space-2); }
 table thead th .text a:hover, table thead th .text a:focus { background: transparent; }
-table thead th.sorted .sortoptions { padding: 15px 12px 0 0; }
+table thead th.sorted .sortoptions { padding: 11px 12px 0 0; }
 table thead th.sorted .sortoptions a { background: var(--gold-soft); mask: url('/static/admin/img/sorting-icons.svg') 0 0 / 14px auto no-repeat; }
 table thead th.sorted .sortoptions a.ascending { mask-position: 0 -28px; }
 table thead th.sorted .sortoptions a.descending { mask-position: 0 -56px; }
 table thead th.sorted .sortoptions a.sortremove { background: none; mask: none; }
 table thead th.sorted .sortoptions a.sortremove:after { color: var(--quiet); }
+.table-sort-direction { position: relative; display: inline-block; flex: 0 0 12px; width: 12px; height: 18px; color: var(--quiet); }
+.table-sort-direction::before, .table-sort-direction::after { content: ''; position: absolute; left: 3px; width: 5px; height: 5px; border-top: 1.5px solid currentColor; border-left: 1.5px solid currentColor; transform: rotate(45deg); }
+.table-sort-direction::before { top: 3px; }
+.table-sort-direction::after { bottom: 3px; transform: rotate(225deg); }
+[aria-sort=ascending] .table-sort-direction, [aria-sort=descending] .table-sort-direction { color: inherit; }
+[aria-sort=ascending] .table-sort-direction::after, [aria-sort=descending] .table-sort-direction::before { display: none; }
+@media (pointer: coarse) {
+  table thead th .text a { box-sizing: border-box; min-height: var(--control-height); }
+  .row-controls .icon-button { width: var(--control-height); height: var(--control-height); }
+}
 tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { background: transparent; }
 #changelist tbody tr:hover, #change-history tbody tr:hover, .module tbody tr:hover { background: var(--row-hover); }
 #changelist tbody tr.selected, #changelist tbody tr:has(.action-select:checked) { background: var(--row-selected); }
-#changelist table thead th.action-checkbox-column, #changelist table tbody td.action-checkbox { width: 18px; padding: 12px 16px; text-align: left; }
+#changelist table thead th.action-checkbox-column, #changelist table tbody td.action-checkbox { width: 18px; padding: calc(var(--space-1) / 2) var(--space-2); text-align: left; }
 #changelist table thead th.action-checkbox-column .text span { padding: 0; }
 #changelist table input { vertical-align: middle; }
 #changelist-form .results { border: 1px solid var(--line); }
@@ -315,7 +325,7 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 /* Row controls: 36px icon links in the last column, named by title and aria-label.
    The column stays pinned to the right edge when a narrow table scrolls inside .results. */
 #changelist td.field-controls, #changelist thead th.column-controls { position: sticky; right: 0; box-shadow: inset 1px 0 0 var(--line); }
-#changelist td.field-controls { width: 1%; padding: 8px 12px; white-space: nowrap; background: var(--bg); }
+#changelist td.field-controls { width: 1%; padding: calc(var(--space-1) / 2) 12px; white-space: nowrap; background: var(--bg); }
 #changelist tbody tr:hover td.field-controls { background: var(--row-hover); }
 #changelist tbody tr.selected td.field-controls, #changelist tbody tr:has(.action-select:checked) td.field-controls { background: var(--row-selected); }
 .row-controls { display: flex; gap: 8px; justify-content: flex-end; }
@@ -365,7 +375,7 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: v
 
 /* Dashboard and recent actions */
 .dashboard #content { width: auto; }
-.dashboard .module table td, .dashboard .module table th { padding: 12px 16px; }
+.dashboard .module table td, .dashboard .module table th { padding: calc(var(--space-1) / 2) var(--space-2); }
 .dashboard .module table td a { white-space: nowrap; }
 #content-related { background: transparent; }
 #content-related .module h2 { padding: 12px 16px; margin: 0; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); }

@@ -102,10 +102,22 @@ body .markdown-section p.tip:before{color:#000}
 /* Docsify keeps wide tables in their own scroll area; all reader tables use the dark reading surface. */
 .markdown-section table{display:block;width:100%;max-width:100%;margin:var(--space-3) 0;overflow:auto;scrollbar-color:var(--line-strong) var(--surface)}
 .markdown-section tr,.markdown-section tr:nth-child(2n){background:var(--surface);border-color:var(--line)}
-.markdown-section td,.markdown-section th{padding:var(--space-1) var(--space-2);border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.markdown-section td,.markdown-section th{padding:calc(var(--space-1) / 2) var(--space-2);border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 .markdown-section th{background:var(--surface-2);color:var(--muted);font-weight:700}
 .markdown-section td{color:var(--text)}
 .markdown-section table code{overflow-wrap:normal;white-space:nowrap}
+.markdown-section th[data-long-text]{min-width:32ch}
+.markdown-section th:has(.table-sort){padding-top:0;padding-bottom:0}
+.markdown-section .table-sort{display:flex;align-items:center;justify-content:space-between;gap:var(--space-1);width:100%;min-height:40px;margin:0;padding:calc(var(--space-1) / 2) 0;border:0;background:transparent;color:inherit;font:inherit;text-align:inherit;cursor:pointer}
+.markdown-section .table-sort>span:first-child{flex:1;min-width:0}
+.markdown-section .table-sort:hover,.markdown-section th[aria-sort]:not([aria-sort=none]) .table-sort{color:var(--accent-soft)}
+.markdown-section .table-sort:focus-visible{outline-offset:0}
+.table-sort-direction{position:relative;display:inline-block;flex:0 0 12px;width:12px;height:18px;color:var(--quiet)}
+.table-sort-direction::before,.table-sort-direction::after{content:'';position:absolute;left:3px;width:5px;height:5px;border-top:1.5px solid currentColor;border-left:1.5px solid currentColor;transform:rotate(45deg)}
+.table-sort-direction::before{top:3px}.table-sort-direction::after{bottom:3px;transform:rotate(225deg)}
+[aria-sort=ascending] .table-sort-direction,[aria-sort=descending] .table-sort-direction{color:inherit}
+[aria-sort=ascending] .table-sort-direction::after,[aria-sort=descending] .table-sort-direction::before{display:none}
+@media(pointer:coarse){.markdown-section .table-sort{min-height:44px}}
 .markdown-section blockquote{background:var(--surface);color:var(--muted);margin:var(--space-3) 0;padding:var(--space-2) var(--space-3)}
 .source-note{display:block;margin:0 0 var(--space-3);color:var(--muted);font-size:.85rem}
 .source-note code{background:transparent}

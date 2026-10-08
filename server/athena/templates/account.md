@@ -10,7 +10,7 @@
 </section>
 <section class="account-panel">
 <h2>Mis claves de API</h2>
-{% if keys %}<table><thead><tr><th>Nombre</th><th>Permiso</th><th>Vence</th></tr></thead><tbody>{% for key in keys %}<tr><td>{{ key.name }}</td><td>{{ key.get_scope_display }}</td><td>{{ key.expires_at|date:'d/m/Y' }}</td></tr>{% endfor %}</tbody></table>{% else %}<p>Todavía no tiene claves de API.</p>{% endif %}
+{% if keys %}<table><thead><tr><th>Nombre</th><th>Permiso</th><th>Vence</th></tr></thead><tbody>{% for key in keys %}<tr><td>{{ key.name }}</td><td>{{ key.get_scope_display }}</td><td data-sort-value="{{ key.expires_at|date:'c' }}">{{ key.expires_at|date:'d/m/Y' }}</td></tr>{% endfor %}</tbody></table>{% else %}<p>Todavía no tiene claves de API.</p>{% endif %}
 {% if perms.athena.add_apikey %}<div class="account-actions"><a class="account-button" href="/admin/athena/apikey/add/">Crear clave</a><a class="account-button" href="/#/api">Guía de la API</a></div>{% else %}<p>Pida una clave a un administrador.</p>{% endif %}
 </section>
 </div>
