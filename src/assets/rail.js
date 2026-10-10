@@ -5,7 +5,7 @@
   const KEY = 'athena.rail';
   const STATES = ['expanded', 'compact', 'hidden'];
   const root = document.documentElement;
-  const narrow = matchMedia('(max-width: 768px)');
+  const narrow = matchMedia('(max-width: 1024px)');
   const ICONS = {
     home: '<path d="M3 11 12 4l9 7v9H3z"/>',
     book: '<path d="M4 4h12a3 3 0 0 1 3 3v13H7a3 3 0 0 0-3 3z"/><path d="M4 4v16"/>',

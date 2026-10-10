@@ -6,7 +6,7 @@
 {% block content_subtitle %}{% endblock %}
 {% block responsive %}{{ block.super }}
 <link rel="stylesheet" href="{% static 'athena/article-editor.css' %}">
-<script>if (!matchMedia('(max-width: 768px)').matches) document.documentElement.dataset.rail = 'compact';</script>
+<script>if (!matchMedia('(max-width: 1024px)').matches) document.documentElement.dataset.rail = 'compact';</script>
 {% endblock %}
 {% block content %}
 <div id="content-main">

@@ -64,6 +64,7 @@ html[data-rail=compact] .rail .rail-group-label { max-height: 0; margin: 0; opac
   transition: background-color .15s, color .15s, grid-template-columns var(--rail-dur) var(--rail-ease), padding var(--rail-dur) var(--rail-ease);
 }
 .rail .rail-item:hover, .rail .rail-item:focus-visible { background: var(--surface); color: var(--text); text-decoration: none; }
+.rail .rail-item:focus-visible, .rail .rail-toggle:focus-visible { outline-offset: -3px; }
 .rail .rail-item[aria-current] { border-right-color: var(--accent); color: var(--accent); }
 .rail-label {
   overflow: hidden; font: 700 13px/1.2 var(--font-ui); letter-spacing: .05em; text-align: left; text-overflow: ellipsis; text-transform: uppercase;
@@ -74,6 +75,7 @@ html[data-rail=compact] .rail .rail-item, html[data-rail=compact] .rail .rail-to
 }
 html[data-rail=compact] .rail .rail-item[aria-current] { background: var(--surface-2); }
 html[data-rail=compact] .rail-label { opacity: 0; transform: translateX(-6px); }
+@media (pointer: coarse) { .rail .rail-item, .rail .rail-toggle { height: 44px; } }
 
 /* Compact tooltip: one fixed element placed by rail.js, so the scrolling nav does not clip it. */
 .rail-tip {
@@ -102,7 +104,7 @@ html[data-rail=hidden] .rail-reveal { opacity: 1; visibility: visible; transform
 .rail-reveal svg { width: 22px; height: 22px; stroke-width: 2; }
 
 /* Narrow screens: the rail is an overlay drawer; the page never moves. */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   :root, html[data-rail] { --rail-current: 0px; }
   .rail { width: var(--rail-w); transform: translateX(-100%); transition: transform var(--rail-dur) var(--rail-ease), visibility var(--rail-dur); }
   html[data-rail=expanded] .rail { transform: none; box-shadow: 12px 0 40px rgba(0, 0, 0, .6); transition: transform var(--rail-dur) var(--rail-ease), visibility 0s; }

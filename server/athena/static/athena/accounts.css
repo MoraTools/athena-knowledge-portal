@@ -1,7 +1,7 @@
 /* Sign-in (centred, no rail) and password pages (inside the portal rail, like the reader). */
-.account-header { padding: 2.5rem clamp(1.25rem, 6vw, 5rem); }
+.account-header { max-width: 650px; margin: 0 auto; padding: var(--space-4) var(--space-3) 0; }
 .account-header .brand { display: inline-flex; }
-.account-main { max-width: 650px; margin: 0 auto; padding: var(--space-4) var(--space-3); }
+.account-main { width: 100%; min-width: 0; max-width: 650px; margin: 0 auto; padding: var(--space-4) var(--space-3); overflow-wrap: anywhere; }
 /* With the rail: the reader's page offset, width cap and padding (src/styles.css div#main, .markdown-section). */
 body:has(#rail) { padding-left: var(--rail-current); transition: padding-left var(--rail-dur) var(--rail-ease); }
 body:has(#rail) .account-main { max-width: var(--content-max); margin: 0; padding: var(--space-4) var(--space-4) var(--space-5); }
@@ -9,18 +9,21 @@ body:has(#rail) .account-main { max-width: var(--content-max); margin: 0; paddin
 body:has(#rail) .account-header { display: none; max-width: var(--content-max); padding: var(--space-3) var(--space-4) 0; }
 html[data-rail=hidden] body:has(#rail) .account-header { display: block; }
 @media (min-width: 1600px) { body:has(#rail) :is(.account-header, .account-main) { margin: 0 auto; } }
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   body:has(#rail) .account-main { padding: var(--space-3) var(--space-2) 80px; } /* 80px clears the fixed menu button, as in the admin. */
   body:has(#rail) .account-header { padding: var(--space-3) var(--space-2) 0; }
+}
+@media (max-width: 767px) {
+  .account-header, .account-main { padding-left: var(--space-2); padding-right: var(--space-2); }
 }
 .account-main h1 { font: 700 clamp(2.6rem, 6vw, 4rem)/1.05 var(--font-display); text-wrap: balance; margin: 0 0 var(--space-2); }
 .account-main p { color: var(--muted); }
 .account-form { max-width: 40rem; margin: var(--space-4) 0; }
 .account-form label { display: block; margin: var(--space-2) 0 var(--space-1); color: var(--muted); font: 13px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
-/* Controls match the admin system: 44px, 4px radius, #555 border, 13px uppercase button text. */
-.account-form input:not([type=hidden]) { display: block; box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #555; border-radius: 4px; background: var(--bg); color: var(--text); font: 16px var(--font-ui); caret-color: var(--accent); }
+/* Controls match the admin system: 44px, 4px radius, strong-line border, 13px uppercase button text. */
+.account-form input:not([type=hidden]) { display: block; box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--bg); color: var(--text); font: 16px var(--font-ui); caret-color: var(--accent); }
 .account-form input:not([type=hidden]):focus { border-color: var(--accent); }
-.account-form button { min-height: 44px; padding: 0 16px; margin-top: var(--space-3); border: 1px solid var(--accent); border-radius: 4px; background: var(--accent); color: #1a1400; font: 700 13px var(--font-ui); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
+.account-form button { min-height: 44px; max-width: 100%; padding: var(--space-1) var(--space-2); margin-top: var(--space-3); border: 1px solid var(--accent); border-radius: 4px; background: var(--accent); color: #1a1400; font: 700 13px var(--font-ui); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
 .account-form button:hover { background: var(--accent-soft); border-color: var(--accent-soft); }
 .account-form .errorlist { color: #ffb8ac; padding: .75rem 1rem; background: #421c19; border-radius: 4px; }
 .account-form .helptext { color: #8f8f8f; font-size: 14px; }

@@ -20,7 +20,7 @@ The directory starts with its own Usuarios task heading and omits breadcrumbs an
 | Soft accent | `#ffcf40` |
 | Code | `#ffe08a` |
 | Line | `#2a2a2a` |
-| Strong line (control border) | `#555` |
+| Strong line (control border) | `#666` |
 | Quiet text | `#8f8f8f` |
 | Gold ink (text on gold) | `#1a1400` |
 | Error text | `#ffb8ac` |
@@ -35,8 +35,8 @@ One scale, defined in `src/styles.css` `:root` and mirrored in `admin.css` `:roo
 | --- | --- | --- |
 | `--space-1` | `.5rem` | Label to control, meta line to title, heading 3 bottom margin |
 | `--space-2` | `1rem` | Gaps in card lists and grids, H1 and H2 bottom margins, mobile side padding, admin form-row vertical padding |
-| `--space-3` | `1.5rem` | Card and panel padding, fieldset inset, submit rows, account column side padding, mobile top padding |
-| `--space-4` | `2rem` | Section gaps, H2 and H3 top margins, reader and admin page padding, Actualizaciones card padding and post gap |
+| `--space-3` | `1.5rem` | Card and panel padding, fieldset inset, submit rows, account column side padding, reader page padding |
+| `--space-4` | `2rem` | Section gaps, H2 and H3 top margins, admin page padding, Actualizaciones card padding and post gap |
 | `--space-5` | `3rem` | Reader page bottom padding, hero bottom margin |
 
 A card's padding is the only space at its edges: its first child has no top margin and its last child no bottom margin.
@@ -46,7 +46,7 @@ A list of cards gets its gap from the grid, never from card margins. The last bl
 
 The reader declares Sigurd Variable and Rules Variable first, with locally served Cormorant and Archivo Narrow as fallbacks.
 Courier Prime is locally served for code and compact labels. Reader body text is 18px with 1.55 line height.
-Reader headings use the serif display stack. Account headings scale from 2.6rem to 4rem.
+Reader headings use the serif display stack. Page headings scale from 2.2rem to 4rem based on the available reader width. Home's Athena heading scales from 3rem to 6rem.
 Admin body and inputs use Archivo Narrow at 16px/1.5; help text is 14px in quiet text. Page titles use Cormorant at 34px, weight 500.
 The admin sign-in header shows ATHENA in the display voice and "Administración" in the label voice.
 Admin labels, fieldset and table headers, breadcrumbs, pills, meta, and dates use Courier Prime at 13px, uppercase, 0.06em tracking, in muted or quiet text.
@@ -57,29 +57,32 @@ The directory has local display-size overrides: Usuarios is 47px/56px; the inspe
 
 One width rule for the reader, the account pages and the admin: `--content-max` is 1320px (reader and admin `:root`).
 Content starts at the left content edge beside the portal rail and fills the space up to `--content-max`. Above a 1600px viewport it is centred in the space beside the rail, which stays fixed on the left.
+The reader reserves the rail width once on `div#main`. Docsify's `.content` stays in normal flow without its theme's sidebar offset or transform. `div#main` is the named `reader` container, so component layouts use the width that remains beside the rail.
 Prose, cards, timelines, grids, tables and the downloads catalog all fill the content width; only `--content-max` (1320px, centred above 1600px) bounds them.
-`.library-grid` uses `repeat(auto-fill, minmax(360px, 1fr))`, so a full-width content area shows 3 columns.
-No page scrolls horizontally from 375px to 2560px; a table that is too wide scrolls inside its own container.
+`.library-grid` uses `repeat(auto-fill, minmax(min(100%, 320px), 1fr))`, so cards fill available columns and fit containers narrower than 320px.
+No page scrolls horizontally from 320px to 2560px; a table that is too wide scrolls inside its own container. Long titles, tags, and filenames wrap. Grid children can shrink within their column.
 Reader tables use Surface for rows, Secondary surface for headers, and 1px Line rules below cells. Cells align at the top with 4px vertical and 16px side padding; code identifiers stay on one line.
 In sortable reader tables, a column with body text longer than 60 characters has a 32ch minimum width. Long descriptions wrap inside the table's local scroll area; short tables keep their natural widths.
-`.markdown-section` pads `--space-4 --space-4 --space-5`; at 768px and below `--space-3 --space-2 --space-4`.
-At 1200px and above, article headings appear in a fixed right-hand page tree.
-At 768px and below, reader grids, search results, controls, and catalog entries use one column.
+`.markdown-section` pads `--space-3 --space-3 --space-5`; at 768px and below `--space-3 --space-2 --space-4`.
+When the available reader container is at least 1200px wide, article headings appear in a 216px sticky right-hand page tree. The article and tree share one grid and the page gutters. Below that width, the same native details tree appears above the article and starts closed. Its toggle stays available in both layouts. A width change restores the default only when the tree changes between the side and inline layouts; reader choices stay within the same layout.
+At reader widths of 900px and below, the home hero and account panels stack. At 600px and below, portal cards, search results, filter controls, and catalog entries use one column. The feed keeps each date above its post at this width, so the date column does not reduce the reading space.
 Guías and Descargas share one filter panel (`library-controls`): a search field and a select, 44px high, with a live result count.
-Actualizaciones cards pad `--space-4` (`--space-3` at 768px and below), with the meta line above a 2rem title, a 17px/1.6 summary, and the date badge centred on the first line of the title.
+Actualizaciones cards pad `--space-4` (`--space-3` at a reader width of 600px and below), with the meta line above a 2rem title and a 17px/1.6 summary. In the date-column layout, the badge is centred on the first line of the title.
 
-Mi cuenta shows the username, a role and last-session line, then Sesión and Mis claves de API side by side (1:2) above 1100px and stacked below; administrators also get an Administración row of shortcuts.
+Mi cuenta shows the username, a role and last-session line, then Sesión and Mis claves de API side by side (1:2) above a 900px reader width and stacked below; administrators also get an Administración row of shortcuts.
 The password pages pad like `.markdown-section`; their form is at most 40rem wide.
 Sign-in uses a centred 650px column padded `--space-4 --space-3`; headings leave `--space-2` below.
 Inputs and buttons follow the admin control system: 44px high, 4px radius.
 
-Admin pages pad `--space-4` (`--space-3` at 1024px and below; `--space-2` sides at 767px and below); fieldsets and form rows inset `--space-3`; ordinary table body cells use 4px vertical and 16px side padding. Row-control cells use 4px vertical and 12px side padding.
+Admin pages use the named `admin-page` container, which measures the width beside the rail. They pad `--space-4` (`--space-3` at 1024px and below; `--space-2` sides at 767px and below); fieldsets and form rows inset `--space-3`; ordinary table body cells use 4px vertical and 16px side padding. Row-control cells use 4px vertical and 12px side padding.
 `#content` follows the width rule. Change forms use the full width: aligned textareas fill the row beside the 180px label column.
 When the changelist area is narrower than 1200px (a container query, so the rail's width counts), the filter moves under the table with its groups side by side.
-Admin forms retain Django's responsive layout. Flex rows wrap and child containers use zero minimum width.
+Admin forms retain Django's responsive layout. Flex rows wrap and child containers use zero minimum width. At an available admin width of 1000px and below, recent actions stack below the dashboard. Object tools move below the title at 900px and below; aligned labels stack above their fields at 720px and below.
 At 767px and below, `body .aligned .form-row > div` uses `width: 100%; max-width: 100%`.
 Preserve this override; Django's default viewport-based width can extend beyond the available space when scrollbars are present.
 Admin form controls are 44px high.
+The article editor shows Markdown and its preview side by side above an available 900px width. At 900px and below, its existing Markdown and preview tabs select the pane. Toolbar, pane, and dialog headers wrap; read-only values, errors, and filenames wrap within the form.
+API key creation fills the content width and its actions wrap. Standalone sign-in aligns the wordmark and form within the same 650px column.
 The directory keeps the 1320px cap and full 280px rail. Its wide grid divides the roster and inspector 1.55:1, with a 360px minimum inspector width. At a content-container width of 1140px and below, the two sections stack.
 The roster table has a 620px minimum width and scrolls inside its own container. A scroll cue appears only when the roster interior is below 620px wide.
 Roster cells have no vertical padding. Username and header links have a 40px minimum height (44px for a coarse pointer). Roster rows with one line measure 41px on desktop and 45px for a coarse pointer. Keep the thin row rules, existing text size, pills, status marks, selection, and focus outlines.
@@ -90,7 +93,7 @@ The reader and the admin share one portal rail: markup in `src/index.html` and `
 Its links come from `sidebar_markdown()`: groups Biblioteca, Participar, Cuenta (Mi cuenta, `/#/account`), and Administración (staff only). In the admin, the model pages follow the Administración links. On `/accounts/` pages Mi cuenta is current.
 The rail carries the ATHENA wordmark. Hiding the rail does not add an admin header. Admin sign-in keeps the ATHENA link and "Administración" section label; the password pages keep the sign-in header's wordmark.
 The rail provides site navigation and API para agentes. Mi cuenta keeps Cambiar contraseña and Cerrar sesión; logout uses a CSRF-protected POST form.
-Each item is a 20px line icon and an uppercase Archivo Narrow 13px label on a 40px row; group labels are gold Courier Prime 11px with 0.18em tracking. The current page is gold with a 2px right bar.
+Each item is a 20px line icon and an uppercase Archivo Narrow 13px label on a 40px row (44px for a coarse pointer); group labels are gold Courier Prime 11px with 0.18em tracking. The current page is gold with a 2px right bar.
 
 | State | Rail | Behavior |
 | --- | --- | --- |
@@ -101,8 +104,8 @@ Each item is a 20px line icon and an uppercase Archivo Narrow 13px label on a 40
 The control at the bottom of the rail switches Contraer and Expandir; its chevron turns. Keys: `]` toggles compact, `[` toggles hidden; both are ignored inside form fields.
 One 360ms `cubic-bezier(.2, .8, .2, 1)` transition moves the rail width, the page offset, the labels, and the chevron; reduced motion removes it.
 The state is kept in `localStorage` (`athena.rail`), so the choice carries between the reader and the admin.
-At 768px and below the rail is an overlay drawer that starts closed and is never stored: the bottom-left menu button opens it, and Escape, a followed link, or a tap outside closes it.
-On the directory at 768px and below, `.rail-reveal` occupies a normal-flow row above the content, so it cannot cover fields. The shared overlay opening and closing behavior stays the same.
+At 1024px and below the rail is an overlay drawer that starts closed and is never stored: the bottom-left menu button opens it, and Escape, a followed link, or a tap outside closes it.
+On the directory at 1024px and below, `.rail-reveal` occupies a normal-flow row above the content, so it cannot cover fields. The shared overlay opening and closing behavior stays the same.
 
 ## Controls and states
 
@@ -112,7 +115,7 @@ Keep its native text behavior. Image insertion preserves selected text; progress
 Save controls stay disabled during upload. The helper wraps below the textarea on narrow screens and uses the existing control and spacing tokens.
 Keep visible labels, skip links, focus outlines, and reduced-motion support.
 Account and reader focus outlines are 3px gold; admin outlines use soft gold.
-Most reader surfaces are square. Admin and account controls share one shape: 44px high, 4px radius, 1px `#555` border; buttons pad 0 16px and inputs 0 12px.
+Most reader surfaces are square. Admin and account controls share one shape: 44px high, 4px radius, 1px `#666` border; buttons pad 0 16px and inputs 0 12px.
 Primary buttons (default submit, Añadir, Guardar) are gold with gold-ink text; hover is soft gold. Secondary buttons (other submits, Historial and the other object tools, Buscar, Cancelar) are transparent with soft-gold text; hover turns the border gold. Danger buttons (Eliminar) are transparent with `#6b3a33` border and error text. Disabled controls are 50% opacity.
 Changelists end with an unlabeled controls column of 36px square icon links (44px for a coarse pointer; Ver or Descargar, Editar, Eliminar) in the secondary style, Eliminar in the danger colors; `title` and `aria-label` name each one. Regular rows with one line and these controls measure 45px. The column stays pinned to the right edge when the table scrolls. Eliminar opens Django's confirmation page. Existing Django header sorting stays native.
 Django's action select is hidden. Checking rows shows a sticky bar above the table (count, Eliminar seleccionados, Cancelar; 36px buttons) that runs `delete_selected` through the hidden action form, so the confirmation page still protects it (`static/athena/admin-list.js`).

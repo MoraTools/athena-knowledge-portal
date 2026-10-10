@@ -47,6 +47,15 @@ function updatePageTreeCurrent() {
   current.link.setAttribute('aria-current', 'location');
 }
 
+function updatePageTreeLayout() {
+  const tree = document.querySelector('.page-tree');
+  if (!tree) return;
+  const layout = getComputedStyle(tree).position === 'sticky' ? 'side' : 'inline';
+  if (tree.dataset.layout === layout) return;
+  tree.dataset.layout = layout;
+  tree.querySelector('details').open = layout === 'side';
+}
+
 function buildPageTree() {
   document.querySelector('.page-tree')?.remove();
   document.body.classList.remove('has-page-tree');
@@ -64,7 +73,6 @@ function buildPageTree() {
   nav.setAttribute('aria-label', 'En esta página');
 
   const details = document.createElement('details');
-  details.open = matchMedia('(min-width: 1200px)').matches;
   const summary = document.createElement('summary');
   summary.textContent = 'En esta página';
   const list = document.createElement('ol');
@@ -82,8 +90,9 @@ function buildPageTree() {
 
   details.append(summary, list);
   nav.append(details);
-  article.insertBefore(nav, article.querySelector(':scope > h1') || article.firstChild);
+  article.before(nav);
   document.body.classList.add('has-page-tree');
+  updatePageTreeLayout();
   updatePageTreeCurrent();
 }
 
@@ -657,7 +666,10 @@ function updateSignInLinks() {
 
 document.addEventListener('click', async (event) => {
   const pageTreeLink = event.target.closest('.page-tree a');
-  if (pageTreeLink && !matchMedia('(min-width: 1200px)').matches) pageTreeLink.closest('details').open = false;
+  if (pageTreeLink) {
+    updatePageTreeLayout();
+    if (pageTreeLink.closest('.page-tree').dataset.layout === 'inline') pageTreeLink.closest('details').open = false;
+  }
 
   const copyButton = event.target.closest('button.copy-page');
   if (!copyButton) return;
@@ -719,3 +731,5 @@ syncView();
 window.addEventListener('load', syncView);
 window.addEventListener('hashchange', syncView);
 window.addEventListener('scroll', updatePageTreeCurrent, { passive: true });
+const reader = document.querySelector('div#main');
+if (reader) new ResizeObserver(updatePageTreeLayout).observe(reader);

@@ -48,7 +48,7 @@
     const preview = document.getElementById('desk-preview-content');
     const dialog = document.getElementById('article-details');
     if (!form || !source || !title || !preview || !dialog) return;
-    const narrow = matchMedia('(max-width: 768px)');
+    const narrow = matchMedia('(max-width: 1024px)');
     function compactRail() {
       if (narrow.matches) return;
       document.documentElement.dataset.rail = 'compact';

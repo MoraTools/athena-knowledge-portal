@@ -5,7 +5,7 @@
 @font-face { font-family: 'Courier Prime'; src: url('/fonts/courier-prime-700-latin.woff2') format('woff2'); font-weight: 700; font-display: swap; }
 
 :root, html[data-theme='light'], html[data-theme='dark'] {
-  --bg: #000; --surface: #101010; --surface-2: #191919; --line: #2a2a2a; --line-strong: #555;
+  --bg: #000; --surface: #101010; --surface-2: #191919; --line: #2a2a2a; --line-strong: #666;
   --text: #fff; --muted: #d0d0d0; --quiet: #8f8f8f; --gold: #ffb900; --gold-soft: #ffcf40; --gold-ink: #1a1400;
   --code: #ffe08a; --error: #ffb8ac; --danger-line: #6b3a33; --row-hover: #151515; --row-selected: #342c18;
   --success-bg: #18391e; --warning-bg: #3d3012; --error-bg: #421c19;
@@ -39,6 +39,9 @@
 /* Base */
 html { scrollbar-color: var(--line-strong) var(--bg); }
 body { background: var(--bg); color: var(--text); font: 16px/1.5 var(--font-ui); }
+#container { min-width: 0; }
+.main > .content { min-width: 0; container: admin-page / inline-size; }
+#content-main { min-width: 0; }
 ::selection { background: var(--gold); color: #000; }
 a { text-underline-offset: .2em; }
 a:link, a:visited { color: var(--gold-soft); }
@@ -62,7 +65,7 @@ div.breadcrumbs, thead th, .module h2, .module caption, .inline-group h2, fields
   gap: 12px 24px; flex-wrap: wrap; padding: 16px var(--space-4); background: var(--surface); color: var(--text);
   border-bottom: 1px solid var(--line);
 }
-#site-name { display: flex; align-items: baseline; gap: 16px; margin: 0; }
+#site-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); min-width: 0; max-width: 100%; margin: 0; }
 #site-name a:link, #site-name a:visited { text-decoration: none; }
 #site-name .site-brand { font: 700 22px/1 var(--font-display); letter-spacing: .12em; }
 #site-name .site-brand:link, #site-name .site-brand:visited { color: var(--text); }
@@ -75,7 +78,7 @@ div.breadcrumbs a:link, div.breadcrumbs a:visited { color: var(--gold-soft); }
 div.breadcrumbs a:hover, div.breadcrumbs a:focus { color: var(--code); }
 
 /* Page: fills the width beside the rail up to --content-max; ultra-wide screens centre it, like the reader. */
-#content { box-sizing: border-box; width: auto; max-width: var(--content-max); padding: var(--space-4); }
+#content { box-sizing: border-box; width: 100%; max-width: var(--content-max); padding: var(--space-4); }
 @media (min-width: 1600px) { #content { margin: 0 auto; } }
 #content h1 { margin: 0 0 var(--space-3); font: 500 34px/44px var(--font-display); color: var(--text); overflow-wrap: anywhere; }
 #content > h2 { margin: -12px 0 var(--space-3); font: 400 18px var(--font-ui); color: var(--muted); }
@@ -86,7 +89,7 @@ div.breadcrumbs a:hover, div.breadcrumbs a:focus { color: var(--code); }
 .delete-confirmation form .cancel-link, .delete-confirmation form input[type=submit],
 .paginator a:link, .paginator a:visited, .paginator .this-page {
   box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  height: var(--control-height); min-height: var(--control-height); margin: 0; padding: 0 16px;
+  height: var(--control-height); min-height: var(--control-height); max-width: 100%; margin: 0; padding: 0 16px;
   border: 1px solid var(--line-strong); border-radius: var(--radius); background: transparent; box-shadow: none;
   color: var(--gold-soft); font: 700 13px/1 var(--font-ui); letter-spacing: .04em; text-transform: uppercase;
   text-decoration: none; white-space: nowrap; cursor: pointer; vertical-align: middle;
@@ -130,7 +133,7 @@ input:not([type]), input[type=text], input[type=password], input[type=email], in
 input[type=tel], input[type=search], input[type=date], input[type=time], .vTextField, select, textarea,
 .form-row input[type=text], .form-row input[type=password], .form-row input[type=email], .form-row input[type=url],
 .form-row input[type=number], .form-row input[type=tel], .form-row .vTextField, .form-row select, .form-row textarea {
-  box-sizing: border-box; min-height: var(--control-height); max-width: 100%; margin: 0; padding: 0 12px;
+  box-sizing: border-box; min-height: var(--control-height); min-width: 0; max-width: 100%; margin: 0; padding: 0 12px;
   border: 1px solid var(--line-strong); border-radius: var(--radius); background-color: var(--bg); color: var(--text);
   font: 16px var(--font-ui); caret-color: var(--gold); vertical-align: middle;
 }
@@ -151,7 +154,7 @@ select, .form-row select {
 }
 select[multiple] { height: auto; padding: 8px; background-image: none; }
 input[type=checkbox], input[type=radio] { width: 18px; height: 18px; margin: 0; accent-color: var(--gold); vertical-align: middle; cursor: pointer; }
-input[type=file] { max-width: 100%; color: var(--muted); font: 16px var(--font-ui); }
+input[type=file] { box-sizing: border-box; min-width: 0; max-width: 100%; color: var(--muted); font: 16px var(--font-ui); }
 input[type=file]::file-selector-button {
   height: var(--control-height); margin-right: 12px; padding: 0 16px; border: 1px solid var(--line-strong);
   border-radius: var(--radius); background: transparent; color: var(--gold-soft);
@@ -179,6 +182,7 @@ ul.messagelist code.secret ~ a { display: inline-block; margin-top: 8px; }
 ul.errorlist { margin: 0 0 8px; padding: 0; background: transparent; color: var(--error); }
 ul.errorlist li { font-size: 14px; }
 .help, p.help, form p.help, div.help, form div.help, div.help li { color: var(--quiet); font: 14px/1.5 var(--font-ui); }
+div.breadcrumbs, .form-row, .help, .errornote, .errorlist, .delete-confirmation #content, .key-created { overflow-wrap: anywhere; }
 
 /* Modules and fieldsets */
 .module { background: var(--surface); border: 1px solid var(--line); }
@@ -219,7 +223,7 @@ form .aligned div.checkbox-row + div.help { margin-left: 196px; }
 .datetimeshortcuts .clock-icon { mask-image: url('/static/admin/img/icon-clock.svg'); }
 p.datetime { color: var(--muted); font-size: 16px; }
 p.datetime input { margin: 4px 0; }
-.related-widget-wrapper { gap: 8px; align-items: center; }
+.related-widget-wrapper { gap: 8px; align-items: center; flex-wrap: wrap; max-width: 100%; }
 a.related-widget-wrapper-link { display: inline-flex; align-items: center; justify-content: center; width: var(--control-height); height: var(--control-height); box-sizing: border-box; border: 1px solid var(--line-strong); border-radius: var(--radius); opacity: 1; filter: none; }
 a.related-widget-wrapper-link:hover { border-color: var(--gold); }
 a.related-widget-wrapper-link:not(:link) { opacity: .5; }
@@ -253,7 +257,7 @@ a.delete-related { --icon: url('/static/admin/img/icon-deletelink.svg'); }
 .submit-row a.deletelink { margin-left: auto; }
 
 /* Object tools sit beside the page title. */
-.object-tools { float: right; display: flex; gap: 12px; margin: -68px 0 0; padding: 0; font-size: 13px; }
+.object-tools { float: right; display: flex; flex-wrap: wrap; gap: 12px; max-width: 100%; margin: -68px 0 0; padding: 0; font-size: 13px; }
 .object-tools li { float: none; height: auto; margin: 0; padding: 0; list-style: none; }
 
 /* Pills: shared by changelist booleans and the directory. */
@@ -273,7 +277,8 @@ thead th a:link, thead th a:visited { color: var(--quiet); }
 thead th a:hover, thead th a:focus { color: var(--gold-soft); }
 thead th.sorted { background: #222; }
 thead th.sorted .text a, thead th.sorted .text span { color: var(--muted); }
-table thead th .text span, table thead th .text a { padding: var(--space-1) var(--space-2); }
+table thead th .text span, table thead th .text a { box-sizing: border-box; min-height: 40px; padding: var(--space-1) var(--space-2); }
+table thead th .text a { display: flex; align-items: center; }
 table thead th .text a:hover, table thead th .text a:focus { background: transparent; }
 table thead th.sorted .sortoptions { padding: 11px 12px 0 0; }
 table thead th.sorted .sortoptions a { background: var(--gold-soft); mask: url('/static/admin/img/sorting-icons.svg') 0 0 / 14px auto no-repeat; }
@@ -299,6 +304,7 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 #changelist table input { vertical-align: middle; }
 #changelist-form .results { border: 1px solid var(--line); }
 .results table { margin: 0; }
+#change-history { max-width: 100%; overflow-x: auto; }
 #change-history table { border: 1px solid var(--line); }
 #change-history tbody th { width: 12em; color: var(--quiet); }
 #changelist td.field-date, #changelist td.field-last_updated, #changelist td.field-expires_at, #changelist td.field-created, #changelist td.field-last_login { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -313,7 +319,7 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 #changelist-search > div { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; max-width: none; }
 #toolbar form #searchbar, #toolbar #searchbar { width: 320px; max-width: 100%; height: var(--control-height); margin: 0; padding: 0 12px; font-size: 16px; }
 #changelist-search > div > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-#toolbar .quiet { color: var(--quiet); margin: 0; }
+#toolbar .quiet { flex: 1 1 auto; width: auto; color: var(--quiet); margin: 0; }
 /* Django's action form is hidden (admin/change_list.html); admin-list.js shows this bar while rows are checked. */
 .bulk-bar {
   position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
@@ -356,7 +362,7 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: v
 #content-main { container-type: inline-size; }
 @container (max-width: 1199px) {
   #changelist { flex-direction: column; align-items: stretch; }
-  #changelist-filter { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); flex-basis: auto; margin: 24px 0 0; }
+  #changelist-filter { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); flex-basis: auto; min-width: 0; margin: 24px 0 0; }
   #changelist-filter > h2, #changelist-filter > #changelist-filter-extra-actions { grid-column: 1 / -1; }
   #changelist-filter ul { border-bottom: 0; }
 }
@@ -374,7 +380,10 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: v
 #changelist-filter #changelist-filter-extra-actions a.hidelink { padding: 0; }
 
 /* Dashboard and recent actions */
-.dashboard #content { width: auto; }
+.dashboard #content { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: var(--space-3); width: 100%; margin-right: 0; }
+.dashboard #content > :is(h1, h2) { grid-column: 1 / -1; margin-bottom: 0; }
+.dashboard #content-main, .dashboard #content-related { float: none; width: auto; min-width: 0; margin: 0; }
+.dashboard #content-main .module { overflow-x: auto; }
 .dashboard .module table td, .dashboard .module table th { padding: calc(var(--space-1) / 2) var(--space-2); }
 .dashboard .module table td a { white-space: nowrap; }
 #content-related { background: transparent; }
@@ -382,6 +391,7 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: v
 #content-related h3 { margin: 16px 0 8px; padding: 0 16px; color: var(--quiet); }
 #content-related .actionlist { margin: 0 16px 16px; }
 #content-related .actionlist li { padding-left: 0; line-height: 1.4; margin-bottom: 10px; }
+#content-related .actionlist { overflow-wrap: anywhere; }
 #content-related .actionlist li .mini { display: block; color: var(--quiet); font-size: 13px; }
 #content-related .actionlist li .mini strong { color: var(--muted); font-weight: 600; }
 #content-related p { padding: 0 16px; color: var(--quiet); }
@@ -395,7 +405,7 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: v
 
 /* Login */
 .login { background: var(--bg); }
-.login #container { background: var(--surface); border: 1px solid var(--line); border-radius: 0; }
+.login #container { box-sizing: border-box; max-width: calc(100% - var(--space-4)); min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 0; }
 .login #header { justify-content: center; padding: 20px; }
 .login #content { padding: 24px; }
 .login .form-row { padding: 8px 0; border: 0; }
@@ -407,9 +417,24 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: v
 /* Popups have no header or sidebar. */
 .popup #content { padding: 24px 16px; }
 
+@container admin-page (max-width: 1000px) {
+  .dashboard #content { grid-template-columns: minmax(0, 1fr); }
+}
+@container admin-page (max-width: 900px) {
+  .object-tools { float: none; margin: 0 0 var(--space-2); }
+}
+@container admin-page (max-width: 720px) {
+  .aligned .form-row .flex-container { flex-direction: column; }
+  .aligned label { width: auto; min-width: 0; padding: 0 0 var(--space-1); }
+  .aligned .form-row .flex-container > textarea, .aligned .form-row .flex-container > .article-image-editor { flex-basis: auto; width: 100%; }
+  .aligned .form-row .checkbox-row { flex-direction: row; }
+  form .aligned div.help, form .aligned p.help, form .aligned div.checkbox-row + div.help { margin-left: 0; }
+}
+
 @media (max-width: 1024px) {
   #header, div.breadcrumbs, ul.messagelist { padding-left: var(--space-3); padding-right: var(--space-3); }
   #content { padding: var(--space-3); }
+  :where(body:has(#rail)) #content { padding-bottom: 80px; }
 }
 @media (max-width: 767px) {
   #header, div.breadcrumbs, ul.messagelist { padding-left: var(--space-2); padding-right: var(--space-2); }
@@ -429,10 +454,13 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: v
 }
 
 /* API key created: the raw key is shown once, on its own page */
-.key-created { max-width: 900px; }
+.key-created { min-width: 0; }
 .key-created .key-warning { padding: 14px 16px; background: var(--warning-bg); color: var(--text); border-radius: var(--radius); margin: 0 0 24px; }
 .key-created dt { font: 13px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
 .key-created dd { margin: 0; }
 .key-created code.secret { display: block; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: var(--radius); color: var(--code); font-size: 15px; user-select: all; overflow-wrap: anywhere; white-space: pre-wrap; }
 .key-created #raw-key { font-size: 18px; border-color: var(--gold); }
-.key-created .key-actions { display: flex; gap: 12px; margin-top: 28px; }
+.key-created .key-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+@media (pointer: coarse) {
+  .bulk-bar .button, #changelist-filter li a:link, #changelist-filter li a:visited { min-height: var(--control-height); }
+}

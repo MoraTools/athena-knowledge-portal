@@ -7,6 +7,9 @@ import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
 
 const handlers = {};
+const readerShell = {};
+let outlineResize;
+let outlineObserved;
 const context = vm.createContext({
   URL,
   URLSearchParams,
@@ -17,12 +20,16 @@ const context = vm.createContext({
     context.location.hash = url.hash;
   } },
   matchMedia: () => ({ matches: false }),
+  ResizeObserver: class {
+    constructor(handler) { outlineResize = handler; }
+    observe(target) { outlineObserved = target; }
+  },
   navigator: { clipboard: { writeText() {} } },
   setTimeout() {}, clearTimeout() {}, Element: class {},
   getComputedStyle: () => ({ getPropertyValue: () => '' }),
   document: {
     addEventListener(name, handler) { handlers[name] = handler; },
-    querySelector() { return null; },
+    querySelector(selector) { return selector === 'div#main' ? readerShell : null; },
     querySelectorAll() { return []; },
     getElementsByTagName() { return []; },
     head: {}, documentElement: {}, readyState: 'loading', currentScript: null,
@@ -42,6 +49,7 @@ assert.equal(context.window.Docsify.version, '5.0.0');
 vm.runInContext(readFileSync(new URL('../src/config.js', import.meta.url), 'utf8'), context);
 assert.equal(context.window.$docsify.skipLink, false, 'Athena supplies its own accessible skip link.');
 vm.runInContext(readFileSync(new URL('../src/app.js', import.meta.url), 'utf8'), context);
+assert.equal(outlineObserved, readerShell, 'Reader width changes must observe the content area beside the rail.');
 
 const duplicateIds = context.docsifyHeadingIds('Repeated', [
   { level: 4, title: 'Detail', text: '' },
@@ -246,6 +254,7 @@ class Element {
   get cells() { return this.childNodes.filter((child) => ['TD', 'TH'].includes(child.tagName)); }
   setAttribute(name, value) { this.attributes.set(name, value); }
   getAttribute(name) { return this.attributes.get(name) ?? null; }
+  removeAttribute(name) { this.attributes.delete(name); }
   append(...children) {
     children.forEach((child) => {
       if (child.parentElement) child.parentElement.childNodes = child.parentElement.childNodes.filter((node) => node !== child);
@@ -266,6 +275,60 @@ class Element {
   addEventListener(name, handler) { (this.listeners[name] ||= []).push(handler); }
   click() { (this.listeners.click || []).forEach((handler) => handler({ target: this })); }
 }
+
+// The outline uses the width beside the rail and retains its native details toggle.
+let pageTree;
+const outlineHeading = new Element('h1', 'Reader guide');
+outlineHeading.id = 'reader-guide';
+outlineHeading.getBoundingClientRect = () => ({ top: 0 });
+const outlineArticle = {
+  parentElement: { clientWidth: 1000 },
+  querySelector: () => null,
+  querySelectorAll: () => [outlineHeading],
+  before(nav) { nav.parentElement = this.parentElement; nav.remove = () => { pageTree = null; }; pageTree = nav; }
+};
+context.document.createElement = (tag) => new Element(tag);
+context.document.querySelector = (selector) => ({ '.markdown-section': outlineArticle, '.page-tree': pageTree })[selector] || null;
+context.getComputedStyle = () => ({ position: outlineArticle.parentElement.clientWidth >= 1200 ? 'sticky' : 'static' });
+context.location.hash = '#/content/guide';
+for (const width of [1000, 1199, 1200, 1320]) {
+  outlineArticle.parentElement.clientWidth = width;
+  context.buildPageTree();
+  const details = pageTree.children[0];
+  assert.equal(details.open, width >= 1200, 'The outline opens only when the content area supports a side column.');
+  assert.equal(details.children[0].tagName, 'SUMMARY');
+  const link = details.children[1].children[0].children[0];
+  assert.equal(link.href, '#reader-guide');
+  assert.equal(link.getAttribute('aria-current'), 'location');
+  details.open = !details.open;
+  context.updatePageTreeCurrent();
+  assert.equal(details.open, width < 1200, 'Scroll tracking preserves the reader toggle.');
+  details.open = true;
+  link.closest = (selector) => selector === 'details' ? details : pageTree;
+  await handlers.click({ target: { closest: (selector) => selector === '.page-tree a' ? link : null } });
+  assert.equal(details.open, width >= 1200, 'Following an outline link closes only the inline tree.');
+}
+const responsiveDetails = pageTree.children[0];
+responsiveDetails.open = false;
+outlineArticle.parentElement.clientWidth = 1294;
+outlineResize();
+assert.equal(responsiveDetails.open, false, 'A reader choice stays when a compact rail keeps the outline beside the article.');
+outlineArticle.parentElement.clientWidth = 1086;
+outlineResize();
+assert.equal(pageTree.dataset.layout, 'inline', 'Expanding the rail can move the outline above the article.');
+assert.equal(responsiveDetails.open, false);
+responsiveDetails.open = true;
+outlineArticle.parentElement.clientWidth = 1000;
+outlineResize();
+assert.equal(responsiveDetails.open, true, 'A reader choice stays through width changes within the inline layout.');
+outlineArticle.parentElement.clientWidth = 1320;
+outlineResize();
+assert.equal(responsiveDetails.open, true, 'Returning to the side layout opens its default outline.');
+outlineArticle.parentElement.clientWidth = 640;
+outlineResize();
+assert.equal(responsiveDetails.open, false, 'Resizing a wide article to mobile closes the inline outline.');
+pageTree = null;
+outlineResize();
 
 // The actual legacy sidebar must produce populated groups through the reader parser.
 const legacySidebar = legacySource.match(/\$sidebar = @'\r?\n([\s\S]*?)\r?\n'@/)[1];
@@ -474,4 +537,42 @@ if (process.argv.includes('--reader-integration')) {
   assert.deepEqual(directoryRows.map((row) => row.hidden), [false, false]);
   assert.ok(directoryLinks.every((link) => !new URL(link.href, 'https://athena.example').searchParams.has('q')));
 }
-console.log('Search, sign-in, reader compiler/router, navigation, PDF viewer and sorting checks passed.');
+
+// Tablet drawers must not replace the stored desktop rail preference.
+function railViewport(width, preference) {
+  const events = {};
+  const root = { dataset: {} };
+  const media = { addEventListener(_name, handler) { this.change = handler; } };
+  const writes = [];
+  vm.runInNewContext(readFileSync(new URL('../src/assets/rail.js', import.meta.url), 'utf8'), {
+    matchMedia(query) { media.matches = width <= Number(query.match(/max-width: (\d+)px/)[1]); return media; },
+    localStorage: { getItem: () => preference, setItem(key, value) { writes.push([key, value]); } },
+    document: {
+      documentElement: root, createElement: () => ({ setAttribute() {}, classList: { remove() {} } }),
+      querySelector: () => null, addEventListener(name, handler) { events[name] = handler; }
+    },
+    window: {}
+  });
+  const click = (selector) => events.click({ target: { closest: () => ({ matches: (candidate) => candidate === selector }) } });
+  return { root, media, writes, click };
+}
+for (const width of [320, 768, 1024]) {
+  const drawer = railViewport(width, 'compact');
+  assert.equal(drawer.root.dataset.rail, 'hidden', 'Narrow screens start with the content width available.');
+  drawer.click('.rail-reveal');
+  assert.equal(drawer.root.dataset.rail, 'expanded');
+  drawer.click('.rail-toggle');
+  assert.equal(drawer.root.dataset.rail, 'hidden');
+  assert.deepEqual(drawer.writes, [], 'Opening and closing a drawer never changes desktop preferences.');
+  drawer.media.matches = false;
+  drawer.media.change();
+  assert.equal(drawer.root.dataset.rail, 'compact', 'Returning to desktop restores the stored preference.');
+}
+const desktopRail = railViewport(1025, 'compact');
+assert.equal(desktopRail.root.dataset.rail, 'compact');
+desktopRail.click('.rail-toggle');
+assert.equal(desktopRail.root.dataset.rail, 'expanded');
+assert.deepEqual(desktopRail.writes, [['athena.rail', 'expanded']]);
+assert.equal(railViewport(1366, 'hidden').root.dataset.rail, 'hidden');
+assert.equal(railViewport(1366, 'invalid').root.dataset.rail, 'expanded');
+console.log('Search, sign-in, reader compiler/router, navigation, responsive rail/outline, PDF viewer and sorting checks passed.');
