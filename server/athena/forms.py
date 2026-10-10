@@ -2,11 +2,11 @@ import re
 
 from django import forms
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm, UsernameField
-from django.contrib.auth.models import Permission, User
+from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from .models import Article
+from .models import ApiKey, Article
 
 
 EMAIL_UNAVAILABLE = ('El servicio de correo de Athena aún no está configurado. Por ahora no se pueden ingresar ni guardar correos. '
@@ -86,10 +86,33 @@ class ArticleForm(forms.ModelForm):
         return data
 
 
+class AdminArticleForm(ArticleForm):
+    loaded_revision = forms.CharField(required=False, max_length=50, widget=forms.HiddenInput)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.initial['loaded_revision'] = self.instance.updated_at.isoformat()
+        if 'body' not in self.fields:
+            self.fields.pop('loaded_revision', None)
+
+    def clean(self):
+        data = super().clean()
+        if self.instance.pk and 'loaded_revision' in self.fields:
+            # Django's native change POST holds this lock until the article and its related rows are saved.
+            current = Article.objects.select_for_update().only('updated_at').get(pk=self.instance.pk)
+            if data.get('loaded_revision') != current.updated_at.isoformat():
+                raise ValidationError('El artículo cambió desde que abrió esta página. Su texto no se guardó. '
+                                      'Copie sus cambios y vuelva a abrir el artículo.')
+        return data
+
+
 def user_managers():
     """Active accounts that can manage users: superusers and staff with auth.change_user."""
-    return User.objects.filter(Q(is_superuser=True) | Q(is_staff=True, user_permissions__codename='change_user',
-                                                        user_permissions__content_type__app_label='auth'), is_active=True)
+    return User.objects.filter(Q(is_superuser=True) | Q(is_staff=True) & (
+        Q(user_permissions__codename='change_user', user_permissions__content_type__app_label='auth') |
+        Q(groups__permissions__codename='change_user', groups__permissions__content_type__app_label='auth')
+    ), is_active=True).distinct()
 
 
 def protect_admin(user, *, actor, active=True, admin=True, deleting=False):
@@ -114,11 +137,12 @@ class SafeUserChangeForm(UserChangeForm):
 
     def clean(self):
         data = super().clean()
+        granted = permission_names(data.get('user_permissions', Permission.objects.none()))
+        granted |= permission_names(Permission.objects.filter(group__in=data.get('groups', Group.objects.none())))
+        validate_user_grants(self.actor, superuser=data.get('is_superuser', False), granted=granted)
         if self.instance.pk:
             original = User.objects.get(pk=self.instance.pk)
-            permissions = data.get('user_permissions', Permission.objects.none())
-            manages = data.get('is_superuser', False) or permissions.filter(
-                codename='change_user', content_type__app_label='auth').exists()
+            manages = data.get('is_superuser', False) or 'auth.change_user' in granted
             protect_admin(original, actor=self.actor, active=data.get('is_active', False),
                           admin=data.get('is_staff', False) and manages)
         return data
@@ -135,8 +159,10 @@ ADMIN_VIEW = ['athena.view_article', 'athena.view_download']
 
 
 def held_areas(user):
-    """Edit areas a non-superuser holds directly (a superuser holds every area)."""
-    held = {f'{app}.{codename}' for app, codename in user.user_permissions.values_list('content_type__app_label', 'codename')}
+    """Edit areas held directly or through groups (a superuser holds every area)."""
+    if user.is_superuser:
+        return set(EDIT_AREAS)
+    held = user_permission_names(user)
     return {area for area, names in EDIT_AREAS.items() if names[0] in held}
 
 
@@ -146,6 +172,38 @@ def permissions(names):
         app_label, codename = name.split('.')
         query |= Q(content_type__app_label=app_label, codename=codename)
     return Permission.objects.filter(query)
+
+
+def permission_names(query):
+    return {f'{app}.{codename}' for app, codename in query.values_list('content_type__app_label', 'codename')}
+
+
+def user_permission_names(user):
+    # Include inactive accounts' stored grants so reactivation and password resets cannot bypass the ceiling.
+    return permission_names(Permission.objects.filter(Q(user=user) | Q(group__user=user)))
+
+
+def may_manage_user(actor, user):
+    return user is None or actor.is_superuser or (
+        not user.is_superuser and user_permission_names(user) <= user_permission_names(actor))
+
+
+def validate_user_grants(actor, *, superuser=False, granted=()):
+    if not actor.is_superuser and (superuser or set(granted) - user_permission_names(actor)):
+        raise ValidationError('Solo puede otorgar los permisos de edición que usted tiene.')
+
+
+class ApiKeyForm(forms.ModelForm):
+    class Meta:
+        model = ApiKey
+        fields = ['name', 'user', 'scope', 'expires_at']
+
+    def clean(self):
+        data = super().clean()
+        owner = data.get('user', self.instance.user if self.instance.pk else None)
+        if owner and not may_manage_user(self.actor, owner):
+            raise ValidationError('Solo puede administrar claves de usuarios con permisos que usted tiene.')
+        return data
 
 
 class DirectoryUserForm(forms.ModelForm):
@@ -183,6 +241,10 @@ class DirectoryUserForm(forms.ModelForm):
                           admin=data.get('role') == 'admin' and 'users' in data.get('edits', []))
         if not self.actor.is_superuser and set(data.get('edits', [])) - held_areas(self.actor):
             raise ValidationError('Solo puede otorgar los permisos de edición que usted tiene.')
+        edits = data.get('edits', []) if data.get('role') == 'admin' else []
+        validate_user_grants(self.actor, superuser=data.get('role') == 'admin' and set(edits) == set(EDIT_AREAS),
+                             granted=ADMIN_VIEW + [name for area in edits for name in EDIT_AREAS[area]]
+                             if data.get('role') == 'admin' else [])
         return data
 
     def save(self, commit=True):
@@ -198,7 +260,12 @@ class DirectoryUserForm(forms.ModelForm):
         user = self.instance
         names = [] if user.is_superuser or not user.is_staff else ADMIN_VIEW + [
             name for area in self.cleaned_data['edits'] for name in EDIT_AREAS[area]]
-        user.user_permissions.set(permissions(names))
+        allowed = permissions(names)
+        user.user_permissions.set(allowed)
+        if not user.is_superuser:
+            # The directory choices also limit permissions inherited from groups.
+            disallowed = Permission.objects.exclude(pk__in=allowed)
+            user.groups.remove(*user.groups.filter(permissions__in=disallowed).values_list('pk', flat=True).distinct())
 
 
 class DirectoryUserCreationForm(DirectoryUserForm, UserCreationForm):

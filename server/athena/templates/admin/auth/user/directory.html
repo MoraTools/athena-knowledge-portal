@@ -80,7 +80,7 @@
       {% if can_edit %}<button class="button default" type="submit">Guardar</button>{% else %}<p class="help">Solo un administrador con todos los permisos puede editar esta cuenta.</p>{% endif %}
       {% if selected and can_edit %}
       <div class="directory-actions">
-        <a class="link" href="{% url 'admin:auth_user_password_change' selected.pk %}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3"/></svg>Restablecer contraseña</a>
+        {% if can_reset_password %}<a class="link" href="{% url 'admin:auth_user_password_change' selected.pk %}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3"/></svg>Restablecer contraseña</a>{% endif %}
         <a class="link" href="{% url 'admin:athena_apikey_changelist' %}?user__id__exact={{ selected.pk }}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg>{{ api_keys }} clave{{ api_keys|pluralize:'s' }} de API</a>
         {% if selected.pk == request.user.pk %}
         <span class="link danger" aria-disabled="true" title="No puedes eliminar tu propia cuenta"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Eliminar</span>

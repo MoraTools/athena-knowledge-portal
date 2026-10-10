@@ -10,8 +10,7 @@
       <option value="guide">Guías</option>
       <option value="tool">Herramientas</option>
       <option value="update">Actualizaciones</option>
-      {% if user.is_authenticated %}<option value="download">Descargas</option>{% endif %}
-      <option value="pdf">PDF</option>
+      {% if user.is_authenticated %}<option value="download">Descargas</option>{% endif %}<option value="pdf">PDF</option>
     </select>
   </div>
   <p id="search-result-count" class="search-result-count" aria-live="polite"></p>

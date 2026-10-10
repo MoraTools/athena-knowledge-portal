@@ -18,9 +18,10 @@ if (Test-Path -LiteralPath $dist) { Remove-Item -LiteralPath $dist -Recurse -For
 New-Item -ItemType Directory -Force -Path $dist, (Join-Path $dist 'content'), (Join-Path $dist 'vendor'), (Join-Path $dist 'fonts'), (Join-Path $dist 'assets'), (Join-Path $dist 'pdf') | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $project 'src\index.html'), (Join-Path $project 'src\styles.css'), (Join-Path $project 'src\config.js'), (Join-Path $project 'src\app.js'), (Join-Path $project 'src\request-access.html'), (Join-Path $project 'src\_headers') -Destination $dist
-Copy-Item -LiteralPath (Join-Path $project 'node_modules\docsify\lib\docsify.min.js') -Destination (Join-Path $dist 'vendor\docsify.min.js')
+Copy-Item -LiteralPath (Join-Path $project 'node_modules\docsify\dist\docsify.min.js') -Destination (Join-Path $dist 'vendor\docsify.min.js')
 Copy-Item -LiteralPath (Join-Path $project 'node_modules\dompurify\dist\purify.min.js') -Destination (Join-Path $dist 'vendor\purify.min.js')
-Copy-Item -LiteralPath (Join-Path $project 'node_modules\docsify\lib\themes\vue.css') -Destination (Join-Path $dist 'vendor\vue.css')
+# Athena overrides this theme's v5-compatible content, heading and table selectors.
+Copy-Item -LiteralPath (Join-Path $project 'node_modules\docsify\themes\vue.css') -Destination (Join-Path $dist 'vendor\vue.css')
 $themePath = Join-Path $dist 'vendor\vue.css'
 $themeCss = [IO.File]::ReadAllText($themePath, [Text.Encoding]::UTF8).Replace('#34495e', '#ffb900').Replace('#2c3e50', '#fff')
 [IO.File]::WriteAllText($themePath, $themeCss, [Text.UTF8Encoding]::new($false))
@@ -45,17 +46,29 @@ function ConvertTo-SearchText([string]$Markdown) {
 }
 
 function Get-SearchHeadings([string]$Markdown) {
-    $matches = [regex]::Matches($Markdown, '(?m)^\s{0,3}(#{2,6})\s+(.+?)\s*#*\s*$')
-    $headings = [Collections.Generic.List[object]]::new()
-    for ($index = 0; $index -lt $matches.Count; $index++) {
-        $match = $matches[$index]
-        $contentStart = $match.Index + $match.Length
-        $contentEnd = if ($index + 1 -lt $matches.Count) { $matches[$index + 1].Index } else { $Markdown.Length }
-        $headings.Add([pscustomobject]@{
-            level = $match.Groups[1].Value.Length
-            title = ConvertTo-SearchText $match.Groups[2].Value
-            text = ConvertTo-SearchText $Markdown.Substring($contentStart, $contentEnd - $contentStart)
-        })
+    $parser = @'
+import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+const { marked } = await import(pathToFileURL(process.argv[1]).href);
+const headings = [];
+function visit(tokens) {
+  for (const token of tokens) {
+    if (token.type === 'heading') {
+      headings.push({ level: token.depth, raw: token.text, title: marked.Parser.parseInline(token.tokens), text: '' });
+    } else if (token.type === 'blockquote') visit(token.tokens);
+    else if (token.type === 'list') token.items.forEach(item => visit(item.tokens));
+    else if (headings.length) headings.at(-1).text += token.raw;
+  }
+}
+visit(marked.lexer(JSON.parse(readFileSync(0, 'utf8'))));
+process.stdout.write(JSON.stringify(headings));
+'@
+    $parsed = $Markdown | ConvertTo-Json -Compress | & node --input-type=module --eval $parser (Join-Path $project 'node_modules\marked\lib\marked.esm.js')
+    if ($LASTEXITCODE -ne 0) { throw 'Markdown heading parsing failed.' }
+    $headings = @($parsed | ConvertFrom-Json)
+    foreach ($heading in $headings) {
+        $heading.title = ConvertTo-SearchText $heading.title
+        $heading.text = ConvertTo-SearchText $heading.text
     }
     return @($headings)
 }
@@ -200,7 +213,7 @@ foreach ($pdf in $pdfFiles) {
 }
 foreach ($article in $content) {
     $sourceNote = "<p class=`"source-note`">Fuente canónica: <code>$(Html $article.Source)</code></p>"
-    $pdfLink = if ($article.PdfRoute) { "<p><a class=`"pdf-link`" href=`"$($article.PdfRoute)`" target=`"_blank`" rel=`"noreferrer`">Abrir PDF original</a></p>" } else { '' }
+    $pdfLink = if ($article.PdfRoute) { "<p class=`"article-pdf`"><a class=`"pdf-link`" href=`"$($article.PdfRoute)`" target=`"_blank`" rel=`"noreferrer`">Abrir PDF original</a></p>" } else { '' }
     $page = "$($article.MetadataLine)`n# $($article.Title)`n`n$sourceNote`n`n$pdfLink`n`n$($article.Body.Trim())`n"
     Write-Utf8 (Join-Path $dist "content\$($article.Slug).md") $page
 }
@@ -290,7 +303,7 @@ foreach ($article in $content) {
         route = "#/content/$($article.Slug)"
         pdf = $article.PdfRoute
         text = ConvertTo-SearchText $article.Body
-        headings = @(Get-SearchHeadings $article.Body)
+        headings = @(Get-SearchHeadings ([IO.File]::ReadAllText((Join-Path $dist "content\$($article.Slug).md"), [Text.Encoding]::UTF8)))
     })
 }
 foreach ($pdf in $unmatchedPdfs) {
@@ -377,13 +390,15 @@ $homePage = @'
 '@
 Write-Utf8 (Join-Path $dist 'README.md') $homePage
 $sidebar = @'
-- [Inicio](/)
-- [Guías](/guides.md)
-- [Feed](/updates.md)
-- [Herramientas](/tools.md)
-- [Descargas](/downloads.md)
-- [Contribuir](/content/contributing.md)
-- [Archivo](/archive.md)
+- Biblioteca
+  - [Inicio](/)
+  - [Guías](/guides.md)
+  - [Feed](/updates.md)
+  - [Herramientas](/tools.md)
+  - [Descargas](/downloads.md)
+  - [Archivo](/archive.md)
+- Participar
+  - [Contribuir](/content/contributing.md)
 '@
 Write-Utf8 (Join-Path $dist '_sidebar.md') $sidebar
 

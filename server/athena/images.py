@@ -1,4 +1,5 @@
 """Private, immutable article images. Article saves and GC share SQLite's write transaction."""
+import fcntl
 import hashlib
 from html import unescape
 from html.parser import HTMLParser
@@ -31,6 +32,11 @@ GRACE = timedelta(hours=24)
 IMAGE_PATH = re.compile(r'/article-images/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/?')
 GENERATED_FILE = re.compile(r'[0-9a-f]{32}\.(?:png|jpg|webp|gif)')
 MARKDOWN = MarkdownIt('commonmark', {'html': True}).enable(['table', 'strikethrough'])
+
+
+class ImageUploadBusy(ValidationError):
+    def __init__(self):
+        super().__init__('El servidor está procesando otra imagen. Intente de nuevo en unos segundos.')
 
 
 def image_id_from_url(url):
@@ -214,6 +220,18 @@ def clean_gif(raw):
 def create_image(upload, user):
     if upload.size > MAX_BYTES:
         raise ValidationError('Use una imagen PNG, JPEG, WebP o GIF de hasta 10 MiB.')
+    root = Path(settings.DATA_DIR)
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    # One conversion per VPS, including GIF workers, keeps decoded pixels out of concurrent requests.
+    with (root / 'image-upload.lock').open('a') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise ImageUploadBusy from error
+        return _create_image(upload, user)
+
+
+def _create_image(upload, user):
     raw = upload.read(MAX_BYTES + 1)
     if len(raw) > MAX_BYTES:
         raise ValidationError('La imagen supera 10 MiB.')

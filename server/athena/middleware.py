@@ -45,8 +45,9 @@ class AccessMiddleware:
             now = timezone.now()
             # The proxy overwrites this header; the app listens on loopback only.
             ip = request.META.get('HTTP_X_REAL_IP', request.META.get('REMOTE_ADDR', 'unknown'))
+            username = AuthenticationForm(request).fields['username'].to_python(request.POST.get('username', ''))
             keys = [hashlib.sha256(value.encode()).hexdigest() for value in
-                    ['ip:' + ip, 'user:' + request.POST.get('username', '').casefold()]]
+                    ['ip:' + ip, 'user:' + username.casefold()]]
             with transaction.atomic():
                 # Rows remember past lockouts, so each further lockout doubles, until a day passes quietly.
                 LoginAttempt.objects.filter(started_at__lt=now - timedelta(hours=24)).delete()

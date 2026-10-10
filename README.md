@@ -176,9 +176,11 @@ systemctl list-timers athena-backup.timer
 
 A daily timer creates verified SQLite backups in `/var/backups/athena` and retains 14 days.
 PDFs are inside the database, so a backup includes both article data and attachments.
-The same run mirrors all private media, including downloads and article images, to `/var/backups/athena/media/` with `rsync -a --delete`. The mirror has no history: a removed file leaves the mirror on the next run.
+The same run stages the database and hardlinks to all private media under a short SQLite write lock, then copies media with `rsync -a --delete` after releasing the lock. Uploads, replacements, and cleanup can continue during the copy. Media and its staging directory under `/var/lib/athena` must share a filesystem; the backup fails without publication if hardlinks are unavailable.
+An atomic `/var/backups/athena/current` link selects the complete database and media pair. `/var/backups/athena/media/` links to `current/media/` for compatibility. Concurrent backup runs are serialized. Failed copies keep the previous current pair, and the next run removes interrupted staging directories.
+The media mirror has no history: a removed file leaves the mirror on the next successful run. The dated database snapshots retain 14 days, but only the current database has a matching media mirror.
 Backups on the same VPS do not cover VPS loss. An initial backup is also copied to this workstation's private `.secrets/` directory.
 No paid DigitalOcean backup or other paid add-on is enabled.
 For disaster recovery, retain a separate copy of the database, the download files, the release bundle, and `/etc/athena/athena.env`.
-Stop `athena` before restoring a database, set its owner to `athena:athena`, then restart and test sign-in and article/PDF access.
-To restore downloads, copy `/var/backups/athena/media/` back to `/var/lib/athena/media/` with the same owner.
+To restore the complete current backup, stop `athena` and the backup timer. Resolve `/var/backups/athena/current` once, then copy `database.sqlite3` and `media/` from that same directory to `/var/lib/athena/athena.sqlite3` and `/var/lib/athena/media/`. Set their owner to `athena:athena`, then restart the service and timer. Test sign-in, article/PDF access, and downloads.
+Use a dated database snapshot only when a matching separate media copy is available, or when the older database data alone is needed. The current media mirror can lack files from an older snapshot.

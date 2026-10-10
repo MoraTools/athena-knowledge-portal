@@ -75,6 +75,7 @@ Article images can be uploaded before the first article save. Use an `articles` 
 `add_article` or `change_article`. Send only the `file` field. The image endpoint does not change an article or its ETag.
 Use the returned `markdown` in a new article body, an article PATCH, or a Markdown upload. These saves check that each image still exists.
 The upload validates actual PNG, JPEG, WebP, or GIF bytes, with a maximum of 10 MiB and 20 million pixels. GIF can be static or animated, with at most 2000 frames and 2000 million processed pixels (canvas width × height × frame count). Reduce the frame count or resolution if a GIF exceeds these limits. Animated PNG and WebP are rejected.
+The server runs one image conversion at a time. If another conversion is active, the upload returns `503` with `Retry-After: 2` and a JSON `error` message. Retry the same upload after at least two seconds. The file, pixel, and GIF limits stay the same.
 Files use generated names. PNG, JPEG, and WebP are re-encoded without their original metadata. GIF rendering blocks, frame timing, transparency, disposal, and loop settings are preserved. Every GIF frame is decoded in sequence by a separate worker limited to 10 CPU seconds, 12 elapsed seconds, and 512 MiB of memory. Comments, other application metadata, and data after the GIF trailer are removed. Unsupported rendering extensions are rejected. PDF exports use the first GIF frame.
 The returned browser `url` inherits the access of articles that use the image. Use the API GET route to read bytes with a bearer key.
 Read-only keys see published references. Editors with an edit-capable key also see draft references.
@@ -138,7 +139,8 @@ Read responses still include existing email addresses. An administrator handles 
 ## Errors
 
 Errors are JSON under `error`: 400 invalid input, 401 invalid key, 403 insufficient permission,
-404 missing resource or unknown path, 409 duplicate record, 412 missing/stale ETag, 405 unsupported method.
+404 missing resource or unknown path, 409 duplicate record, 412 missing/stale ETag, 405 unsupported method,
+503 image conversion busy (retry after the number of seconds in `Retry-After`, currently 2).
 A stale ETag means another edit was saved. Read the latest article before retrying; do not overwrite blindly.
 
 ## Public article access

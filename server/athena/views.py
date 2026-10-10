@@ -19,7 +19,7 @@ from .models import ApiKey, Article, Download, ManagedImage, visible_articles
 
 
 def article_image_upload(request):
-    from .images import create_image, image_data
+    from .images import ImageUploadBusy, create_image, image_data
     if request.method != 'POST':
         return JsonResponse({'error': 'Use POST para subir una imagen.'}, status=405, headers={'Allow': 'POST'})
     user = request.user
@@ -37,6 +37,8 @@ def article_image_upload(request):
         return JsonResponse({'error': 'Seleccione una imagen PNG, JPEG, WebP o GIF.'}, status=400)
     try:
         return JsonResponse(image_data(create_image(request.FILES['file'], user)), status=201)
+    except ImageUploadBusy as error:
+        return JsonResponse({'error': ' '.join(error.messages)}, status=503, headers={'Retry-After': '2'})
     except ValidationError as error:
         return JsonResponse({'error': ' '.join(error.messages)}, status=400)
 
@@ -71,15 +73,19 @@ def search_text(body):
 
 
 def search_entry(article):
-    headings = list(re.finditer(r'^\s{0,3}(#{2,6})\s+(.+?)\s*#*\s*$', article.body, re.M))
+    body = article_body(article)
+    lines = body.splitlines(keepends=True)
+    tokens = MARKDOWN.parse(body)
+    headings = [(token, tokens[i + 1]) for i, token in enumerate(tokens) if token.type == 'heading_open']
     return {
         'title': article.title, 'kind': article.kind, 'summary': article.summary,
         'author': article.author, 'date': article.date.isoformat(), 'tags': article.tags,
         'route': '#/content/' + article.slug, 'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '',
         'text': search_text(article.body), 'headings': [
-            {'level': len(match[1]), 'title': search_text(match[2]),
-             'text': search_text(article.body[match.end():headings[i+1].start() if i+1 < len(headings) else len(article.body)])}
-            for i, match in enumerate(headings)
+            {'level': int(heading.tag[1:]), 'raw': inline.content,
+             'title': search_text(MARKDOWN.renderer.render([inline], MARKDOWN.options, {})),
+             'text': search_text(''.join(lines[heading.map[1]:headings[i + 1][0].map[0] if i + 1 < len(headings) else len(lines)]))}
+            for i, (heading, inline) in enumerate(headings)
         ],
     }
 
@@ -109,7 +115,7 @@ def article_body(article):
     if not article.published:
         body = '> **Borrador.** Solo visible para editores.\n\n' + body
     if article.pdf_name:
-        body += f'\n\n[Abrir PDF original](/pdf/{article.slug}.pdf)\n'
+        body += f'\n\n<p class="article-pdf"><a href="/pdf/{article.slug}.pdf">Abrir PDF original</a></p>\n'
     return body
 
 

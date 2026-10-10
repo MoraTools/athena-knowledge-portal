@@ -50,7 +50,8 @@ class ArticleEditorTests(TestCase):
         data = {'title': 'Changed title', 'slug': 'attempted-new-slug', 'kind': 'tool', 'summary': '',
                 'author': 'Editor', 'tags': 'one, two', 'date': '2026-09-29', 'body': '# Changed title\n\nContent.',
                 'published': '', 'is_public': 'True', 'status': 'stable', 'url': 'https://example.com',
-                'download_file': 'tool.zip', 'pdf_only': 'on', '_continue': '1'}
+                'download_file': 'tool.zip', 'pdf_only': 'on', '_continue': '1',
+                'loaded_revision': self.article.updated_at.isoformat()}
         response = self.client.post(self.path, data)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'field-summary errors')
@@ -72,6 +73,7 @@ class ArticleEditorTests(TestCase):
                          ('stable', 'https://example.com', 'tool.zip'))
         data.pop('pdf_file')
         data['remove_pdf'] = 'on'
+        data['loaded_revision'] = self.article.updated_at.isoformat()
         self.assertEqual(self.client.post(self.path, data).status_code, 302)
         self.article.refresh_from_db()
         self.assertEqual(self.article.pdf_name, '')

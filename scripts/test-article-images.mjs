@@ -118,16 +118,17 @@ async function failure(request, error = 'La imagen no es válida.') {
   assert.equal(submit(state.form), false);
 }
 
-// Response order must not reorder paste order, and a later selection stays over its original text.
+// Serial uploads keep paste order, and a later selection stays over its original text.
 {
   const state = setup();
   state.textarea.setSelectionRange(7, 7, 'none');
   paste(state.textarea, [file('one.png'), file('two.png')]);
   const start = state.textarea.value.indexOf('After');
   state.textarea.setSelectionRange(start, start + 5, 'backward');
-  await success(state.requests[1], 2);
-  assert.equal(state.submits[0].disabled, true);
+  assert.equal(state.requests.length, 1, 'The browser sends one image at a time.');
   await success(state.requests[0], 1);
+  assert.equal(state.submits[0].disabled, true);
+  await success(state.requests[1], 2);
   assert.equal(state.textarea.value, `Before ![Imagen](${url(1)})\n![Imagen](${url(2)})SELECTED After`);
   assert.equal(state.textarea.value.slice(state.textarea.selectionStart, state.textarea.selectionEnd), 'After');
   assert.equal(state.textarea.selectionDirection, 'backward');
@@ -153,8 +154,8 @@ async function failure(request, error = 'La imagen no es válida.') {
   state.textarea.setSelectionRange(0, 0, 'none');
   paste(state.textarea, [file('first.png')]);
   paste(state.textarea, [file('second.png')]);
-  await success(state.requests[1], 2);
   await success(state.requests[0], 1);
+  await success(state.requests[1], 2);
   assert.ok(state.textarea.value.startsWith(`![Imagen](${url(1)})![Imagen](${url(2)})`));
   state.textarea.setSelectionRange(0, 0, 'none');
   paste(state.textarea, [file('deleted.png')]);
@@ -227,7 +228,7 @@ console.log('Article image paste, async order, selection, failure, text, CSRF an
 // Compile actual Markdown with the shipped Docsify bundle, including its image path resolution.
 {
   const document = {
-    body: { clientWidth: 1000 }, head: {}, readyState: 'loading', currentScript: null,
+    body: { clientWidth: 1000 }, head: {}, documentElement: {}, readyState: 'loading', currentScript: null,
     addEventListener() {}, querySelector() { return null; }, querySelectorAll() { return []; },
     getElementsByTagName() { return []; }
   };
@@ -235,15 +236,17 @@ console.log('Article image paste, async order, selection, failure, text, CSRF an
   const window = { document, location, addEventListener() {} };
   const context = vm.createContext({
     window, document, location, URL, Element: class {}, navigator: { userAgent: 'Node' },
-    console: { warn() {}, error: console.error }, setTimeout() {}, clearTimeout() {}
+    console: { warn() {}, error: console.error }, setTimeout() {}, clearTimeout() {},
+    getComputedStyle: () => ({ getPropertyValue: () => '' }), matchMedia: () => ({ matches: false })
   });
   // build-vps.py copies this exact runtime to dist/vendor/docsify.min.js.
-  vm.runInContext(readFileSync(new URL('../node_modules/docsify/lib/docsify.min.js', import.meta.url), 'utf8'), context);
+  vm.runInContext(readFileSync(new URL('../node_modules/docsify/dist/docsify.min.js', import.meta.url), 'utf8'), context);
+  assert.equal(window.Docsify.version, '5.0.0', 'The runtime must match the pinned Docsify version.');
   vm.runInContext(readFileSync(new URL('../src/config.js', import.meta.url), 'utf8'), context);
-  const router = {
-    getBasePath: () => '/', getCurrentPath: () => '/content/example',
-    parse: () => ({ file: '/content/example.md' }), toURL: path => '#' + path
-  };
+  // The installed router supplies relative path and fragment behavior to the shipped compiler.
+  Object.assign(globalThis, { document, window, location });
+  const { HashHistory } = await import('../node_modules/docsify/src/core/router/history/hash.js');
+  const router = new HashHistory({ basePath: '', ext: '.md', ...window.$docsify });
   const compiler = new window.DocsifyCompiler(window.$docsify, router);
   const managed = url(8);
   for (const markdown of [`![Imagen](${managed})`, `![Imagen][image]\n\n[image]: ${managed}`,
@@ -257,5 +260,20 @@ console.log('Article image paste, async order, selection, failure, text, CSRF an
   const external = 'https://raw.githubusercontent.com/example/image.png';
   assert.ok(compiler.compile(`![External](${external})`).includes(`src="${external}"`));
   assert.ok(compiler.compile(`<img src="${managed}" alt="HTML">`).includes(`src="${managed}"`));
+  for (const [href, expected] of [
+    ['other', '#/content/other'], ['other.md', '#/content/other'],
+    ['other.md?q=one#detail', '#/content/other?q=one&id=detail'],
+    ['#/tools', '#/tools'], ['/#/tools?tag=rpa', '#/tools?tag=rpa'],
+    ['/content/other', '#/content/other'], ['/pdf/other.pdf', '/pdf/other.pdf'],
+    ['/pdf/other.pdf?download=1#page=2', '/pdf/other.pdf?download=1#page=2'],
+    ['/content/example.pdf', '/content/example.pdf'], ['/downloads/file', '/downloads/file'],
+    [managed, managed], [external, external]
+  ]) {
+    const html = compiler.compile(`[Link](${href})`);
+    assert.ok(html.includes(`href="${expected.replaceAll('&', '&amp;')}"`), `${href}: ${html}`);
+  }
+  delete globalThis.document;
+  delete globalThis.window;
+  delete globalThis.location;
   console.log('Shipped Docsify inline/reference managed-image source and existing image path checks passed.');
 }

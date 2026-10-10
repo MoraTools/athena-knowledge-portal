@@ -191,21 +191,35 @@ class Download(models.Model):
         return PurePath(self.file.name).name
 
     def save(self, *args, **kwargs):
-        if not self.file._committed:  # A new or replaced file: measure it before storage copies it.
+        new_file = not self.file._committed and (
+            kwargs.get('update_fields') is None or 'file' in kwargs['update_fields'])
+        if new_file:  # Measure before taking the write lock; storage copies only inside the transaction.
+            upload, upload_name = self.file, self.file.name
             digest = hashlib.sha256()
             for chunk in self.file.chunks():
                 digest.update(chunk)
             self.size, self.sha256 = self.file.size, digest.hexdigest()
-            old = Download.objects.filter(pk=self.pk).values_list('file', flat=True).first() if self.pk else None
-            if old:
-                transaction.on_commit(lambda: self.file.storage.delete(old))
-        if not self.slug:
-            base = self.slug = download_slug(self.filename)
-            number = 1
-            while Download.objects.filter(slug=self.slug).exists():
-                number += 1
-                self.slug = f'{base}-{number}'
-        super().save(*args, **kwargs)
+        # shortcut: a later outer rollback can leave an unreferenced file; add rollback cleanup if required.
+        try:
+            # IMMEDIATE serializes slug selection and media writes with uploads and backups.
+            with transaction.atomic(using=kwargs.get('using')):
+                old = Download.objects.filter(pk=self.pk).values_list('file', flat=True).first() if new_file and self.pk else None
+                if not self.slug:
+                    base = self.slug = download_slug(self.filename)
+                    number = 1
+                    while Download.objects.filter(slug=self.slug).exists():
+                        number += 1
+                        self.slug = f'{base}-{number}'
+                super().save(*args, **kwargs)
+                if old and old != self.file.name:
+                    storage = self.file.storage
+                    transaction.on_commit(lambda: storage.delete(old), using=kwargs.get('using'), robust=True)
+        except Exception:
+            if new_file and upload._committed:
+                upload.storage.delete(upload.name)
+                upload.name, upload._committed = upload_name, False
+                self.file = upload
+            raise
 
 
 @receiver(models.signals.post_delete, sender=Download)

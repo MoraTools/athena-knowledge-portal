@@ -823,7 +823,7 @@
       "post": {
         "operationId": "upload_article_image",
         "summary": "Stage a private article image",
-        "description": "Requires articles or admin scope and add_article or change_article. Validates PNG/JPEG/WebP/GIF up to 10 MiB and 20 million pixels. GIF can be static or animated, with at most 2000 frames and 2000 million processed pixels (canvas width × height × frame count). Reduce frame count or resolution if the limits are exceeded. Animated PNG/WebP and unsupported GIF rendering extensions are rejected. PNG/JPEG/WebP are re-encoded; GIF image blocks, timing, transparency, disposal, and loop settings are preserved. Every GIF frame is decoded in sequence by a separate worker limited to 10 CPU seconds, 12 elapsed seconds, and 512 MiB of memory. Comments, other application metadata, and data after the trailer are removed. PDF exports use the first GIF frame. Does not change an article or its ETag. Paste the returned markdown into an article body, then use the normal article create/PATCH or Markdown upload endpoint. An unattached image is visible only to its uploader while the uploader can still edit articles.",
+        "description": "Requires articles or admin scope and add_article or change_article. Validates PNG/JPEG/WebP/GIF up to 10 MiB and 20 million pixels. The server runs one image conversion at a time. If another conversion is active, the upload returns 503 with Retry-After: 2 and a JSON error message. Retry the same upload after at least two seconds. The file, pixel, and GIF limits stay the same. GIF can be static or animated, with at most 2000 frames and 2000 million processed pixels (canvas width × height × frame count). Reduce frame count or resolution if the limits are exceeded. Animated PNG/WebP and unsupported GIF rendering extensions are rejected. PNG/JPEG/WebP are re-encoded; GIF image blocks, timing, transparency, disposal, and loop settings are preserved. Every GIF frame is decoded in sequence by a separate worker limited to 10 CPU seconds, 12 elapsed seconds, and 512 MiB of memory. Comments, other application metadata, and data after the trailer are removed. PDF exports use the first GIF frame. Does not change an article or its ETag. Paste the returned markdown into an article body, then use the normal article create/PATCH or Markdown upload endpoint. An unattached image is visible only to its uploader while the uploader can still edit articles.",
         "requestBody": {
           "required": true,
           "content": {
@@ -863,6 +863,34 @@
           },
           "403": {
             "description": "Insufficient scope or article permissions"
+          },
+          "503": {
+            "description": "Another image conversion is active. Retry the same upload after at least the number of seconds in Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds before another upload attempt. Currently 2.",
+                "schema": {
+                  "type": "integer",
+                  "example": 2
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "El servidor está procesando otra imagen. Intente de nuevo en unos segundos."
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

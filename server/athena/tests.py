@@ -685,7 +685,8 @@ class PortalTests(TestCase):
         self.article.save()
         change = f'/admin/athena/article/{self.article.pk}/change/'
         data = {'title': 'Edited', 'kind': 'guide', 'summary': 'S', 'author': 'A', 'date': '2026-09-15', 'tags': '',
-                'body': 'Body', 'status': '', 'url': '', 'download_file': ''}
+                'body': 'Body', 'status': '', 'url': '', 'download_file': '',
+                'loaded_revision': self.article.updated_at.isoformat()}
         viewer = self.directory_admin('viewer', [])
         self.assertEqual((viewer.is_staff, viewer.is_superuser), (True, False))
         self.client.force_login(viewer)

@@ -30,6 +30,8 @@
 
     let pending = 0;
     let errorText = '';
+    const queue = [];
+    let uploading = false;
     const disabled = new Map();
     function message(text, error = false) {
       status.textContent = text;
@@ -78,12 +80,17 @@
         if (textarea.dataset.imageArticleId) data.append('article_id', textarea.dataset.imageArticleId);
         const csrf = form.querySelector('input[name="csrfmiddlewaretoken"]');
         let response;
-        try {
-          response = await fetch(url, {
-            method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': csrf ? csrf.value : '' }, body: data
-          });
-        } catch (_) {
-          throw new Error('No se pudo conectar con el servidor. Vuelva a insertar la imagen.');
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          try {
+            response = await fetch(url, {
+              method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': csrf ? csrf.value : '' }, body: data
+            });
+          } catch (_) {
+            throw new Error('No se pudo conectar con el servidor. Vuelva a insertar la imagen.');
+          }
+          if (response.status !== 503 || attempt === 2) break;
+          const seconds = Number(response.headers.get('Retry-After')) || 2;
+          await new Promise(resolve => setTimeout(resolve, Math.min(10, Math.max(1, seconds)) * 1000));
         }
         let result;
         try { result = await response.json(); } catch (_) {
@@ -96,10 +103,23 @@
       } catch (error) {
         const position = textarea.value.indexOf(marker);
         if (position >= 0) replace(position, position + marker.length, '');
-        errorText = `${error.message || 'No se pudo subir la imagen.'} Su texto se conservó.`;
+        errorText += `${errorText ? ' ' : ''}${file.name || 'Imagen'}: ${error.message || 'No se pudo subir la imagen.'} Su texto se conservó.`;
       } finally {
         pending -= 1;
         update();
+      }
+    }
+
+    async function drain() {
+      if (uploading) return;
+      uploading = true;
+      try {
+        while (queue.length) {
+          const job = queue.shift();
+          await upload(job.file, job.marker);
+        }
+      } finally {
+        uploading = false;
       }
     }
 
@@ -112,7 +132,8 @@
       replace(start, start, jobs.map(job => job.marker).join('\n'));
       pending += jobs.length;
       update();
-      for (const job of jobs) upload(job.file, job.marker);
+      queue.push(...jobs);
+      drain();
     }
 
     textarea.addEventListener('paste', event => {

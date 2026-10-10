@@ -210,7 +210,7 @@ def article_upload(request, slug, kind):
 
 @api
 def article_images(request, image_id=None):
-    from .images import create_image, image_data
+    from .images import ImageUploadBusy, create_image, image_data
     from .views import send_article_image
     if image_id:
         if request.method != 'GET':
@@ -223,7 +223,10 @@ def article_images(request, image_id=None):
         return denied()
     if set(request.POST) or set(request.FILES) != {'file'}:
         raise ValidationError('Send one multipart/form-data file field, with no other fields.')
-    return JsonResponse(image_data(create_image(request.FILES['file'], request.user)), status=201)
+    try:
+        return JsonResponse(image_data(create_image(request.FILES['file'], request.user)), status=201)
+    except ImageUploadBusy as error:
+        return JsonResponse({'error': ' '.join(error.messages)}, status=503, headers={'Retry-After': '2'})
 
 
 def download_data(item):
@@ -307,4 +310,6 @@ def users(request, user_id=None):
         user.save()
         if changed:
             user.user_permissions.clear()  # A superuser holds every permission; a demoted one keeps none.
+            if not admin:
+                user.groups.clear()
         return JsonResponse(user_data(user), status=201 if request.method == 'POST' else 200)

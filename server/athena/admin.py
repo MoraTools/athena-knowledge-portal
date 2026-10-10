@@ -3,8 +3,9 @@ from urllib.parse import urlencode
 
 from django.contrib import admin, messages
 from django.contrib.admin.options import IS_POPUP_VAR
+from django.contrib.admin.utils import unquote
 from django.contrib.auth.admin import UserAdmin
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import Http404
@@ -16,7 +17,8 @@ from django.utils import formats, timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
-from .forms import ArticleForm, DirectoryUserCreationForm, DirectoryUserForm, SafeUserChangeForm
+from .forms import (AdminArticleForm, ApiKeyForm, DirectoryUserCreationForm, DirectoryUserForm,
+                    SafeUserChangeForm, may_manage_user, permissions, user_permission_names)
 from .models import ApiKey, Article, Download
 
 admin.site.site_header = 'Athena · Administración'
@@ -111,6 +113,21 @@ class AthenaUserAdmin(UserAdmin):
         form.actor = request.user
         return form
 
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if not request.user.is_superuser:
+            allowed = permissions(user_permission_names(request.user))
+            if db_field.name == 'user_permissions':
+                kwargs['queryset'] = allowed
+            elif db_field.name == 'groups':
+                kwargs['queryset'] = Group.objects.exclude(permissions__in=Permission.objects.exclude(pk__in=allowed))
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+    def user_change_password(self, request, id, form_url=''):
+        user = self.get_object(request, unquote(id))
+        if not may_manage_user(request.user, user):
+            raise PermissionDenied
+        return super().user_change_password(request, id, form_url)
+
     # The directory replaces the change and add pages; Django's native pages remain for related-field popups.
     def is_popup(self, request):
         return IS_POPUP_VAR in request.GET or IS_POPUP_VAR in request.POST
@@ -191,12 +208,14 @@ class AthenaUserAdmin(UserAdmin):
             'headers': headers, 'sort': sort, 'direction': direction, 'roster_query': roster_query,
             'api_keys': ApiKey.objects.filter(user=selected).count() if selected else 0,
             'can_edit': self.has_add_permission(request) if creating else self.has_change_permission(request, selected),
+            'can_reset_password': selected is not None and self.has_change_permission(request, selected)
+                                  and may_manage_user(request.user, selected),
         })
 
 
 @admin.register(Article)
 class ArticleAdmin(RowControlsAdmin):
-    form = ArticleForm
+    form = AdminArticleForm
     change_form_template = 'admin/athena/article/change_form.html'
     list_display = ['title', 'kind', 'state', 'access', 'author', 'date', 'last_updated', 'controls']
     list_filter = ['published', 'is_public', 'kind']
@@ -308,6 +327,7 @@ class DownloadAdmin(RowControlsAdmin):
 
 @admin.register(ApiKey)
 class ApiKeyAdmin(RowControlsAdmin):
+    form = ApiKeyForm
     list_display = ['name', 'user', 'scope', 'expires_at', 'created', 'controls']
     fields = ['name', 'user', 'scope', 'expires_at']
 
@@ -317,6 +337,31 @@ class ApiKeyAdmin(RowControlsAdmin):
 
     def controls(self, request, obj):
         return row_controls(self, request, obj)
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.actor = request.user
+        return form
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'user' and not request.user.is_superuser:
+            disallowed = Permission.objects.exclude(pk__in=permissions(user_permission_names(request.user)))
+            kwargs['queryset'] = User.objects.filter(is_superuser=False).exclude(
+                user_permissions__in=disallowed).exclude(groups__permissions__in=disallowed)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj) and (
+            obj is None or may_manage_user(request.user, obj.user))
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj) and (
+            obj is None or may_manage_user(request.user, obj.user))
+
+    def delete_queryset(self, request, queryset):
+        if any(not self.has_delete_permission(request, key) for key in queryset.select_related('user')):
+            raise PermissionDenied
+        super().delete_queryset(request, queryset)
 
     def get_readonly_fields(self, request, obj=None):
         return ['user', 'scope'] if obj else []
@@ -332,6 +377,8 @@ class ApiKeyAdmin(RowControlsAdmin):
         return super().change_view(request, object_id, form_url, {'title': 'Editar clave de API', **(extra_context or {})})
 
     def save_model(self, request, obj, form, change):
+        if not may_manage_user(request.user, obj.user):
+            raise PermissionDenied
         if not change:
             request._athena_raw_key = obj.issue()
         super().save_model(request, obj, form, change)

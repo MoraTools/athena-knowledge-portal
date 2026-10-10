@@ -1,6 +1,21 @@
 /* Native Markdown source and a sanitized reader preview. No rich-text editor state. */
 (() => {
   const escapeHTML = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+  function readerHref(href, slug) {
+    const explicit = /^\/?#\//.test(href);
+    if (!explicit && /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href)) return href;
+    const url = new URL(explicit ? href.replace(/^\/?#/, '') : href, new URL(`/content/${slug || 'new'}`, location.origin));
+    const reader = explicit || !/^\/(?:pdf|downloads|article-images)\//.test(url.pathname)
+      && (url.pathname.endsWith('.md') || url.pathname.startsWith('/content/') && !/\.[^/]+$/.test(url.pathname)
+        || /^\/(?:guides|tools|updates|search|account|api)\/?$/.test(url.pathname));
+    if (!reader) return url.href;
+    if (url.hash) {
+      let id = url.hash.slice(1);
+      try { id = decodeURIComponent(id); } catch { /* Keep malformed escapes without stopping the preview. */ }
+      url.searchParams.set('id', id);
+    }
+    return `/#${url.pathname.replace(/\.md$/, '')}${url.search}`;
+  }
   function renderMarkdown(body, { title = '', published = false, pdfName = '', slug = '' } = {}) {
     if (!/^\s*#\s+/.test(body)) body = `# ${escapeHTML(title)}\n\n${body}`;
     if (!published) body = '> **Borrador.** Solo visible para editores.\n\n' + body;
@@ -14,6 +29,9 @@
         href = new URL(href, new URL(`/content/${slug || 'new'}`, location.origin)).href;
       }
       return marked.Renderer.prototype.image.call(this, { ...token, href });
+    };
+    renderer.link = function (token) {
+      return marked.Renderer.prototype.link.call(this, { ...token, href: readerHref(token.href, slug) });
     };
     return DOMPurify.sanitize(marked.parse(body, { renderer, gfm: true, breaks: false }), {
       FORBID_TAGS: ['style', 'iframe', 'script', 'object', 'embed', 'form', 'input', 'select', 'option', 'textarea', 'button', 'fieldset', 'label', 'dialog', 'svg', 'math'],
@@ -90,15 +108,9 @@
       preview.querySelectorAll('a').forEach(link => {
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
-        // Docsify resolves article Markdown links under /content/ and opens reader routes.
         const href = link.getAttribute('href');
-        if (!href) return;
-        if (/^(?![a-z][a-z0-9+.-]*:|\/\/|\/|#)/i.test(href)) {
-          const url = new URL(href, new URL(`/content/${value('slug', form.dataset.articleSlug) || 'new'}`, location.origin));
-          link.href = url.pathname.endsWith('.md') ? `/#${url.pathname.replace(/\.md$/, '')}${url.search}${url.hash}` : url.href;
-        } else if (/^\/content\/[^?#]+\.md(?:[?#]|$)/.test(href || '')) {
-          link.href = '/#' + href.replace(/\.md(?=[?#]|$)/, '');
-        } else if (href?.startsWith('#') && !href.startsWith('#/')) {
+        if (href) link.href = readerHref(href, value('slug', form.dataset.articleSlug));
+        if (href?.startsWith('#') && !href.startsWith('#/')) {
           link.removeAttribute('target');
           link.addEventListener('click', event => event.preventDefault());
         }

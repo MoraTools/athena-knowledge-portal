@@ -61,7 +61,11 @@ try {
     if ($searchPage -notmatch 'id="search-page-slot"' -or $searchPage -notmatch 'id="search-results"') { throw 'The dedicated search route is incomplete.' }
     if ($searchIndex.Count -ne ($GuideCount + 2)) { throw "Expected $($GuideCount + 2) search records, found $($searchIndex.Count)." }
     $indexedGuide = $searchIndex | Where-Object title -eq 'Synthetic guide 1' | Select-Object -First 1
-    if (-not $indexedGuide -or $indexedGuide.route -ne '#/content/guide-001' -or @($indexedGuide.headings).Count -ne 3 -or (@($indexedGuide.headings.level) -join ',') -ne '2,3,4') { throw 'Guide search metadata or heading sections are incomplete.' }
+    if (-not $indexedGuide -or $indexedGuide.route -ne '#/content/guide-001' -or @($indexedGuide.headings).Count -ne 4 -or (@($indexedGuide.headings.level) -join ',') -ne '1,2,3,4') { throw 'Guide search metadata or heading sections are incomplete.' }
+    $sidebar = [IO.File]::ReadAllText((Join-Path $dist '_sidebar.md'), [Text.Encoding]::UTF8)
+    if ([regex]::Matches($sidebar, '(?m)^  - \[').Count -ne 7 -or $sidebar -notmatch '(?m)^- Biblioteca\r?$' -or $sidebar -notmatch '(?m)^- Participar\r?$') { throw 'The grouped portal rail is incomplete.' }
+    $runtime = [IO.File]::ReadAllText((Join-Path $dist 'vendor\docsify.min.js'), [Text.Encoding]::UTF8)
+    if ($runtime -notmatch 'Docsify v5\.0\.0') { throw 'The installed Docsify v5 runtime was not shipped.' }
     if (-not ($searchIndex | Where-Object kind -eq 'pdf') -or -not ($searchIndex | Where-Object kind -eq 'download')) { throw 'PDF and download search records are missing.' }
     if ($guides -notmatch '<option value="PDF">PDF</option>' -or $guides -notmatch 'data-tags="PDF"') { throw 'Unmatched PDFs must have a selectable PDF tag.' }
     if (-not (Test-Path -LiteralPath (Join-Path $dist 'content\guide-001.md'))) { throw 'An existing guide route was not preserved.' }

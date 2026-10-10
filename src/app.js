@@ -247,21 +247,18 @@ function markRail() {
 }
 
 function docsifyHeadingIds(pageTitle, headings) {
-  const seen = new Map();
-  return [{ title: pageTitle, level: 1 }, ...headings].map((heading) => {
-    let id = String(heading.title || '')
-      .trim()
-      .replace(/[A-Z]+/g, (value) => value.toLowerCase())
-      .replace(/<[^>]+>/g, '')
-      .replace(/[\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,./:;<=>?@[\]^\`{|}~]/g, '')
-      .replace(/\s/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^(\d)/, '_$1');
-    const count = seen.get(id) || 0;
-    seen.set(id, count + 1);
-    if (count) id += '-' + count;
-    return { ...heading, level: Number(heading.level) || 2, id };
-  }).slice(1).filter((heading) => heading.level === 2 || heading.level === 3);
+  // Older migration indexes omit H1; current indexes contain the actual reader sequence.
+  const sequence = headings.some((heading) => Number(heading.level) === 1)
+    ? headings : [{ title: pageTitle, level: 1 }, ...headings];
+  const slugify = window.Docsify.slugify;
+  slugify.clear();
+  const result = sequence.map((heading) => {
+    const raw = heading.raw ?? heading.title ?? '';
+    const custom = raw.match(/(?:^|\s):id=([\w-%]+)/);
+    return { ...heading, level: Number(heading.level) || 2, id: slugify(custom?.[1] || raw) };
+  }).filter((heading) => heading.level === 2 || heading.level === 3);
+  slugify.clear();
+  return result;
 }
 
 function prepareSearchEntry(entry) {
@@ -595,13 +592,14 @@ function placeSearch() {
   if (input) input.value = searchPage ? params.get('q') || '' : '';
 }
 
-// The article's "Abrir PDF original" link becomes an in-page viewer. Docsify rewrites the
-// link to a #/pdf/... route, so the leading hash is dropped to get the file back.
+// The server and legacy build mark the article's attachment, apart from PDF citations.
 function buildPdfViewer() {
-  if (document.querySelector('.markdown-section .pdf-viewer')) return;
-  const link = document.querySelector('.markdown-section a[href$=".pdf"]:not(.copy-page)');
-  const src = link?.getAttribute('href').replace(/^#/, '') || '';
-  if (!src.startsWith('/pdf/') || !getRouteState().path.startsWith('/content/')) return;
+  const route = getRouteState().path;
+  if (!route.startsWith('/content/') || document.querySelector('.markdown-section .pdf-viewer')) return;
+  const src = '/pdf/' + route.slice('/content/'.length).replace(/\.md$/, '') + '.pdf';
+  const link = [...document.querySelectorAll('.markdown-section .article-pdf a[href]')]
+    .reverse().find((item) => item.getAttribute('href').replace(/^#/, '') === src);
+  if (!link) return;
   const viewer = document.createElement('section');
   viewer.className = 'pdf-viewer';
   const actions = document.createElement('p');
@@ -622,7 +620,7 @@ function buildPdfViewer() {
   frame.title = 'Documento PDF';
   frame.loading = 'lazy';
   viewer.append(actions, frame);
-  link.closest('p').replaceWith(viewer);
+  (link.closest('.article-pdf') || link).replaceWith(viewer);
 }
 
 // The server ends an article with one .article-tools marker (Editar artículo, Exportar PDF);
