@@ -74,16 +74,41 @@
     let timer;
     const value = (name, fallback = '') => form.elements.namedItem(name)?.value ?? fallback;
     const checked = (name, fallback = false) => form.elements.namedItem(name)?.checked ?? fallback;
+    const detailTabs = [...dialog.querySelectorAll('[data-detail-tab]')];
+    const detailPanels = [...dialog.querySelectorAll('.desk-detail-panel')];
+    const toolFields = document.getElementById('desk-tool-fields');
+
+    function showDetailTab(tab) {
+      detailTabs.forEach(button => {
+        button.setAttribute('aria-selected', String(button === tab));
+        button.tabIndex = button === tab ? 0 : -1;
+      });
+      detailPanels.forEach(panel => { panel.hidden = panel.id !== tab.getAttribute('aria-controls'); });
+    }
+    detailTabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => showDetailTab(tab));
+      tab.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const next = detailTabs[event.key === 'Home' ? 0 : event.key === 'End' ? detailTabs.length - 1
+          : (index + (event.key === 'ArrowLeft' ? -1 : 1) + detailTabs.length) % detailTabs.length];
+        showDetailTab(next);
+        next.focus();
+      });
+    });
+    showDetailTab(detailTabs[0]);
+    dialog.dataset.enhanced = 'true';
 
     function openDetails(button, field) {
+      const target = field && document.getElementById(field);
+      const panel = target?.closest('.desk-detail-panel');
+      if (panel) showDetailTab(detailTabs.find(tab => tab.getAttribute('aria-controls') === panel.id));
+      if (target && toolFields.contains(target)) toolFields.open = true;
       opener = button && overflow.contains(button) ? overflow.querySelector('summary') : button || document.querySelector('[data-open-details]');
       overflow.open = false;
       if (!dialog.open) dialog.showModal();
-      if (field) {
-        const target = document.getElementById(field);
-        target?.focus();
-        target?.scrollIntoView({ block: 'center' });
-      }
+      (target || detailTabs.find(tab => tab.getAttribute('aria-selected') === 'true')).focus();
+      target?.scrollIntoView({ block: 'center' });
     }
     dialog.close();
     document.querySelectorAll('[data-open-details]').forEach(button => button.addEventListener('click', () => openDetails(button, button.dataset.detailFocus)));
@@ -96,7 +121,9 @@
     function updatePreview() {
       const published = checked('published', form.dataset.published === 'true');
       const access = value('is_public', form.dataset.public === 'true' ? 'True' : 'False') === 'True';
-      document.getElementById('desk-state').textContent = `${published ? 'Publicado' : 'Borrador'} · ${access ? 'Público' : 'Con cuenta'}`;
+      const state = `${published ? 'Publicado' : 'Borrador'} · ${access ? 'Público' : 'Con cuenta'}`;
+      document.getElementById('desk-state').textContent = state;
+      document.getElementById('desk-details-state').textContent = state;
       document.getElementById('desk-count').textContent = `${source.value.trim().split(/\s+/).filter(Boolean).length} palabras`;
       const pdf = form.elements.namedItem('pdf_file')?.files?.[0];
       const pdfName = pdf?.name || (checked('remove_pdf') ? '' : form.dataset.pdfName);
@@ -121,7 +148,13 @@
       clearTimeout(timer);
       timer = setTimeout(updatePreview, 120);
     });
-    form.addEventListener('change', () => { dirty = true; updatePreview(); });
+    function showToolFields() { toolFields.open = value('kind', form.dataset.articleKind) === 'tool' || Boolean(toolFields.querySelector('.errors')); }
+    showToolFields();
+    form.addEventListener('change', event => {
+      dirty = true;
+      if (event.target.name === 'kind') showToolFields();
+      updatePreview();
+    });
 
     const markdownFile = document.getElementById('id_markdown_file');
     markdownFile?.addEventListener('change', async () => {
@@ -166,7 +199,14 @@
     }, true);
 
     form.addEventListener('invalid', event => {
+      const firstInvalid = form.querySelector('input:invalid, select:invalid, textarea:invalid');
+      if (event.target !== firstInvalid) { event.preventDefault(); return; }
       if (dialog.contains(event.target)) openDetails(null, event.target.id);
+      else {
+        if (dialog.open) { opener = null; dialog.close(); }
+        if (event.target === source) showPane(tabs[0]);
+        event.target.focus();
+      }
     }, true);
     form.addEventListener('submit', event => {
       if (importing) {

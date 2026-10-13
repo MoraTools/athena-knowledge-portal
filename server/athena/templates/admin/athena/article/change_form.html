@@ -10,7 +10,7 @@
 {% endblock %}
 {% block content %}
 <div id="content-main">
-  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="article_form" novalidate data-article-slug="{{ original.slug|default:'' }}" data-pdf-name="{{ original.pdf_name|default:'' }}" data-published="{{ original.published|yesno:'true,false' }}" data-public="{{ original.is_public|yesno:'true,false' }}" data-pdf-only="{{ original.pdf_only|yesno:'true,false' }}">
+  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="article_form" novalidate data-article-slug="{{ original.slug|default:'' }}" data-article-kind="{{ original.kind|default:'guide' }}" data-pdf-name="{{ original.pdf_name|default:'' }}" data-published="{{ original.published|yesno:'true,false' }}" data-public="{{ original.is_public|yesno:'true,false' }}" data-pdf-only="{{ original.pdf_only|yesno:'true,false' }}">
     {% csrf_token %}
     {{ adminform.form.loaded_revision }}
     {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
@@ -63,13 +63,31 @@
     </div>
     <footer id="desk-image-footer" class="desk-image-footer"></footer>
     <dialog id="article-details" class="desk-dialog" open aria-labelledby="desk-dialog-title">
-      <div class="desk-dialog-header"><h2 id="desk-dialog-title">Detalles del artículo</h2><button class="button" type="button" data-close-details>Cerrar</button></div>
-      <p class="desk-dialog-help">Los cambios se guardan con Guardar.</p>
-      {% for fieldset in adminform %}
-        <fieldset class="module aligned"><h3>{{ fieldset.name|default:'Artículo' }}</h3>
-          {% for line in fieldset %}{% for field in line %}{% if field.field.name != 'title' and field.field.name != 'body' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}
-        </fieldset>
-      {% endfor %}
+      <header class="desk-dialog-header"><h2 id="desk-dialog-title">Detalles del artículo</h2></header>
+      <div class="desk-detail-tabs" role="tablist" aria-label="Detalles del artículo">
+        {% for fieldset in adminform %}<button type="button" role="tab" id="desk-detail-tab-{{ forloop.counter }}" aria-controls="desk-detail-panel-{{ forloop.counter }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"{% if not forloop.first %} tabindex="-1"{% endif %} data-detail-tab>{{ fieldset.name }}</button>{% endfor %}
+      </div>
+      <div class="desk-dialog-body">
+        <div class="desk-dialog-status"><span id="desk-details-state">{% if original.published %}Publicado{% else %}Borrador{% endif %} · {% if original.is_public %}Público{% else %}Con cuenta{% endif %}</span><span class="desk-dialog-help">Cerrar conserva los cambios pendientes.</span></div>
+        {% for fieldset in adminform %}
+          <section class="desk-detail-panel" id="desk-detail-panel-{{ forloop.counter }}" role="tabpanel" aria-labelledby="desk-detail-tab-{{ forloop.counter }}">
+            <h3 class="desk-detail-fallback-heading">{{ fieldset.name }}</h3>
+            <fieldset class="module aligned desk-detail-fields">
+              {% for line in fieldset %}{% for field in line %}{% if field.field.name != 'title' and field.field.name != 'body' and field.field.name != 'status' and field.field.name != 'url' and field.field.name != 'download_file' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}
+            </fieldset>
+            {% if forloop.first %}
+              <details id="desk-tool-fields" class="desk-tool-fields">
+                <summary>Campos de herramienta</summary>
+                <fieldset class="module aligned desk-detail-fields">{% for line in fieldset %}{% for field in line %}{% if field.field.name == 'status' or field.field.name == 'url' or field.field.name == 'download_file' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}</fieldset>
+              </details>
+            {% endif %}
+          </section>
+        {% endfor %}
+      </div>
+      <footer class="desk-dialog-footer">
+        <button class="button" type="button" data-close-details>Cerrar</button>
+        {% if has_change_permission or add and has_add_permission %}<button class="button default" type="submit" name="_save">Guardar cambios</button>{% endif %}
+      </footer>
     </dialog>
     <script id="django-admin-form-add-constants" src="{% static 'admin/js/change_form.js' %}"{% if add %} data-model-name="{{ opts.model_name }}"{% endif %} async></script>
     {% prepopulated_fields_js %}

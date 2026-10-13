@@ -223,10 +223,10 @@ class ArticleAdmin(RowControlsAdmin):
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ['last_updated', 'current_pdf']
     fieldsets = [
-        (None, {'fields': ['title', 'slug', 'kind', 'summary', 'author', 'tags']}),
-        ('Contenido', {'fields': ['markdown_file', 'body', 'pdf_file', 'current_pdf', 'remove_pdf', 'pdf_only']}),
+        ('Información', {'fields': ['title', 'body', 'summary', 'author', 'kind', 'tags', 'slug',
+                                     'status', 'url', 'download_file']}),
         ('Publicación', {'fields': ['published', 'is_public', 'date', 'last_updated']}),
-        ('Herramientas', {'fields': ['status', 'url', 'download_file'], 'classes': ['collapse']}),
+        ('Archivos', {'fields': ['markdown_file', 'pdf_file', 'current_pdf', 'remove_pdf', 'pdf_only']}),
     ]
     save_on_top = True
 

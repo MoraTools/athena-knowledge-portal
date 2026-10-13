@@ -36,7 +36,7 @@ Sign in and change the initial password. Credentials are not written to deployme
 6. Enable **Publicado** when ready. Drafts stay restricted for both access settings.
 
 On desktop, the editor shows Markdown and a live reader preview side by side. On mobile, use the **Markdown** and **Vista previa** tabs.
-The **Detalles** dialog contains files, publication, and access settings. Select **Guardar** to save all changes.
+The **Detalles** dialog has **Información**, **Publicación**, and **Archivos** tabs. **Cerrar** or Escape keeps pending edits in the editor. Select **Guardar cambios** in the dialog, or **Guardar** in the editor, to save the whole article, including Markdown and attachments.
 A Markdown import replaces the editor text. After the import, you can edit the text before saving; saving keeps those edits. Wait until the import or image upload finishes before saving.
 
 Changes appear in the library and search on the next page load; no build or redeploy is required.
