@@ -43,6 +43,19 @@ The index places the title, summary, tags, and optional links in Guía. Its colu
 
 At a reader width of 600px and below, filter controls and topic metadata stack. The index table has a 640px minimum width and scrolls within its own region. Below a guide-library width of 640px, show `Deslice la tabla para ver autor y fecha.` with its direction icon. Keep the scroll region focusable. Long titles and tags wrap. The page must not scroll horizontally.
 
+## Typography (1.9.1)
+
+Both views use the same type roles. `src/styles.css` is the current type authority. Metadata uses muted text and aligns at the top of the row. Keep these scoped rules stronger than Docsify's paragraph styles.
+
+| Role | Font | Size | Weight | Line height |
+| --- | --- | --- | --- | --- |
+| Guide title | `--font-ui` | 18px | 700 | 1.3 |
+| Summary | `--font-ui` | 16px | 400 | 1.4 |
+| Author and date | `--font-ui` | 14px | 400 | 1.4 |
+| Table header and actions | `--font-ui` | 14px | 700 | 1.4 |
+| Tags and status | `--font-mono` | 12px | 700 | 1.4 |
+| Topic heading | `--font-display` | 28px | 700 | 1.15 |
+
 ## Behavior and data contract
 
 Keep all supplied titles, summaries, authors, dates, tags, optional status, and permitted PDF, official-site, and approved-download links. Keep both Helios and Seguridad tags even though option 4 omits them in its image.
@@ -55,16 +68,24 @@ The index starts in server date order. Each of its three headers uses the shared
 
 Por temas uses only the current tags, plus Sin etiqueta for untagged records. Build its copies on first use from the published rows supplied to this reader. A `WeakMap` holds state for the current library node. Filters control both views and hide empty groups. Topic links move to the relevant heading. Browser storage saves only the view choice in `athena.guides.view`. Search and tag values do not persist across route entry. The views also work when storage is unavailable.
 
-## Recorded verification
+## Current verification (1.9.1)
 
-Implementation verification passed: 123 Django tests, four Node suites, and eight backup tests. After the scroll-cue CSS correction, focused Django and reader-integration checks passed. Browser checks covered filters, header sorting, roles, route re-entry, draft exclusion, unique topic counts, and page overflow. The detector returned `[]` for the scoped targets.
+Computed styles matched the type roles in both views. Actions retained a 44px minimum height. No page overflow was found at viewport widths of 1920px, 390px, and 320px. The existing reader-integration check passed. The scoped scans before and after the repair returned `[]`; manual review found the type differences and the Docsify paragraph override. The fresh finish review returned `ship` for this typography repair. Physical devices and actual browser zoom were not verified.
+
+Evidence is in `.impeccable/review/guides-type-20261013/`: `computed.json`, `index-desktop.jpg`, `topics-desktop.jpg`, `index-mobile.jpg`, `topics-mobile.jpg`, and `index-320.jpg`.
+
+The application version is `1.9.1`; the API contract stays at `1.6.0`. This record does not claim that native Impeccable build gates passed.
+
+## Verification history (1.9.0)
+
+For the `1.9.0` implementation, verification passed: 123 Django tests, four Node suites, and eight backup tests. After the scroll-cue CSS correction, focused Django and reader-integration checks passed. Browser checks covered filters, header sorting, roles, route re-entry, draft exclusion, unique topic counts, and page overflow. The detector returned `[]` for the scoped targets. These full-suite results were not repeated for `1.9.1`.
 
 The independent reviewer first returned `fix` for guide title color and the mobile scroll cue. Both fixes then received `ship`. This verdict covers those two repairs.
 
-Final captures are in `.impeccable/review/guides-20261013/`:
+The `1.9.0` final captures are in `.impeccable/review/guides-20261013/`:
 
 - `index-desktop-final.jpg` and `topics-desktop-final.jpg`: 1586 × 992.
 - `index-mobile-final.jpg` and `topics-mobile-final.jpg`: 390 × 844.
 - `index-320-final.jpg`: 320 × 740.
 
-No dependency or runtime image was added. The application version is `1.9.0`; the API contract stays at `1.6.0`. This record does not claim that native Impeccable build gates passed.
+No dependency or runtime image was added for `1.9.0`.
