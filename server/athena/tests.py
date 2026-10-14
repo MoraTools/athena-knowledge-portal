@@ -571,7 +571,7 @@ class PortalTests(TestCase):
         self.assertContains(self.client.get('/guides.md'), '<a class="copy-page" href="/admin/athena/article/add/">')
         self.assertNotContains(self.client.get('/tools.md'), 'Nuevo artículo')
 
-    def test_guides_index_preserves_fields_and_conditional_links(self):
+    def test_guides_topic_source_preserves_fields_and_conditional_links(self):
         self.article.title = 'Álvaro <tema> & "guía"'
         self.article.author = 'Equipo <A>'
         self.article.summary = 'Resumen real & completo'
@@ -584,18 +584,19 @@ class PortalTests(TestCase):
         self.article.is_public = True
         self.article.save()
         public = self.client.get('/guides.md').content.decode()
-        self.assertIn('<table class="guide-table">', public)
-        self.assertIn('aria-describedby="guide-scroll-hint"', public)
-        self.assertIn('<p id="guide-scroll-hint" class="guide-scroll-hint"><span>Deslice la tabla para ver autor y fecha.</span>', public)
-        self.assertLess(public.index('id="guide-index"'), public.index('id="guide-scroll-hint"'))
-        self.assertLess(public.index('id="guide-scroll-hint"'), public.index('<table class="guide-table">'))
-        self.assertIn('data-sort-value="Álvaro &lt;tema&gt; &amp; &quot;guía&quot;"', public)
+        self.assertIn('<div class="guide-library"><div id="guide-source" hidden>', public)
+        self.assertIn('<article class="guide-row"', public)
+        self.assertIn('href="#/content/first-guide">Álvaro &lt;tema&gt; &amp; &quot;guía&quot;</a>', public)
+        self.assertIn('<label for="guide-filter">Buscar guías', public)
+        self.assertIn('placeholder="Título, autor, resumen o etiqueta"', public)
+        self.assertIn('<label for="guide-tag">Etiqueta', public)
+        for removed in ['guide-index', 'guide-table', 'guide-scroll-hint', 'guide-view-switch', 'data-guide-view']:
+            self.assertNotIn(removed, public)
         self.assertIn('Equipo &lt;A&gt;', public)
         self.assertIn('Resumen real &amp; completo', public)
         for tag in ['Café', 'A|B &lt;tema&gt; &quot;x&quot;', 'Helios', 'Seguridad']:
             self.assertIn(f'<span>{tag}</span>', public)
         self.assertIn('<time datetime="2026-01-02">2026-01-02</time>', public)
-        self.assertIn('data-sort-value="2026-01-02"', public)
         self.assertIn('status-stable', public)
         self.assertIn('href="#/content/first-guide"', public)
         self.assertIn('href="/pdf/first-guide.pdf"', public)
@@ -606,9 +607,8 @@ class PortalTests(TestCase):
         self.client.force_login(self.reader)
         private = self.client.get('/guides.md').content.decode()
         self.assertIn('href="#/downloads">Descarga aprobada', private)
-        self.assertIn('data-guide-view="index" aria-pressed="true" aria-controls="guide-index"', private)
-        self.assertIn('data-guide-view="topics" aria-pressed="false" aria-controls="guide-topics"', private)
-        self.assertIn('<div id="guide-topics" class="guide-topics" hidden></div>', private)
+        self.assertIn('<div id="guide-topics" class="guide-topics"></div>', private)
+        self.assertNotIn('data-guide-view', private)
         self.assertIn('aria-live="polite" aria-atomic="true">1 resultado', private)
         self.reader.user_permissions.add(Permission.objects.get(codename='add_article', content_type__app_label='athena'))
         self.assertContains(self.client.get('/guides.md'), 'Nuevo artículo')
@@ -633,7 +633,7 @@ class PortalTests(TestCase):
         for user in (self.reader, self.admin):
             self.client.force_login(user)
             page = self.client.get('/guides.md').content.decode()
-            rows = re.findall(r'<tr class="guide-row".*?</tr>', page, re.S)
+            rows = re.findall(r'<article class="guide-row".*?</article>', page, re.S)
             self.assertEqual(len(rows), 2)
             self.assertIn('href="#/content/public-guide"', rows[0])
             self.assertIn('href="#/content/first-guide"', rows[1])
@@ -642,7 +642,7 @@ class PortalTests(TestCase):
             self.assertNotIn('Private draft', page)
             self.assertNotIn('Secret draft tag', page)
 
-    def test_guide_views_do_not_change_tools_or_updates(self):
+    def test_guide_topics_do_not_change_tools_or_updates(self):
         Article.objects.create(title='Real tool', slug='real-tool', kind='tool', summary='Tool summary', author='Tool author',
                                status='alpha', url='https://example.test/tool', published=True, is_public=True)
         self.article.is_public = True

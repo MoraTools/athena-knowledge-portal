@@ -100,12 +100,7 @@ const guideLibraries = new WeakMap();
 
 function prepareGuideLibrary(library) {
   if (guideLibraries.has(library)) return guideLibraries.get(library);
-  let view = 'index';
-  try {
-    if (localStorage.getItem('athena.guides.view') === 'topics') view = 'topics';
-  } catch { /* The view also works when storage is unavailable. */ }
   const state = {
-    view,
     rows: [...library.querySelectorAll('.guide-row,.library-card')].map((row) => ({
       row,
       search: normalize(row.dataset.search),
@@ -175,16 +170,7 @@ function filterGuides() {
     entry.row.hidden = !((!query || entry.search.includes(query)) && (!tag || entry.tags.has(tag)));
     if (!entry.row.hidden) visible += 1;
   });
-  const index = library.querySelector('#guide-index');
-  const topics = library.querySelector('#guide-topics');
-  if (index && topics) {
-    index.hidden = state.view !== 'index';
-    topics.hidden = state.view !== 'topics';
-    if (state.view === 'topics') buildGuideTopics(library, state);
-  }
-  document.querySelectorAll('[data-guide-view]').forEach((button) => {
-    button.setAttribute('aria-pressed', String(button.dataset.guideView === state.view));
-  });
+  if (library.querySelector('#guide-topics')) buildGuideTopics(library, state);
   state.groups?.forEach((group, key) => {
     let shown = 0;
     group.entries.forEach(({ entry, article }) => {
@@ -750,15 +736,6 @@ function updateSignInLinks() {
 }
 
 document.addEventListener('click', async (event) => {
-  const guideView = event.target.closest('[data-guide-view]');
-  if (guideView && ['index', 'topics'].includes(guideView.dataset.guideView)) {
-    const library = document.querySelector('.guide-library');
-    if (library) {
-      prepareGuideLibrary(library).view = guideView.dataset.guideView;
-      try { localStorage.setItem('athena.guides.view', guideView.dataset.guideView); } catch { /* Optional preference. */ }
-      filterGuides();
-    }
-  }
   const topicJump = event.target.closest('[data-guide-topic]');
   if (topicJump) {
     const heading = document.getElementById(topicJump.dataset.guideTopic);
