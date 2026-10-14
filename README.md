@@ -2,7 +2,7 @@
 
 Athena runs on a DigitalOcean VPS with Django, SQLite, Gunicorn, and Caddy.
 The Spanish reader keeps its existing Docsify routes. Published articles can be public or require an account. Existing articles remain private by default.
-The current portal version is `1.9.1`; the REST API remains `1.6.0`.
+The current portal version is `1.9.2`; the REST API remains `1.6.0`.
 
 ## Production
 
