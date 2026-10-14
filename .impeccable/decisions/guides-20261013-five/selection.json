@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-13",
+  "surface": "/#/guides",
+  "mode": "Read",
+  "user_instruction": "ok implement option 4 and option 2 now",
+  "approval_scope": "Selected layouts within the current Athena identity",
+  "implementation_path": "application code with native browser controls",
+  "default_view": "index",
+  "approved_options": [
+    {
+      "option": 4,
+      "id": "index",
+      "label": "Índice compacto",
+      "role": "default",
+      "comp": ".impeccable/mocks/decision/guides-20261013-five/option-4-index.png"
+    },
+    {
+      "option": 2,
+      "id": "topics",
+      "label": "Por temas",
+      "role": "selectable",
+      "comp": ".impeccable/mocks/decision/guides-20261013-five/option-2-topics.png"
+    }
+  ],
+  "surface_brief": ".impeccable/surfaces/guides-library.md",
+  "content_rule": "Keep all actual metadata and permitted links, including Helios and Seguridad tags omitted by option 4.",
+  "build_state_rule": "Preserve the existing build state and build history. This selection does not claim completion of native build gates."
+}

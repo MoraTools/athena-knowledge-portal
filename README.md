@@ -2,6 +2,7 @@
 
 Athena runs on a DigitalOcean VPS with Django, SQLite, Gunicorn, and Caddy.
 The Spanish reader keeps its existing Docsify routes. Published articles can be public or require an account. Existing articles remain private by default.
+The current portal version is `1.9.0`; the REST API remains `1.6.0`.
 
 ## Production
 
@@ -50,6 +51,7 @@ The database is now the source of truth for articles, accounts, keys, PDFs, and 
 Visitors can use the home page, Guías, Herramientas, Actualizaciones, and search without signing in.
 These pages include only published public articles. Titles, tags, excerpts, and counts for private articles and download records are excluded.
 Signed-in readers see all published articles; existing article editors can preview drafts and set article access.
+Guías opens with **Índice compacto**, a table with title, summary, tags, author, and date. Select a column header to sort. **Por temas** groups the same guides by their existing tags; a guide with several tags can appear in several groups. Guides without tags appear under **Sin etiqueta**. Search matches title, author, summary, and tags, ignoring case and accents. The tag selector matches a whole tag. Both views keep the query and tag, and the result count includes each matching guide once. Only the selected view is stored in the browser.
 The REST API still requires a bearer key. Use the boolean `is_public` field to change article access with the existing edit permission and ETag checks.
 
 Images, attached PDFs, and generated PDF exports follow the article access setting. Returning an article to **Con cuenta**, unpublishing it, or deleting it blocks subsequent anonymous requests, including cached PDF exports. A shared image stays public while another public published article uses it.

@@ -1,12 +1,14 @@
-{% if section == 'guides' %}{% if perms.athena.add_article %}<div class="article-actions"><a class="copy-page" href="/admin/athena/article/add/"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Nuevo artículo</span></a></div>
-
-{% endif %}# Guías
+{% if section == 'guides' %}<div class="guide-heading"><h1>Guías</h1>{% if perms.athena.add_article %}<a class="copy-page" href="/admin/athena/article/add/"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Nuevo artículo</span></a>{% endif %}</div>
 {% elif section == 'tools' %}# Herramientas
 {% else %}# Actualizaciones
 {% endif %}
 
 {% if not user.is_authenticated %}<p class="visitor-note">Está viendo artículos públicos. <a href="/accounts/login/">Ingresar</a> para consultar el contenido de su equipo.</p>{% endif %}
-{% if section == 'guides' %}<div class="library-controls"><label>Buscar guías<input id="guide-filter" type="search" placeholder="Título, autor o tema" autocomplete="off"></label><label>Etiqueta<select id="guide-tag"><option value="">Todas</option>{% for tag in tags %}<option value="{{ tag }}">{{ tag }}</option>{% endfor %}</select></label><p id="guide-count" class="result-count" aria-live="polite"></p></div>{% endif %}
+{% if section == 'guides' %}<div class="library-controls guide-controls"><label for="guide-filter">Buscar guías<input id="guide-filter" type="search" placeholder="Título, autor, resumen o etiqueta" autocomplete="off"></label><label for="guide-tag">Etiqueta<select id="guide-tag"><option value="">Todas</option>{% for tag in tags %}<option value="{{ tag }}">{{ tag }}</option>{% endfor %}</select></label><p id="guide-count" class="result-count" aria-live="polite" aria-atomic="true">{{ articles|length }} resultado{{ articles|length|pluralize:'s' }}</p><div class="guide-view-switch" role="group" aria-label="Vista de guías"><button type="button" data-guide-view="index" aria-pressed="true" aria-controls="guide-index">Índice compacto</button><button type="button" data-guide-view="topics" aria-pressed="false" aria-controls="guide-topics">Por temas</button></div></div>
+<div class="guide-library"><div id="guide-index" class="guide-index" role="region" aria-label="Índice de guías" aria-describedby="guide-scroll-hint" tabindex="0"><p id="guide-scroll-hint" class="guide-scroll-hint"><span>Deslice la tabla para ver autor y fecha.</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h16m-4-4 4 4-4 4"/></svg></p><table class="guide-table"><caption class="visually-hidden">Guías publicadas</caption><thead><tr><th scope="col">Guía</th><th scope="col">Autor</th><th scope="col">Fecha</th></tr></thead><tbody>
+{% for article in articles %}<tr class="guide-row" data-search="{{ article.title }} {{ article.author }} {{ article.summary }} {{ article.tags|join:' ' }}"><td data-sort-value="{{ article.title }}"><div class="guide-detail"><a class="guide-title" href="#/content/{{ article.slug }}">{{ article.title }}</a><p class="guide-summary">{{ article.summary }}</p><p class="tag-list">{% for tag in article.tags %}<span>{{ tag }}</span>{% endfor %}</p>{% if article.status %}<p class="status status-{{ article.status }}">{{ article.get_status_display }}</p>{% endif %}{% if article.pdf_name or article.url or article.download_file %}<p class="guide-links">{% if article.pdf_name %}<a href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a>{% endif %}{% if article.url %}<a href="{{ article.url }}" target="_blank" rel="noreferrer">Sitio oficial</a>{% endif %}{% if article.download_file and user.is_authenticated %}<a href="#/downloads">Descarga aprobada</a>{% endif %}</p>{% endif %}</div></td><td class="guide-author">{{ article.author }}</td><td class="guide-date" data-sort-value="{{ article.date|date:'Y-m-d' }}"><time datetime="{{ article.date|date:'Y-m-d' }}">{{ article.date|date:'Y-m-d' }}</time></td></tr>{% endfor %}
+</tbody></table></div><div id="guide-topics" class="guide-topics" hidden></div></div><p class="library-empty" hidden>No hay guías que coincidan con estos filtros.</p>
+{% endif %}
 {% if section == 'updates' %}<p class="timeline-intro">Novedades en orden cronológico, de la más reciente a la más antigua.</p>
 <ol class="timeline">
 {% regroup articles by date|date:'F Y' as months %}{% for month in months %}<li class="timeline-month"><h2>{{ month.grouper|capfirst }}</h2>
@@ -20,7 +22,7 @@
 <p class="post-actions"><a class="post-link" href="#/content/{{ article.slug }}">Leer</a>{% if article.pdf_name %}<a class="pdf-link" href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a>{% endif %}{% if article.url %}<a class="post-link" href="{{ article.url }}" target="_blank" rel="noreferrer">Sitio oficial</a>{% endif %}{% if article.download_file and user.is_authenticated %}<a class="post-link" href="#/downloads">Descarga aprobada</a>{% endif %}</p>
 </article></li>{% endfor %}</ol></li>{% empty %}<li><p>Todavía no hay actualizaciones publicadas.</p></li>{% endfor %}
 </ol>
-{% else %}<div class="library-grid{% if section == 'guides' %} guide-library{% endif %}">
+{% elif section == 'tools' %}<div class="library-grid">
 {% for article in articles %}<article class="library-card" data-search="{{ article.title }} {{ article.author }} {{ article.summary }} {{ article.tags|join:' ' }}" data-tags="{{ article.tags|join:'|' }}">
 <h2><a href="#/content/{{ article.slug }}">{{ article.title }}</a></h2><p>{{ article.summary }}</p><small>{{ article.date|date:'Y-m-d' }} · {{ article.author }}</small>
 {% if article.status %}<p class="status status-{{ article.status }}">{{ article.get_status_display }}</p>{% endif %}
@@ -30,4 +32,3 @@
 {% if article.download_file and user.is_authenticated %}<p><a href="#/downloads">Descarga aprobada</a></p>{% endif %}
 </article>{% empty %}<p>Todavía no hay artículos {% if not user.is_authenticated %}públicos {% endif %}publicados en esta sección.</p>{% endfor %}
 </div>{% endif %}
-{% if section == 'guides' %}<p class="library-empty" hidden>No hay guías que coincidan con estos filtros.</p>{% endif %}

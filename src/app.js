@@ -96,17 +96,102 @@ function buildPageTree() {
   updatePageTreeCurrent();
 }
 
+const guideLibraries = new WeakMap();
+
+function prepareGuideLibrary(library) {
+  if (guideLibraries.has(library)) return guideLibraries.get(library);
+  let view = 'index';
+  try {
+    if (localStorage.getItem('athena.guides.view') === 'topics') view = 'topics';
+  } catch { /* The view also works when storage is unavailable. */ }
+  const state = {
+    view,
+    rows: [...library.querySelectorAll('.guide-row,.library-card')].map((row) => ({
+      row,
+      search: normalize(row.dataset.search),
+      tags: new Map([...row.querySelectorAll('.tag-list span')]
+        .map((tag) => [normalize(tag.textContent), tag.textContent.trim()]).filter(([key]) => key))
+    })),
+    groups: null
+  };
+  guideLibraries.set(library, state);
+  return state;
+}
+
+function buildGuideTopics(library, state) {
+  if (state.groups) return;
+  const topics = library.querySelector('#guide-topics');
+  const jumps = document.createElement('nav');
+  jumps.className = 'guide-topic-jumps';
+  jumps.tabIndex = 0;
+  jumps.setAttribute('aria-label', 'Temas de las guías');
+  state.groups = new Map();
+  state.rows.forEach((entry) => {
+    const tags = entry.tags.size ? entry.tags : new Map([['', 'Sin etiqueta']]);
+    tags.forEach((label, key) => {
+      let group = state.groups.get(key);
+      if (!group) {
+        const section = document.createElement('section');
+        section.className = 'guide-topic';
+        const heading = document.createElement('h2');
+        heading.id = 'guide-topic-' + (state.groups.size + 1);
+        heading.tabIndex = -1;
+        heading.textContent = label;
+        section.setAttribute('aria-labelledby', heading.id);
+        section.append(heading);
+        const jump = document.createElement('a');
+        jump.href = '#/guides?id=' + heading.id;
+        jump.dataset.guideTopic = heading.id;
+        jump.textContent = label;
+        jumps.append(jump);
+        topics.append(section);
+        group = { section, jump, entries: [] };
+        state.groups.set(key, group);
+      }
+      const article = document.createElement('article');
+      article.className = 'guide-topic-row';
+      const detail = entry.row.querySelector('.guide-detail').cloneNode(true);
+      const meta = document.createElement('div');
+      meta.className = 'guide-topic-meta';
+      const author = document.createElement('span');
+      author.textContent = entry.row.querySelector('.guide-author').textContent;
+      meta.append(author, entry.row.querySelector('time').cloneNode(true));
+      article.append(detail, meta);
+      group.section.append(article);
+      group.entries.push({ entry, article });
+    });
+  });
+  topics.prepend(jumps);
+}
+
 function filterGuides() {
   const library = document.querySelector('.guide-library');
   if (!library) return;
+  const state = prepareGuideLibrary(library);
   const query = normalize(document.querySelector('#guide-filter')?.value.trim() || '');
   const tag = normalize(document.querySelector('#guide-tag')?.value || '');
   let visible = 0;
-  library.querySelectorAll('.library-card').forEach((card) => {
-    const matchesText = !query || normalize(card.dataset.search || '').includes(query);
-    const matchesTag = !tag || (card.dataset.tags || '').split('|').some((value) => normalize(value) === tag);
-    card.hidden = !(matchesText && matchesTag);
-    if (!card.hidden) visible += 1;
+  state.rows.forEach((entry) => {
+    entry.row.hidden = !((!query || entry.search.includes(query)) && (!tag || entry.tags.has(tag)));
+    if (!entry.row.hidden) visible += 1;
+  });
+  const index = library.querySelector('#guide-index');
+  const topics = library.querySelector('#guide-topics');
+  if (index && topics) {
+    index.hidden = state.view !== 'index';
+    topics.hidden = state.view !== 'topics';
+    if (state.view === 'topics') buildGuideTopics(library, state);
+  }
+  document.querySelectorAll('[data-guide-view]').forEach((button) => {
+    button.setAttribute('aria-pressed', String(button.dataset.guideView === state.view));
+  });
+  state.groups?.forEach((group, key) => {
+    let shown = 0;
+    group.entries.forEach(({ entry, article }) => {
+      article.hidden = entry.row.hidden;
+      if (!article.hidden) shown += 1;
+    });
+    group.section.hidden = group.jump.hidden = !shown || Boolean(tag && key !== tag);
   });
   const count = document.querySelector('#guide-count');
   const empty = document.querySelector('.library-empty');
@@ -665,6 +750,24 @@ function updateSignInLinks() {
 }
 
 document.addEventListener('click', async (event) => {
+  const guideView = event.target.closest('[data-guide-view]');
+  if (guideView && ['index', 'topics'].includes(guideView.dataset.guideView)) {
+    const library = document.querySelector('.guide-library');
+    if (library) {
+      prepareGuideLibrary(library).view = guideView.dataset.guideView;
+      try { localStorage.setItem('athena.guides.view', guideView.dataset.guideView); } catch { /* Optional preference. */ }
+      filterGuides();
+    }
+  }
+  const topicJump = event.target.closest('[data-guide-topic]');
+  if (topicJump) {
+    const heading = document.getElementById(topicJump.dataset.guideTopic);
+    if (heading) {
+      event.preventDefault();
+      heading.focus({ preventScroll: true });
+      heading.scrollIntoView({ block: 'start' });
+    }
+  }
   const pageTreeLink = event.target.closest('.page-tree a');
   if (pageTreeLink) {
     updatePageTreeLayout();

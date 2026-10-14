@@ -154,7 +154,7 @@ for (const page of readerEntries.pages) {
     assert.ok(html.includes('<option value="pdf">PDF</option>'));
     assert.equal(html.includes('<option value="download">Descargas</option>'), page.authenticated);
   }
-  if (page.name === 'library.md') assert.ok(html.includes('class="library-card'), `${page.name}: ${html}`);
+  if (page.name === 'library.md') assert.ok(html.includes(page.section === 'guides' ? 'class="guide-row' : 'class="library-card'), `${page.name}: ${html}`);
   if (page.name === 'home.md') assert.ok(html.includes('id="home-search-slot"'), `${page.name}: ${html}`);
   if (page.name === 'account.md') assert.ok(html.includes('action="/accounts/logout/"'), `${page.name}: ${html}`);
   if (page.name === 'downloads.md') assert.ok(html.includes('href="/downloads/file"'), `${page.name}: ${html}`);
@@ -261,6 +261,18 @@ class Element {
       child.parentElement = this;
       this.childNodes.push(child);
     });
+  }
+  prepend(...children) {
+    this.append(...children);
+    this.childNodes = [...children, ...this.childNodes.filter((child) => !children.includes(child))];
+  }
+  cloneNode(deep) {
+    const copy = new Element(this.tagName);
+    copy.attributes = new Map(this.attributes);
+    copy.dataset = { ...this.dataset };
+    copy.className = this.className;
+    if (deep) copy.append(...this.childNodes.map((child) => child.cloneNode ? child.cloneNode(true) : { textContent: child.textContent }));
+    return copy;
   }
   closest(tag) { return this.tagName.toLowerCase() === tag ? this : this.parentElement?.closest(tag) || null; }
   querySelector(selector) {
@@ -539,6 +551,181 @@ if (process.argv.includes('--reader-integration')) {
 }
 
 // Tablet drawers must not replace the stored desktop rail preference.
+// Both guide views share server rows; topic copies are made once and never increase the result count.
+function guidePage(entries, legacy = false) {
+  const grid = new Element('div');
+  const index = new Element('div');
+  const topics = new Element('div');
+  const count = new Element('p');
+  const empty = new Element('p');
+  const query = { value: '', matches: (selector) => selector === '#guide-filter' };
+  const tag = { value: '', matches: (selector) => selector === '#guide-tag' };
+  const switches = ['index', 'topics'].map((view) => {
+    const button = new Element('button');
+    button.dataset.guideView = view;
+    return button;
+  });
+  const listing = table(['Guía', 'Autor', 'Fecha'], entries.map((entry) => [entry.title, entry.author, entry.date]));
+  const rows = [...listing.tBodies[0].rows];
+  rows.forEach((row, i) => {
+    const entry = entries[i];
+    row.dataset.search = [entry.title, entry.author, entry.summary, ...entry.tags].join(' ');
+    row.cells[0].dataset.sortValue = entry.title;
+    row.cells[2].dataset.sortValue = entry.date;
+    const detail = new Element('div');
+    detail.className = 'guide-detail';
+    const link = new Element('a', entry.title);
+    link.setAttribute('href', '#/content/guide-' + i);
+    const summary = new Element('p', entry.summary);
+    const tags = entry.tags.map((value) => new Element('span', value));
+    const tagList = new Element('p');
+    tagList.append(...tags);
+    const pdf = new Element('a', 'Abrir PDF original');
+    pdf.setAttribute('href', '/pdf/guide-' + i + '.pdf');
+    const site = new Element('a', 'Sitio oficial');
+    site.setAttribute('href', 'https://example.test/guide-' + i);
+    const download = new Element('a', 'Descarga aprobada');
+    download.setAttribute('href', '#/downloads');
+    const status = new Element('p', 'Estable');
+    detail.append(link, summary, tagList, status, pdf, site, download);
+    row.cells[0].append(detail);
+    const time = new Element('time', entry.date);
+    time.setAttribute('datetime', entry.date);
+    row.cells[2].append(time);
+    const queryRow = row.querySelector.bind(row);
+    row.querySelector = (selector) => ({ '.guide-detail': detail, '.guide-author': row.cells[1], time })[selector] || queryRow(selector);
+    row.querySelectorAll = (selector) => selector === '.tag-list span' ? tags : [];
+  });
+  grid.querySelectorAll = () => rows;
+  grid.querySelector = (selector) => legacy ? null : ({ '#guide-index': index, '#guide-topics': topics })[selector] || null;
+  return { grid, index, topics, rows, listing, switches, count, empty, query, tag };
+}
+let guides;
+const viewWrites = [];
+let storedView;
+context.localStorage = { getItem: () => storedView, setItem(key, value) { viewWrites.push([key, value]); storedView = value; } };
+context.location.hash = '#/guides';
+context.document.querySelector = (selector) => ({
+  '.guide-library': guides?.grid, '#guide-filter': guides?.query, '#guide-tag': guides?.tag,
+  '#guide-count': guides?.count, '.library-empty': guides?.empty
+})[selector] || null;
+context.document.querySelectorAll = (selector) => selector === '[data-guide-view]' ? guides.switches
+  : selector === '.markdown-section table' ? [guides.listing] : [];
+const switchGuides = (view) => handlers.click({ target: {
+  closest: (selector) => selector === '[data-guide-view]' ? guides.switches.find((button) => button.dataset.guideView === view) : null
+} });
+const entries = [
+  { title: 'Álvaro', author: 'Jeiser Vargas', summary: 'ZZ solución de problemas', date: '2026-01-02', tags: ['RPA', 'Café', 'CAFE', 'A|B <tema> "x"', 'Helios', 'Seguridad'] },
+  { title: 'Alvaro', author: 'Other author', summary: 'AA resumen', date: '2026-10-13', tags: ['RPA avanzado'] },
+  { title: 'Sin tema', author: 'Another author', summary: 'Sin etiquetas', date: '2025-01-01', tags: [] },
+  { title: 'Tema vacío', author: 'Another author', summary: 'Sin etiquetas útiles', date: '2026-01-03', tags: ['  '] }
+];
+guides = guidePage(entries);
+context.syncView();
+assert.equal(guides.count.textContent, '4 resultados');
+assert.equal(guides.index.hidden, false);
+assert.equal(guides.topics.hidden, true);
+assert.equal(guides.topics.children.length, 0, 'Index view does not build unused topic copies.');
+assert.deepEqual(guides.listing.tBodies[0].rows, guides.rows, 'Initial server date order is preserved.');
+guides.listing.tHead.rows[0].cells[0].querySelector('button').click();
+assert.deepEqual(guides.listing.tBodies[0].rows.slice(0, 2), guides.rows.slice(0, 2), 'Title sorting ignores summaries and tags, including ties.');
+guides.listing.tHead.rows[0].cells[2].querySelector('button').click();
+assert.deepEqual(guides.listing.tBodies[0].rows, [guides.rows[2], guides.rows[0], guides.rows[3], guides.rows[1]], 'Guide dates sort by explicit ISO values.');
+await switchGuides('topics');
+assert.equal(guides.count.textContent, '4 resultados', 'Multi-tag guides count once.');
+assert.equal(guides.index.hidden, true);
+assert.equal(guides.switches[1].getAttribute('aria-pressed'), 'true');
+const topicSections = guides.topics.children.slice(1);
+const groupFor = (label) => topicSections.find((section) => section.children[0].textContent === label);
+assert.equal(topicSections.length, 7, 'Normalized duplicate tags share a group.');
+assert.equal(groupFor('Sin etiqueta').children.length, 3, 'Untagged and blank-tag guides remain available.');
+assert.equal(groupFor('CAFE').children.length, 2);
+assert.equal(groupFor('A|B <tema> "x"').children[0].textContent, 'A|B <tema> "x"', 'Odd tags are literal text, not HTML or delimiters.');
+assert.equal(new Set(topicSections.map((section) => section.children[0].id)).size, topicSections.length);
+assert.ok(topicSections.every((section) => /^guide-topic-\d+$/.test(section.children[0].id)), 'IDs do not depend on tag syntax.');
+assert.match(groupFor('Helios').children[1].textContent, /Seguridad/);
+const copiedDetail = groupFor('Helios').children[1].children[0];
+assert.deepEqual(copiedDetail.children.filter((child) => child.tagName === 'A').map((link) => link.getAttribute('href')),
+  ['#/content/guide-0', '/pdf/guide-0.pdf', 'https://example.test/guide-0', '#/downloads'], 'Topic copies keep every rendered conditional action.');
+assert.match(copiedDetail.textContent, /Estable/);
+const firstCopies = topicSections.map((section) => [...section.children]);
+context.syncView();
+context.syncView();
+topicSections.forEach((section, i) => assert.deepEqual(section.children, firstCopies[i], 'Repeated Docsify sync keeps the same groups and rows.'));
+assert.ok(guides.listing.tHead.rows[0].cells.every((cell) => cell.querySelector('button').listeners.click.length === 1));
+guides.query.value = ' SOLUCION ';
+handlers.input({ target: guides.query });
+assert.equal(guides.count.textContent, '1 resultado');
+guides.tag.value = ' cafe ';
+handlers.change({ target: guides.tag });
+assert.equal(guides.count.textContent, '1 resultado');
+assert.deepEqual(topicSections.filter((section) => !section.hidden), [groupFor('CAFE')], 'Exact tag selection shows only that group.');
+const jumps = guides.topics.children[0];
+assert.equal(jumps.children.filter((jump) => !jump.hidden).length, 1);
+const activeJump = jumps.children.find((jump) => !jump.hidden);
+const activeHeading = groupFor('CAFE').children[0];
+let jumpFocused = false;
+let jumpScrolled = false;
+let jumpPrevented = false;
+activeHeading.focus = ({ preventScroll }) => { jumpFocused = preventScroll; };
+activeHeading.scrollIntoView = ({ block }) => { jumpScrolled = block === 'start'; };
+context.document.getElementById = (id) => topicSections.map((section) => section.children[0]).find((heading) => heading.id === id);
+await handlers.click({
+  target: { closest: (selector) => selector === '[data-guide-topic]' ? activeJump : null },
+  preventDefault() { jumpPrevented = true; }
+});
+assert.ok(jumpFocused && jumpScrolled && jumpPrevented, 'A topic jump focuses its heading without starting a new Docsify route.');
+assert.equal(context.location.hash, '#/guides');
+await switchGuides('index');
+assert.equal(guides.query.value, ' SOLUCION ');
+assert.equal(guides.tag.value, ' cafe ');
+assert.equal(guides.count.textContent, '1 resultado');
+guides.query.value = '';
+guides.tag.value = 'RPA';
+handlers.change({ target: guides.tag });
+assert.equal(guides.count.textContent, '1 resultado', 'A whole-tag filter does not match RPA avanzado by itself.');
+guides.tag.value = 'A|B <tema> "x"';
+handlers.change({ target: guides.tag });
+assert.equal(guides.count.textContent, '1 resultado', 'The pipe inside a tag is preserved.');
+guides.tag.value = '';
+for (const query of ['jeiser', 'seguridad', 'alvaro']) {
+  guides.query.value = query;
+  handlers.input({ target: guides.query });
+  assert.equal(guides.count.textContent, query === 'alvaro' ? '2 resultados' : '1 resultado', 'Author, tag, and title are searchable.');
+}
+guides.query.value = 'no existe';
+handlers.input({ target: guides.query });
+assert.equal(guides.count.textContent, '0 resultados');
+assert.equal(guides.empty.hidden, false);
+await switchGuides('topics');
+assert.ok(topicSections.every((section) => section.hidden));
+assert.ok(jumps.children.every((jump) => jump.hidden));
+assert.ok(viewWrites.every(([key, value]) => key === 'athena.guides.view' && ['index', 'topics'].includes(value)), 'Storage contains only the view preference.');
+const oldTopics = guides.topics;
+guides = guidePage([entries[2]]);
+context.syncView();
+assert.equal(guides.count.textContent, '1 resultado');
+assert.notEqual(guides.topics, oldTopics);
+assert.ok(!guides.topics.textContent.includes('Jeiser'), 'A new access-filtered page contains no previous private rows.');
+assert.equal(guides.topics.hidden, false, 'Route re-entry restores only the view preference.');
+context.localStorage = { getItem() { throw new Error('disabled'); }, setItem() { throw new Error('disabled'); } };
+guides = guidePage([entries[2]]);
+context.syncView();
+assert.equal(guides.index.hidden, false, 'Storage failure uses the default view.');
+await switchGuides('topics');
+assert.equal(guides.topics.hidden, false, 'Storage failure cannot prevent switching.');
+guides = guidePage([], false);
+context.syncView();
+assert.equal(guides.count.textContent, '0 resultados');
+assert.equal(guides.empty.hidden, false);
+guides = guidePage([entries[0], entries[2]], true);
+context.syncView();
+guides.tag.value = 'Helios';
+handlers.change({ target: guides.tag });
+assert.equal(guides.count.textContent, '1 resultado', 'The documented legacy card library keeps its filter behavior.');
+context.document.querySelector = () => null;
+context.document.querySelectorAll = () => [];
+
 function railViewport(width, preference) {
   const events = {};
   const root = { dataset: {} };
@@ -575,4 +762,4 @@ assert.equal(desktopRail.root.dataset.rail, 'expanded');
 assert.deepEqual(desktopRail.writes, [['athena.rail', 'expanded']]);
 assert.equal(railViewport(1366, 'hidden').root.dataset.rail, 'hidden');
 assert.equal(railViewport(1366, 'invalid').root.dataset.rail, 'expanded');
-console.log('Search, sign-in, reader compiler/router, navigation, responsive rail/outline, PDF viewer and sorting checks passed.');
+console.log('Search, guide views/filters, sign-in, reader compiler/router, navigation, responsive rail/outline, PDF viewer and sorting checks passed.');
