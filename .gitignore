@@ -16,3 +16,6 @@ __pycache__/
 # local secrets (API key)
 .env
 .env.*
+
+# impeccable CLI binary; the launcher downloads it when missing
+.agents/skills/impeccable/scripts/bin/
