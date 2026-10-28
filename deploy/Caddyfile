@@ -28,3 +28,6 @@ http://159.203.121.42 {
         redir https://athena.moratechnology.com{uri} permanent
     }
 }
+
+# Other sites on this droplet (for example aisolutions-demo) install their own file here. No match is not an error.
+import /etc/caddy/conf.d/*.caddy
