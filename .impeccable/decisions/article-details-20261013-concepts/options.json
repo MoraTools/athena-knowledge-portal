@@ -1,0 +1,67 @@
+{
+  "title": "Tres opciones para los detalles del artículo",
+  "question": "Elija la organización que le resulte más cómoda.",
+  "options": [
+    {
+      "id": "tabs",
+      "label": "Por pestañas",
+      "thesis": "Grupos claros y un diálogo corto.",
+      "palette": [
+        "#000000",
+        "#101010",
+        "#191919",
+        "#ffb900"
+      ],
+      "materials": [
+        "superficies oscuras lisas",
+        "controles nativos"
+      ],
+      "viewport": "Diálogo centrado con Información abierta y Publicación y Archivos en pestañas.",
+      "risk": "Publicación y archivos requieren otro clic.",
+      "comp": ".impeccable/mocks/decision/article-details-20261013-concepts/option-1-tabs.png"
+    },
+    {
+      "id": "side-panel",
+      "label": "Panel lateral",
+      "thesis": "Detalles al lado del texto en edición.",
+      "palette": [
+        "#000000",
+        "#101010",
+        "#191919",
+        "#ffb900"
+      ],
+      "materials": [
+        "superficies oscuras lisas",
+        "controles nativos"
+      ],
+      "viewport": "Inspector derecho con Artículo abierto y resúmenes de Publicación y Archivos.",
+      "risk": "El panel reduce el ancho de la vista previa.",
+      "comp": ".impeccable/mocks/decision/article-details-20261013-concepts/option-2-side-panel.png"
+    },
+    {
+      "id": "compact-card",
+      "label": "Ficha compacta",
+      "thesis": "Los datos frecuentes quedan a la vista.",
+      "palette": [
+        "#000000",
+        "#101010",
+        "#191919",
+        "#ffb900"
+      ],
+      "materials": [
+        "superficies oscuras lisas",
+        "controles nativos"
+      ],
+      "viewport": "Diálogo ancho con datos del artículo a la izquierda y publicación y archivos a la derecha.",
+      "risk": "La ficha muestra más controles a la vez.",
+      "comp": ".impeccable/mocks/decision/article-details-20261013-concepts/option-3-compact-card.png"
+    }
+  ],
+  "reroll": true,
+  "steer": true,
+  "canon": false,
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  }
+}

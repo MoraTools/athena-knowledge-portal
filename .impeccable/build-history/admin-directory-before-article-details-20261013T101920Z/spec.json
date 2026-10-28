@@ -1,0 +1,1788 @@
+{
+  "tool": "comp-spec",
+  "version": 1,
+  "createdAt": "2026-10-07T22:45:06.563Z",
+  "comp": ".impeccable/mocks/decision/admin-directory-20261007/roster-inspector.png",
+  "warnings": [
+    "region roster-table: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+  ],
+  "uncoveredInkCells": [],
+  "compSize": {
+    "width": 1672,
+    "height": 941
+  },
+  "aspect": 1.7768,
+  "orientation": "landscape",
+  "palette": [
+    {
+      "hex": "#090909",
+      "coverage": 0.9376
+    },
+    {
+      "hex": "#271a08",
+      "coverage": 0.0373
+    },
+    {
+      "hex": "#f8bb08",
+      "coverage": 0.0159
+    },
+    {
+      "hex": "#a0a0a0",
+      "coverage": 0.0047
+    },
+    {
+      "hex": "#686868",
+      "coverage": 0.0045
+    }
+  ],
+  "bands": [
+    {
+      "y": 0.8056,
+      "strength": 0.6041
+    },
+    {
+      "y": 0.8611,
+      "strength": 0.3755
+    }
+  ],
+  "regions": [
+    {
+      "id": "page-title",
+      "kind": "text",
+      "note": "Usuarios page heading",
+      "grid": "B0:C0",
+      "snap": false,
+      "box": {
+        "x": 0.1705,
+        "y": 0.0414,
+        "w": 0.1005,
+        "h": 0.0499
+      },
+      "px": {
+        "x": 285,
+        "y": 39,
+        "w": 168,
+        "h": 47
+      },
+      "aspect": 3.5745,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.8449
+        },
+        {
+          "hex": "#f4f4f4",
+          "coverage": 0.0742
+        },
+        {
+          "hex": "#959697",
+          "coverage": 0.0393
+        },
+        {
+          "hex": "#4c4d4e",
+          "coverage": 0.0371
+        },
+        {
+          "hex": "#b8c0bc",
+          "coverage": 0.0045
+        }
+      ],
+      "detail": {
+        "energy": 37.1678
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 8,
+          "capHeightPx": 29.1,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.5322,
+          "advTall": 0.515,
+          "advX": 0.5322,
+          "gap": 0.1373,
+          "xRatio": 0.6412,
+          "stemW": 0.1256,
+          "contrast": 1.713,
+          "serif": 1.9088,
+          "densTall": 0.3558,
+          "densX": 0.425,
+          "weight": 0.3558
+        },
+        "widthClass": "condensed",
+        "weightClass": "regular",
+        "chosen": {
+          "family": "Jacques Francois",
+          "weight": 400,
+          "fontSizePx": 42,
+          "source": "index",
+          "fp": {
+            "lines": 1,
+            "glyphs": 8,
+            "capHeightPx": 30.5,
+            "inkIsDark": true,
+            "allCaps": false,
+            "advance": 0.541,
+            "advTall": 0.5902,
+            "advX": 0.541,
+            "gap": 0.1311,
+            "xRatio": 0.5902,
+            "stemW": 0.1275,
+            "contrast": 1.8106,
+            "serif": 2.0026,
+            "densTall": 0.3188,
+            "densX": 0.4393,
+            "weight": 0.3188
+          },
+          "stamp": "522baf1754ee"
+        }
+      }
+    },
+    {
+      "id": "rail-wordmark",
+      "kind": "text",
+      "note": "ATHENA wordmark and knowledge portal label; reuse existing portal rail",
+      "grid": "A0:B0",
+      "snap": false,
+      "box": {
+        "x": 0.0257,
+        "y": 0.0298,
+        "w": 0.1047,
+        "h": 0.0638
+      },
+      "px": {
+        "x": 43,
+        "y": 28,
+        "w": 175,
+        "h": 60
+      },
+      "aspect": 2.9167,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.8631
+        },
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.0509
+        },
+        {
+          "hex": "#434242",
+          "coverage": 0.0379
+        },
+        {
+          "hex": "#e6ba08",
+          "coverage": 0.0287
+        },
+        {
+          "hex": "#7a7a7a",
+          "coverage": 0.0194
+        }
+      ],
+      "detail": {
+        "energy": 37.7491
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 7,
+          "capHeightPx": 22.9,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.7197,
+          "advTall": 0.7197,
+          "advX": null,
+          "gap": 0.2944,
+          "xRatio": 0.534,
+          "stemW": 0.2047,
+          "contrast": 2.5842,
+          "serif": 1.6025,
+          "densTall": 0.451,
+          "densX": null,
+          "weight": 0.451
+        },
+        "widthClass": "normal",
+        "weightClass": "regular"
+      }
+    },
+    {
+      "id": "rail-navigation",
+      "kind": "chrome",
+      "note": "Portal navigation links, account and administration groups; mock abbreviates the real link set",
+      "grid": "A1:B5",
+      "snap": false,
+      "box": {
+        "x": 0.0161,
+        "y": 0.1275,
+        "w": 0.1304,
+        "h": 0.457
+      },
+      "px": {
+        "x": 27,
+        "y": 120,
+        "w": 218,
+        "h": 430
+      },
+      "aspect": 0.507,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.9646
+        },
+        {
+          "hex": "#c7c7c7",
+          "coverage": 0.0145
+        },
+        {
+          "hex": "#818181",
+          "coverage": 0.0092
+        },
+        {
+          "hex": "#454545",
+          "coverage": 0.0068
+        },
+        {
+          "hex": "#f8d508",
+          "coverage": 0.0049
+        }
+      ],
+      "detail": {
+        "energy": 14.5447
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "rail-example-note",
+      "kind": "text",
+      "note": "Illustrative-data disclosure in comp, omitted from the live actual-user directory",
+      "grid": "A9:A9",
+      "snap": false,
+      "box": {
+        "x": 0.0161,
+        "y": 0.949,
+        "w": 0.0778,
+        "h": 0.0287
+      },
+      "px": {
+        "x": 27,
+        "y": 893,
+        "w": 130,
+        "h": 27
+      },
+      "aspect": 4.8148,
+      "palette": [
+        {
+          "hex": "#080909",
+          "coverage": 0.8295
+        },
+        {
+          "hex": "#717272",
+          "coverage": 0.1094
+        },
+        {
+          "hex": "#37393c",
+          "coverage": 0.0458
+        },
+        {
+          "hex": "#382838",
+          "coverage": 0.0076
+        },
+        {
+          "hex": "#6d6373",
+          "coverage": 0.0076
+        }
+      ],
+      "detail": {
+        "energy": 17.7724
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 14,
+          "capHeightPx": 11.3,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.561,
+          "advTall": 0.4429,
+          "advX": 0.561,
+          "gap": 0.059,
+          "xRatio": 0.7865,
+          "stemW": 0.1803,
+          "contrast": 1.0115,
+          "serif": null,
+          "densTall": 0.6022,
+          "densX": 0.6471,
+          "weight": 0.6022
+        },
+        "widthClass": "condensed",
+        "weightClass": "bold"
+      }
+    },
+    {
+      "id": "search",
+      "kind": "control",
+      "note": "Buscar usuario search field",
+      "grid": "B1:D1",
+      "snap": false,
+      "box": {
+        "x": 0.1705,
+        "y": 0.1211,
+        "w": 0.2243,
+        "h": 0.0489
+      },
+      "px": {
+        "x": 285,
+        "y": 114,
+        "w": 375,
+        "h": 46
+      },
+      "aspect": 8.1522,
+      "palette": [
+        {
+          "hex": "#0c0c0c",
+          "coverage": 0.9374
+        },
+        {
+          "hex": "#383532",
+          "coverage": 0.033
+        },
+        {
+          "hex": "#c9c9ca",
+          "coverage": 0.013
+        },
+        {
+          "hex": "#707070",
+          "coverage": 0.0115
+        },
+        {
+          "hex": "#a09ea2",
+          "coverage": 0.005
+        }
+      ],
+      "detail": {
+        "energy": 16.6565
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "new-user",
+      "kind": "control",
+      "note": "Outlined Nuevo usuario action",
+      "grid": "E1:F1",
+      "snap": false,
+      "box": {
+        "x": 0.4067,
+        "y": 0.1211,
+        "w": 0.1124,
+        "h": 0.0489
+      },
+      "px": {
+        "x": 680,
+        "y": 114,
+        "w": 188,
+        "h": 46
+      },
+      "aspect": 4.087,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.792
+        },
+        {
+          "hex": "#946c08",
+          "coverage": 0.1376
+        },
+        {
+          "hex": "#d5a508",
+          "coverage": 0.0387
+        },
+        {
+          "hex": "#f4d408",
+          "coverage": 0.0183
+        },
+        {
+          "hex": "#b78908",
+          "coverage": 0.0133
+        }
+      ],
+      "detail": {
+        "energy": 25.063
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "roster-heading-rule",
+      "kind": "chrome",
+      "note": "Rule below roster toolbar",
+      "grid": "B1:G1",
+      "snap": false,
+      "box": {
+        "x": 0.1705,
+        "y": 0.1934,
+        "w": 0.4803,
+        "h": 0.0021
+      },
+      "px": {
+        "x": 285,
+        "y": 182,
+        "w": 803,
+        "h": 2
+      },
+      "aspect": 401.5,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 1
+        }
+      ],
+      "detail": {
+        "energy": 63.3706
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "roster-table-head",
+      "kind": "chrome",
+      "note": "Usuario, Acceso, Estado and Sesión table headings",
+      "grid": "B2:G2",
+      "snap": false,
+      "box": {
+        "x": 0.1705,
+        "y": 0.2115,
+        "w": 0.4803,
+        "h": 0.0595
+      },
+      "px": {
+        "x": 285,
+        "y": 199,
+        "w": 803,
+        "h": 56
+      },
+      "aspect": 14.3393,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.9712
+        },
+        {
+          "hex": "#c8c8c9",
+          "coverage": 0.0128
+        },
+        {
+          "hex": "#8f8f8f",
+          "coverage": 0.0081
+        },
+        {
+          "hex": "#595959",
+          "coverage": 0.0063
+        },
+        {
+          "hex": "#383838",
+          "coverage": 0.0016
+        }
+      ],
+      "detail": {
+        "energy": 11.0119
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "roster-selected-row",
+      "kind": "chrome",
+      "note": "Selected account row, dark ground with gold selection line; sample user and dates are illustrative",
+      "grid": "B2:G3",
+      "snap": false,
+      "box": {
+        "x": 0.1705,
+        "y": 0.2699,
+        "w": 0.4803,
+        "h": 0.0755
+      },
+      "px": {
+        "x": 285,
+        "y": 254,
+        "w": 803,
+        "h": 71
+      },
+      "aspect": 11.3099,
+      "palette": [
+        {
+          "hex": "#271808",
+          "coverage": 0.8353
+        },
+        {
+          "hex": "#7b6008",
+          "coverage": 0.0878
+        },
+        {
+          "hex": "#2c290b",
+          "coverage": 0.0465
+        },
+        {
+          "hex": "#0e0a0a",
+          "coverage": 0.0204
+        },
+        {
+          "hex": "#d79708",
+          "coverage": 0.01
+        }
+      ],
+      "detail": {
+        "energy": 17.0675
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "roster-second-row",
+      "kind": "chrome",
+      "note": "Reader row with separate active status and session data",
+      "grid": "B3:G4",
+      "snap": false,
+      "box": {
+        "x": 0.1705,
+        "y": 0.3454,
+        "w": 0.4803,
+        "h": 0.0755
+      },
+      "px": {
+        "x": 285,
+        "y": 325,
+        "w": 803,
+        "h": 71
+      },
+      "aspect": 11.3099,
+      "palette": [
+        {
+          "hex": "#0a0a0a",
+          "coverage": 0.933
+        },
+        {
+          "hex": "#28280a",
+          "coverage": 0.0349
+        },
+        {
+          "hex": "#515151",
+          "coverage": 0.0158
+        },
+        {
+          "hex": "#271809",
+          "coverage": 0.0128
+        },
+        {
+          "hex": "#a1a1a1",
+          "coverage": 0.0035
+        }
+      ],
+      "detail": {
+        "energy": 10.9124
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "roster-third-row",
+      "kind": "chrome",
+      "note": "Reader row with separate active status and session data",
+      "grid": "B4:G4",
+      "snap": false,
+      "box": {
+        "x": 0.1705,
+        "y": 0.4208,
+        "w": 0.4803,
+        "h": 0.0744
+      },
+      "px": {
+        "x": 285,
+        "y": 396,
+        "w": 803,
+        "h": 70
+      },
+      "aspect": 11.4714,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.9696
+        },
+        {
+          "hex": "#535353",
+          "coverage": 0.0176
+        },
+        {
+          "hex": "#aaaaaa",
+          "coverage": 0.0072
+        },
+        {
+          "hex": "#ebebeb",
+          "coverage": 0.0028
+        },
+        {
+          "hex": "#7d7d7d",
+          "coverage": 0.0028
+        }
+      ],
+      "detail": {
+        "energy": 10.6394
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "roster-fourth-row",
+      "kind": "chrome",
+      "note": "Reader row with inactive status and session data",
+      "grid": "B4:G5",
+      "snap": false,
+      "box": {
+        "x": 0.1705,
+        "y": 0.4952,
+        "w": 0.4803,
+        "h": 0.0755
+      },
+      "px": {
+        "x": 285,
+        "y": 466,
+        "w": 803,
+        "h": 71
+      },
+      "aspect": 11.3099,
+      "palette": [
+        {
+          "hex": "#0a0a0a",
+          "coverage": 0.9662
+        },
+        {
+          "hex": "#6c6d6e",
+          "coverage": 0.013
+        },
+        {
+          "hex": "#adaeb0",
+          "coverage": 0.01
+        },
+        {
+          "hex": "#3c3c3c",
+          "coverage": 0.0075
+        },
+        {
+          "hex": "#eaeaea",
+          "coverage": 0.0033
+        }
+      ],
+      "detail": {
+        "energy": 10.4379
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "roster-fifth-row",
+      "kind": "chrome",
+      "note": "Administrator row with separate active status and session data",
+      "grid": "B5:G6",
+      "snap": false,
+      "box": {
+        "x": 0.1705,
+        "y": 0.5707,
+        "w": 0.4803,
+        "h": 0.0765
+      },
+      "px": {
+        "x": 285,
+        "y": 537,
+        "w": 803,
+        "h": 72
+      },
+      "aspect": 11.1528,
+      "palette": [
+        {
+          "hex": "#0a0909",
+          "coverage": 0.9664
+        },
+        {
+          "hex": "#d19608",
+          "coverage": 0.01
+        },
+        {
+          "hex": "#e8e8e8",
+          "coverage": 0.0081
+        },
+        {
+          "hex": "#222414",
+          "coverage": 0.008
+        },
+        {
+          "hex": "#515151",
+          "coverage": 0.0075
+        }
+      ],
+      "detail": {
+        "energy": 14.0867
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "inspector-title",
+      "kind": "text",
+      "note": "Selected account heading, using actual full name or username",
+      "grid": "G0:I0",
+      "snap": false,
+      "box": {
+        "x": 0.6866,
+        "y": 0.051,
+        "w": 0.1232,
+        "h": 0.0478
+      },
+      "px": {
+        "x": 1148,
+        "y": 48,
+        "w": 206,
+        "h": 45
+      },
+      "aspect": 4.5778,
+      "palette": [
+        {
+          "hex": "#0a0a0a",
+          "coverage": 0.8155
+        },
+        {
+          "hex": "#f1f0f0",
+          "coverage": 0.0903
+        },
+        {
+          "hex": "#545454",
+          "coverage": 0.034
+        },
+        {
+          "hex": "#c0bfc1",
+          "coverage": 0.032
+        },
+        {
+          "hex": "#8b8a8c",
+          "coverage": 0.0282
+        }
+      ],
+      "detail": {
+        "energy": 45.6396
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 10,
+          "capHeightPx": 27.9,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.5367,
+          "advTall": 0.4652,
+          "advX": 0.5367,
+          "gap": 0.1073,
+          "xRatio": 0.5892,
+          "stemW": 0.1181,
+          "contrast": 1.6751,
+          "serif": 2.1912,
+          "densTall": 0.3653,
+          "densX": 0.4433,
+          "weight": 0.3653
+        },
+        "widthClass": "condensed",
+        "weightClass": "regular"
+      }
+    },
+    {
+      "id": "inspector-meta",
+      "kind": "text",
+      "note": "Subordinate selected account metadata",
+      "grid": "G1:H1",
+      "snap": false,
+      "box": {
+        "x": 0.6866,
+        "y": 0.1041,
+        "w": 0.0957,
+        "h": 0.0213
+      },
+      "px": {
+        "x": 1148,
+        "y": 98,
+        "w": 160,
+        "h": 20
+      },
+      "aspect": 8,
+      "palette": [
+        {
+          "hex": "#0a090a",
+          "coverage": 0.918
+        },
+        {
+          "hex": "#5a5b5a",
+          "coverage": 0.0608
+        },
+        {
+          "hex": "#35353b",
+          "coverage": 0.0132
+        },
+        {
+          "hex": "#838383",
+          "coverage": 0.0079
+        }
+      ],
+      "detail": {
+        "energy": 14.5637
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 7,
+          "capHeightPx": 9.1,
+          "inkIsDark": false,
+          "allCaps": true,
+          "advance": 0.7712,
+          "advTall": 0.7712,
+          "advX": null,
+          "gap": 0.202,
+          "xRatio": null,
+          "stemW": 0.2269,
+          "contrast": 1.043,
+          "serif": null,
+          "densTall": 0.6115,
+          "densX": null,
+          "weight": 0.6115
+        },
+        "widthClass": "normal",
+        "weightClass": "bold"
+      }
+    },
+    {
+      "id": "username-field",
+      "kind": "control",
+      "note": "Nombre de usuario label and native input",
+      "grid": "G1:J2",
+      "snap": false,
+      "box": {
+        "x": 0.6872,
+        "y": 0.1573,
+        "w": 0.2931,
+        "h": 0.0691
+      },
+      "px": {
+        "x": 1149,
+        "y": 148,
+        "w": 490,
+        "h": 65
+      },
+      "aspect": 7.5385,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.915
+        },
+        {
+          "hex": "#363636",
+          "coverage": 0.0572
+        },
+        {
+          "hex": "#cdcecd",
+          "coverage": 0.0125
+        },
+        {
+          "hex": "#666767",
+          "coverage": 0.0092
+        },
+        {
+          "hex": "#979797",
+          "coverage": 0.0061
+        }
+      ],
+      "detail": {
+        "energy": 15.0446
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "first-name-field",
+      "kind": "control",
+      "note": "Nombre label and native input",
+      "grid": "G2:I3",
+      "snap": false,
+      "box": {
+        "x": 0.6872,
+        "y": 0.2508,
+        "w": 0.14,
+        "h": 0.0712
+      },
+      "px": {
+        "x": 1149,
+        "y": 236,
+        "w": 234,
+        "h": 67
+      },
+      "aspect": 3.4925,
+      "palette": [
+        {
+          "hex": "#080908",
+          "coverage": 0.9226
+        },
+        {
+          "hex": "#373737",
+          "coverage": 0.0499
+        },
+        {
+          "hex": "#909191",
+          "coverage": 0.0123
+        },
+        {
+          "hex": "#585859",
+          "coverage": 0.0095
+        },
+        {
+          "hex": "#f0f0ee",
+          "coverage": 0.0056
+        }
+      ],
+      "detail": {
+        "energy": 13.3679
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "last-name-field",
+      "kind": "control",
+      "note": "Apellidos label and native input",
+      "grid": "I2:J3",
+      "snap": false,
+      "box": {
+        "x": 0.8403,
+        "y": 0.2508,
+        "w": 0.14,
+        "h": 0.0712
+      },
+      "px": {
+        "x": 1405,
+        "y": 236,
+        "w": 234,
+        "h": 67
+      },
+      "aspect": 3.4925,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.9096
+        },
+        {
+          "hex": "#363737",
+          "coverage": 0.0569
+        },
+        {
+          "hex": "#6c6a6b",
+          "coverage": 0.0145
+        },
+        {
+          "hex": "#adadaf",
+          "coverage": 0.0123
+        },
+        {
+          "hex": "#e7e9eb",
+          "coverage": 0.0067
+        }
+      ],
+      "detail": {
+        "energy": 15.1261
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "email-field",
+      "kind": "control",
+      "note": "Correo electrónico disabled input and label",
+      "grid": "G3:J4",
+      "snap": false,
+      "box": {
+        "x": 0.6872,
+        "y": 0.3486,
+        "w": 0.2931,
+        "h": 0.0733
+      },
+      "px": {
+        "x": 1149,
+        "y": 328,
+        "w": 490,
+        "h": 69
+      },
+      "aspect": 7.1014,
+      "palette": [
+        {
+          "hex": "#0a0a0a",
+          "coverage": 0.9675
+        },
+        {
+          "hex": "#525252",
+          "coverage": 0.0178
+        },
+        {
+          "hex": "#acacad",
+          "coverage": 0.0096
+        },
+        {
+          "hex": "#808080",
+          "coverage": 0.0037
+        },
+        {
+          "hex": "#d8d8d8",
+          "coverage": 0.0013
+        }
+      ],
+      "detail": {
+        "energy": 12.7635
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "email-help",
+      "kind": "text",
+      "note": "Native email unavailable explanation, actual form guidance takes precedence over comp abbreviation",
+      "grid": "G4:J4",
+      "snap": false,
+      "box": {
+        "x": 0.6872,
+        "y": 0.4272,
+        "w": 0.2524,
+        "h": 0.0255
+      },
+      "px": {
+        "x": 1149,
+        "y": 402,
+        "w": 422,
+        "h": 24
+      },
+      "aspect": 17.5833,
+      "palette": [
+        {
+          "hex": "#0a0a0a",
+          "coverage": 0.9096
+        },
+        {
+          "hex": "#666766",
+          "coverage": 0.0532
+        },
+        {
+          "hex": "#414041",
+          "coverage": 0.0301
+        },
+        {
+          "hex": "#2c1c2c",
+          "coverage": 0.0035
+        },
+        {
+          "hex": "#808478",
+          "coverage": 0.0035
+        }
+      ],
+      "detail": {
+        "energy": 16.6635
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 26,
+          "capHeightPx": 11.3,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.547,
+          "advTall": 0.2661,
+          "advX": 0.5618,
+          "gap": 0.0887,
+          "xRatio": 0.7588,
+          "stemW": 0.1777,
+          "contrast": 0.9926,
+          "serif": 1.4652,
+          "densTall": 0.5926,
+          "densX": 0.6135,
+          "weight": 0.5926
+        },
+        "widthClass": "condensed",
+        "weightClass": "bold"
+      }
+    },
+    {
+      "id": "access-controls",
+      "kind": "control",
+      "note": "Acceso with small native Administrador and Lector radios",
+      "grid": "G4:I5",
+      "snap": false,
+      "box": {
+        "x": 0.6872,
+        "y": 0.4697,
+        "w": 0.1842,
+        "h": 0.0627
+      },
+      "px": {
+        "x": 1149,
+        "y": 442,
+        "w": 308,
+        "h": 59
+      },
+      "aspect": 5.2203,
+      "palette": [
+        {
+          "hex": "#0a0a0a",
+          "coverage": 0.93
+        },
+        {
+          "hex": "#4d4d4d",
+          "coverage": 0.0209
+        },
+        {
+          "hex": "#b3b3b3",
+          "coverage": 0.0194
+        },
+        {
+          "hex": "#e6e6e6",
+          "coverage": 0.0159
+        },
+        {
+          "hex": "#f5bb08",
+          "coverage": 0.0139
+        }
+      ],
+      "detail": {
+        "energy": 30.2387
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "active-control",
+      "kind": "control",
+      "note": "Usuario activo native checkbox",
+      "grid": "G5:I5",
+      "snap": false,
+      "box": {
+        "x": 0.6872,
+        "y": 0.5537,
+        "w": 0.1334,
+        "h": 0.0351
+      },
+      "px": {
+        "x": 1149,
+        "y": 521,
+        "w": 223,
+        "h": 33
+      },
+      "aspect": 6.7576,
+      "palette": [
+        {
+          "hex": "#0a0a09",
+          "coverage": 0.8737
+        },
+        {
+          "hex": "#f2b908",
+          "coverage": 0.055
+        },
+        {
+          "hex": "#7b7b7d",
+          "coverage": 0.035
+        },
+        {
+          "hex": "#dedddf",
+          "coverage": 0.0213
+        },
+        {
+          "hex": "#414344",
+          "coverage": 0.015
+        }
+      ],
+      "detail": {
+        "energy": 28.0403
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "permission-rule",
+      "kind": "chrome",
+      "note": "Rule between access and edit permissions",
+      "grid": "G6:J6",
+      "snap": false,
+      "box": {
+        "x": 0.6872,
+        "y": 0.6047,
+        "w": 0.2931,
+        "h": 0.0021
+      },
+      "px": {
+        "x": 1149,
+        "y": 569,
+        "w": 490,
+        "h": 2
+      },
+      "aspect": 245,
+      "palette": [
+        {
+          "hex": "#282828",
+          "coverage": 1
+        }
+      ],
+      "detail": {
+        "energy": 5.7783
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "permission-controls",
+      "kind": "control",
+      "note": "Permisos de edición with native Artículos, Descargas, Usuarios y claves de API checkboxes",
+      "grid": "G6:I7",
+      "snap": false,
+      "box": {
+        "x": 0.6872,
+        "y": 0.627,
+        "w": 0.2063,
+        "h": 0.1339
+      },
+      "px": {
+        "x": 1149,
+        "y": 590,
+        "w": 345,
+        "h": 126
+      },
+      "aspect": 2.7381,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.924
+        },
+        {
+          "hex": "#f2ba08",
+          "coverage": 0.0284
+        },
+        {
+          "hex": "#545454",
+          "coverage": 0.0169
+        },
+        {
+          "hex": "#919191",
+          "coverage": 0.0167
+        },
+        {
+          "hex": "#d0d0d0",
+          "coverage": 0.014
+        }
+      ],
+      "detail": {
+        "energy": 25.8161
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "save-rule",
+      "kind": "chrome",
+      "note": "Rule above inspector save action",
+      "grid": "G7:J7",
+      "snap": false,
+      "box": {
+        "x": 0.6872,
+        "y": 0.78,
+        "w": 0.2931,
+        "h": 0.0021
+      },
+      "px": {
+        "x": 1149,
+        "y": 734,
+        "w": 490,
+        "h": 2
+      },
+      "aspect": 245,
+      "palette": [
+        {
+          "hex": "#181818",
+          "coverage": 1
+        }
+      ],
+      "detail": {
+        "energy": 7.3564
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "save",
+      "kind": "control",
+      "note": "Primary gold Guardar action",
+      "grid": "G8:J8",
+      "snap": false,
+      "box": {
+        "x": 0.6872,
+        "y": 0.8023,
+        "w": 0.2931,
+        "h": 0.0531
+      },
+      "px": {
+        "x": 1149,
+        "y": 755,
+        "w": 490,
+        "h": 50
+      },
+      "aspect": 9.8,
+      "palette": [
+        {
+          "hex": "#f8b908",
+          "coverage": 0.8604
+        },
+        {
+          "hex": "#785708",
+          "coverage": 0.0624
+        },
+        {
+          "hex": "#b78808",
+          "coverage": 0.0602
+        },
+        {
+          "hex": "#322208",
+          "coverage": 0.0109
+        },
+        {
+          "hex": "#0a0808",
+          "coverage": 0.0062
+        }
+      ],
+      "detail": {
+        "energy": 17.3069
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "account-actions",
+      "kind": "control",
+      "note": "Quiet manual password reset, API keys and individual delete links",
+      "grid": "G8:J9",
+      "snap": false,
+      "box": {
+        "x": 0.6872,
+        "y": 0.8884,
+        "w": 0.2931,
+        "h": 0.0468
+      },
+      "px": {
+        "x": 1149,
+        "y": 836,
+        "w": 490,
+        "h": 44
+      },
+      "aspect": 11.1364,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.9158
+        },
+        {
+          "hex": "#444445",
+          "coverage": 0.029
+        },
+        {
+          "hex": "#acacac",
+          "coverage": 0.0282
+        },
+        {
+          "hex": "#777779",
+          "coverage": 0.0237
+        },
+        {
+          "hex": "#d0d4d0",
+          "coverage": 0.0033
+        }
+      ],
+      "detail": {
+        "energy": 23.9321
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "rail-divider",
+      "kind": "chrome",
+      "note": "Rule between portal rail and main area",
+      "grid": "B0:B9",
+      "snap": false,
+      "box": {
+        "x": 0.1,
+        "y": 0,
+        "w": 0.1,
+        "h": 1
+      },
+      "px": {
+        "x": 167,
+        "y": 0,
+        "w": 167,
+        "h": 941
+      },
+      "aspect": 0.1775,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.9682
+        },
+        {
+          "hex": "#271a08",
+          "coverage": 0.0201
+        },
+        {
+          "hex": "#e5e5e5",
+          "coverage": 0.0059
+        },
+        {
+          "hex": "#464646",
+          "coverage": 0.003
+        },
+        {
+          "hex": "#9f9f9f",
+          "coverage": 0.0028
+        }
+      ],
+      "detail": {
+        "energy": 4.917
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "inspector-divider",
+      "kind": "chrome",
+      "note": "Rule between roster and inspector",
+      "grid": "G0:G9",
+      "snap": false,
+      "box": {
+        "x": 0.6,
+        "y": 0,
+        "w": 0.1,
+        "h": 1
+      },
+      "px": {
+        "x": 1003,
+        "y": 0,
+        "w": 167,
+        "h": 941
+      },
+      "aspect": 0.1775,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.9305
+        },
+        {
+          "hex": "#271b0b",
+          "coverage": 0.0449
+        },
+        {
+          "hex": "#f7bb08",
+          "coverage": 0.0142
+        },
+        {
+          "hex": "#989898",
+          "coverage": 0.0056
+        },
+        {
+          "hex": "#424242",
+          "coverage": 0.0048
+        }
+      ],
+      "detail": {
+        "energy": 5.127
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "rail-brand-region",
+      "kind": "chrome",
+      "note": "Portal wordmark ground and separator at the top of the rail",
+      "grid": "A0:B0",
+      "snap": false,
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 0.2,
+        "h": 0.1
+      },
+      "px": {
+        "x": 0,
+        "y": 0,
+        "w": 334,
+        "h": 94
+      },
+      "aspect": 3.5532,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.9499
+        },
+        {
+          "hex": "#f4f4f4",
+          "coverage": 0.0228
+        },
+        {
+          "hex": "#434343",
+          "coverage": 0.0132
+        },
+        {
+          "hex": "#a0a0a0",
+          "coverage": 0.0095
+        },
+        {
+          "hex": "#583f08",
+          "coverage": 0.0046
+        }
+      ],
+      "detail": {
+        "energy": 27.3635
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "roster-table",
+      "kind": "chrome",
+      "note": "One semantic roster table with header and five illustrative rows",
+      "grid": "B2:G6",
+      "container": true,
+      "snap": false,
+      "box": {
+        "x": 0.1,
+        "y": 0.2,
+        "w": 0.6,
+        "h": 0.5
+      },
+      "px": {
+        "x": 167,
+        "y": 188,
+        "w": 1003,
+        "h": 471
+      },
+      "aspect": 2.1295,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.8741
+        },
+        {
+          "hex": "#271808",
+          "coverage": 0.1015
+        },
+        {
+          "hex": "#7e6108",
+          "coverage": 0.0115
+        },
+        {
+          "hex": "#2b280c",
+          "coverage": 0.0072
+        },
+        {
+          "hex": "#7f7f7f",
+          "coverage": 0.0058
+        }
+      ],
+      "detail": {
+        "energy": 12.0827
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "inspector-header-region",
+      "kind": "chrome",
+      "note": "The inspector header on its dark ground",
+      "grid": "G0:J0",
+      "snap": false,
+      "box": {
+        "x": 0.6,
+        "y": 0,
+        "w": 0.4,
+        "h": 0.1
+      },
+      "px": {
+        "x": 1003,
+        "y": 0,
+        "w": 669,
+        "h": 94
+      },
+      "aspect": 7.117,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.9751
+        },
+        {
+          "hex": "#f0f0f0",
+          "coverage": 0.0131
+        },
+        {
+          "hex": "#313131",
+          "coverage": 0.0049
+        },
+        {
+          "hex": "#bababa",
+          "coverage": 0.0035
+        },
+        {
+          "hex": "#6d6d6d",
+          "coverage": 0.0034
+        }
+      ],
+      "detail": {
+        "energy": 13.2227
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "profile-fields-region",
+      "kind": "chrome",
+      "note": "Native profile field group, username, names and disabled email",
+      "grid": "G1:J4",
+      "snap": false,
+      "box": {
+        "x": 0.6,
+        "y": 0.1,
+        "w": 0.4,
+        "h": 0.4
+      },
+      "px": {
+        "x": 1003,
+        "y": 94,
+        "w": 669,
+        "h": 376
+      },
+      "aspect": 1.7793,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.9555
+        },
+        {
+          "hex": "#271808",
+          "coverage": 0.0205
+        },
+        {
+          "hex": "#3b3b3b",
+          "coverage": 0.0112
+        },
+        {
+          "hex": "#666666",
+          "coverage": 0.0068
+        },
+        {
+          "hex": "#a1a1a1",
+          "coverage": 0.0061
+        }
+      ],
+      "detail": {
+        "energy": 8.921
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "access-region",
+      "kind": "chrome",
+      "note": "Native role, active and edit permission fieldsets",
+      "grid": "G4:J7",
+      "snap": false,
+      "box": {
+        "x": 0.6,
+        "y": 0.4,
+        "w": 0.4,
+        "h": 0.4
+      },
+      "px": {
+        "x": 1003,
+        "y": 376,
+        "w": 669,
+        "h": 376
+      },
+      "aspect": 1.7793,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.9775
+        },
+        {
+          "hex": "#f6ba08",
+          "coverage": 0.0064
+        },
+        {
+          "hex": "#676767",
+          "coverage": 0.0059
+        },
+        {
+          "hex": "#9f9f9f",
+          "coverage": 0.0054
+        },
+        {
+          "hex": "#e1e1e1",
+          "coverage": 0.0049
+        }
+      ],
+      "detail": {
+        "energy": 10.0759
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    }
+  ]
+}

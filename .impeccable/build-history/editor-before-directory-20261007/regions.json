@@ -1,0 +1,96 @@
+{
+  "regions": [
+    {
+      "id": "rail",
+      "kind": "chrome",
+      "grid": "A0:A9",
+      "note": "Compact navigation rail",
+      "codeDrawn": true
+    },
+    {
+      "id": "header",
+      "kind": "chrome",
+      "grid": "B0:J0",
+      "note": "Quiet single header."
+    },
+    {
+      "id": "back",
+      "kind": "control",
+      "grid": "B0:B0",
+      "note": "Art\u00edculos back control."
+    },
+    {
+      "id": "state",
+      "kind": "text",
+      "grid": "G0:H0",
+      "note": "Publicado \u00b7 Privado state."
+    },
+    {
+      "id": "details",
+      "kind": "control",
+      "grid": "I0:I0",
+      "note": "Detalles and overflow controls."
+    },
+    {
+      "id": "save",
+      "kind": "control",
+      "grid": "J0:J0",
+      "note": "Gold Guardar button."
+    },
+    {
+      "id": "title",
+      "kind": "control",
+      "grid": "B1:J1",
+      "note": "Full-width article title input."
+    },
+    {
+      "id": "source-header",
+      "kind": "text",
+      "grid": "A1:D2",
+      "note": "MARKDOWN pane label."
+    },
+    {
+      "id": "preview-header",
+      "kind": "text",
+      "grid": "F1:I2",
+      "note": "VISTA PREVIA \u00b7 EN VIVO pane label."
+    },
+    {
+      "id": "source-copy",
+      "kind": "text",
+      "grid": "A2:E5",
+      "note": "Raw Markdown in native textarea.",
+      "container": true
+    },
+    {
+      "id": "preview-heading",
+      "kind": "text",
+      "grid": "F2:J3",
+      "note": "Themis Review, ahora en el editor"
+    },
+    {
+      "id": "preview-paragraph",
+      "kind": "text",
+      "grid": "F4:J4",
+      "note": "Reader article paragraph."
+    },
+    {
+      "id": "preview-next",
+      "kind": "text",
+      "grid": "F5:J5",
+      "note": "Second reader paragraph."
+    },
+    {
+      "id": "preview-strong",
+      "kind": "text",
+      "grid": "F5:J6",
+      "note": "Reader bold statement."
+    },
+    {
+      "id": "image-helper",
+      "kind": "chrome",
+      "grid": "B9:J9",
+      "note": "Bottom image helper and plain-text status."
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "title": "Cinco opciones para Guías",
+  "question": "Elija la organización que le permita encontrar y comparar guías con más facilidad.",
+  "options": [
+    {
+      "id": "expandable",
+      "label": "Lista desplegable",
+      "kicker": "OPCIÓN 1",
+      "thesis": "Más títulos a la vista; el resumen se abre en la misma fila.",
+      "palette": ["#000000", "#101010", "#191919", "#ffffff", "#ffb900"],
+      "materials": ["filas compactas", "texto y controles de Athena"],
+      "viewport": "Filas de ancho completo con título, autor, fecha y etiquetas; una fila abierta muestra el resumen y Leer guía.",
+      "risk": "Consultar cada resumen requiere un clic adicional.",
+      "comp": ".impeccable/mocks/decision/guides-20261013-five/option-1-expandable.png"
+    },
+    {
+      "id": "topics",
+      "label": "Por temas",
+      "kicker": "OPCIÓN 2",
+      "thesis": "Las etiquetas actuales forman grupos fáciles de recorrer.",
+      "palette": ["#000000", "#101010", "#191919", "#ffffff", "#ffb900"],
+      "materials": ["secciones por etiqueta", "texto y controles de Athena"],
+      "viewport": "Encabezados discretos de tema y listas con título, resumen, autor, fecha y etiquetas.",
+      "risk": "Una guía con varias etiquetas puede aparecer en varios grupos.",
+      "comp": ".impeccable/mocks/decision/guides-20261013-five/option-2-topics.png"
+    },
+    {
+      "id": "preview",
+      "label": "Lista con ficha",
+      "kicker": "OPCIÓN 3",
+      "thesis": "La lista queda visible mientras consulta los datos de una guía.",
+      "palette": ["#000000", "#101010", "#191919", "#ffffff", "#ffb900"],
+      "materials": ["lista e inspector lateral", "texto y controles de Athena"],
+      "viewport": "Lista a la izquierda y ficha a la derecha con resumen, autor, fecha, etiquetas y Leer guía.",
+      "risk": "La ficha reduce el ancho disponible para los títulos.",
+      "comp": ".impeccable/mocks/decision/guides-20261013-five/option-3-preview.png"
+    },
+    {
+      "id": "index",
+      "label": "Índice compacto",
+      "kicker": "OPCIÓN 4",
+      "thesis": "Columnas estables permiten comparar varias guías a la vez.",
+      "palette": ["#000000", "#101010", "#191919", "#ffffff", "#ffb900"],
+      "materials": ["tabla de filas densas", "texto y controles de Athena"],
+      "viewport": "Tabla con título y resumen corto, autor, fecha y etiquetas, junto a los filtros actuales.",
+      "risk": "Cada guía muestra menos texto de su resumen.",
+      "comp": ".impeccable/mocks/decision/guides-20261013-five/option-4-index.png"
+    },
+    {
+      "id": "cards",
+      "label": "Tarjetas compactas",
+      "kicker": "OPCIÓN 5",
+      "thesis": "Tarjetas más pequeñas mantienen cada guía en un bloque claro.",
+      "palette": ["#000000", "#101010", "#191919", "#ffffff", "#ffb900"],
+      "materials": ["cuadrícula compacta", "texto y controles de Athena"],
+      "viewport": "Tarjetas con título, resumen, autor, fecha y etiquetas, con menos espacio y texto más pequeño.",
+      "risk": "Se ven menos guías a la vez que en una lista de filas.",
+      "comp": ".impeccable/mocks/decision/guides-20261013-five/option-5-cards.png"
+    }
+  ],
+  "reroll": true,
+  "steer": true,
+  "canon": false,
+  "buildPath": {"value": "comp", "toggle": true}
+}

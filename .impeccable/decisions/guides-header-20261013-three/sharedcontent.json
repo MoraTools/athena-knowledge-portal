@@ -1,0 +1,188 @@
+{
+  "source": "Read-only published-guide catalog supplied by the parent agent on 2026-10-13; titles and count match the provided Guías screenshot.",
+  "count": 13,
+  "notes": [
+    "Use these records as supplied. Do not infer access, status, article body, URLs, or attachments.",
+    "A null summary means the summary was not supplied. It is not an empty summary in the live catalog.",
+    "The first six records include verified summaries. Later records include verified titles, authors, dates, and tags only.",
+    "These concepts change header composition only. They do not approve or implement an application change.",
+    "The guide-local search stays separate from the portal rail search. Keep its current title, author, summary, and tag matching.",
+    "Nuevo artículo is visible only when the existing add_article permission permits it."
+  ],
+  "guides": [
+    {
+      "title": "Bot no inicia: error user.not.logged.in",
+      "author": "Jeiser Vargas",
+      "date": "2026-10-13",
+      "tags": [
+        "Automation Anywhere",
+        "Bot Agent"
+      ],
+      "summary": "Diagnóstico del error user.not.logged.in en HomeLP y ajuste propuesto a Single user / Regular. La ejecución del bot y la revisión editorial siguen pendientes."
+    },
+    {
+      "title": "Guía de uso e implementación de Enterprise Knowledge",
+      "author": "Ernesto Castillo",
+      "date": "2026-10-13",
+      "tags": [
+        "Enterprise Knowledge",
+        "Automation 360",
+        "API",
+        "IA generativa",
+        "RPA"
+      ],
+      "summary": "Configure proyectos y agentes de Enterprise Knowledge e integre su API con bots de Automation 360. Incluye salida JSON, pruebas, seguridad y operación."
+    },
+    {
+      "title": "Integración de SharePoint con Automation Anywhere Control Room",
+      "author": "Renato",
+      "date": "2026-10-13",
+      "tags": [
+        "Automation Anywhere",
+        "Control Room",
+        "SharePoint",
+        "Microsoft Entra ID",
+        "OAuth 2.0"
+      ],
+      "summary": "Configuración de una conexión OAuth entre SharePoint, Microsoft Entra ID y Automation Anywhere Control Room. Incluye permisos, datos de conexión, prueba y asuntos pendientes de revisión."
+    },
+    {
+      "title": "Manual de configuración de Automation Co-Pilot",
+      "author": "Andres Panti y Pedro Chávez",
+      "date": "2026-09-30",
+      "tags": [
+        "Automation Co-Pilot",
+        "Copilot",
+        "Configuración"
+      ],
+      "summary": "Guía paso a paso para configurar procesos, usuarios, roles, device pools y equipos de Automation Co-Pilot, con capturas en cada sección."
+    },
+    {
+      "title": "Cómo usar la biblioteca pública de Athena",
+      "author": "Athena",
+      "date": "2026-09-28",
+      "tags": [
+        "Athena",
+        "Biblioteca"
+      ],
+      "summary": "Busque artículos públicos, lea guías y guarde una copia en PDF sin iniciar sesión."
+    },
+    {
+      "title": "Seguridad en Helios Cloud",
+      "author": "Jeiser Vargas",
+      "date": "2026-09-25",
+      "tags": [
+        "Helios",
+        "Seguridad"
+      ],
+      "summary": "Cómo Helios Cloud protege los datos de monitoreo y los logs de los bots: acceso, cifrado, aislamiento y retención."
+    },
+    {
+      "title": "Acelerador A+: solución IDP con Document Automation",
+      "author": "Automation Anywhere Professional Services",
+      "date": "2026-09-24",
+      "tags": [
+        "Document Automation",
+        "IDP",
+        "A+ Accelerators",
+        "Servicios"
+      ],
+      "summary": null
+    },
+    {
+      "title": "Arquitectura de despliegue de Automation 360 on-premises",
+      "author": "Automation Anywhere Professional Services",
+      "date": "2026-09-24",
+      "tags": [
+        "Arquitectura",
+        "Despliegue",
+        "Alta disponibilidad",
+        "On-premises"
+      ],
+      "summary": null
+    },
+    {
+      "title": "Arquitectura del Bot Agent",
+      "author": "Automation Anywhere Professional Services",
+      "date": "2026-09-24",
+      "tags": [
+        "Arquitectura",
+        "Bot Agent",
+        "Infraestructura"
+      ],
+      "summary": null
+    },
+    {
+      "title": "Buenas prácticas para desarrollar bots en Automation 360",
+      "author": "Automation Anywhere Professional Services",
+      "date": "2026-08-17",
+      "tags": [
+        "Desarrollo",
+        "Buenas prácticas"
+      ],
+      "summary": null
+    },
+    {
+      "title": "Implementación de Core Framework",
+      "author": "Jeiser Vargas",
+      "date": "2026-08-17",
+      "tags": [
+        "Framework",
+        "Arquitectura"
+      ],
+      "summary": null
+    },
+    {
+      "title": "Patrones útiles de DOMXPath",
+      "author": "Patrik Laura",
+      "date": "2026-08-17",
+      "tags": [
+        "Web",
+        "DOMXPath"
+      ],
+      "summary": null
+    },
+    {
+      "title": "Resolver problemas de captura en Automation Anywhere con Google Chrome",
+      "author": "Patrik Laura",
+      "date": "2026-08-17",
+      "tags": [
+        "Recorder",
+        "Web",
+        "Solución de problemas",
+        "Capture"
+      ],
+      "summary": null
+    }
+  ],
+  "header": {
+    "title": "Guías",
+    "searchLabel": "Buscar guías",
+    "searchPlaceholder": "Título, autor, resumen o etiqueta",
+    "searchFields": [
+      "title",
+      "author",
+      "summary",
+      "tags"
+    ],
+    "tagLabel": "Etiqueta",
+    "tagDefault": "Todas",
+    "tagMatch": "exact",
+    "resultCount": "13 resultados",
+    "resultCountInstances": 1,
+    "views": [
+      "Índice compacto",
+      "Por temas"
+    ],
+    "activeView": "Por temas",
+    "createAction": "Nuevo artículo",
+    "createPermission": "add_article"
+  },
+  "scope": {
+    "surface": "Guías header only",
+    "mode": "Read",
+    "identity": "Existing Athena black and gold, serif Guías title, narrow sans-serif controls.",
+    "fixedContent": "Keep the existing guide content, tables, topics, portal rail, article routes, access rules, and conditional actions.",
+    "snapshot": "Use the same 13-guide catalog snapshot in all three images. Show Por temas as active. Do not add a second result count."
+  }
+}

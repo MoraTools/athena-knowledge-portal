@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Scaffold reference: roster-inspector.png</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jacques+Francois:wght@400&display=swap">
+  <link rel="stylesheet" href="layout.css">
+  <style>html,body{margin:0}body{background:#090909}.region{box-sizing:border-box}.region.text p{white-space:pre-wrap}</style>
+</head>
+<body>
+<!-- Reference only. Every region sits at its measured box inside a comp-aspect frame. Take the boxes (layout.css), keep your own semantic structure. -->
+<main class="comp-frame" style="max-width:1672px">
+  <div class="r-page-title region text" data-region="page-title"><!-- Usuarios page heading --><p style="font-size:var(--r-page-title-font);font-family:var(--r-page-title-family),sans-serif;font-weight:var(--r-page-title-weight);line-height:1.05;margin:0">page-title</p></div>
+  <div class="r-rail-wordmark region text" data-region="rail-wordmark"><!-- ATHENA wordmark and knowledge portal label; reuse existing portal rail --><p style="font-size:var(--r-rail-wordmark-font);line-height:1.05;margin:0">rail-wordmark</p></div>
+  <div class="r-rail-navigation region chrome" data-region="rail-navigation"><!-- Portal navigation links, account and administration groups; mock abbreviates the real link set --></div>
+  <div class="r-rail-example-note region text" data-region="rail-example-note"><!-- Illustrative-data disclosure in comp, omitted from the live actual-user directory --><p style="font-size:var(--r-rail-example-note-font);line-height:1.05;margin:0">rail-example-note</p></div>
+  <div class="r-search region control" data-region="search"><!-- Buscar usuario search field: rebuild the control's chrome from the crop (comp-spec.mjs --crop search); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-new-user region control" data-region="new-user"><!-- Outlined Nuevo usuario action: rebuild the control's chrome from the crop (comp-spec.mjs --crop new-user); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-roster-heading-rule region chrome" data-region="roster-heading-rule"><!-- Rule below roster toolbar --></div>
+  <div class="r-roster-table-head region chrome" data-region="roster-table-head"><!-- Usuario, Acceso, Estado and Sesión table headings --></div>
+  <div class="r-roster-selected-row region chrome" data-region="roster-selected-row"><!-- Selected account row, dark ground with gold selection line; sample user and dates are illustrative --></div>
+  <div class="r-roster-second-row region chrome" data-region="roster-second-row"><!-- Reader row with separate active status and session data --></div>
+  <div class="r-roster-third-row region chrome" data-region="roster-third-row"><!-- Reader row with separate active status and session data --></div>
+  <div class="r-roster-fourth-row region chrome" data-region="roster-fourth-row"><!-- Reader row with inactive status and session data --></div>
+  <div class="r-roster-fifth-row region chrome" data-region="roster-fifth-row"><!-- Administrator row with separate active status and session data --></div>
+  <div class="r-inspector-title region text" data-region="inspector-title"><!-- Selected account heading, using actual full name or username --><p style="font-size:var(--r-inspector-title-font);line-height:1.05;margin:0">inspector-title</p></div>
+  <div class="r-inspector-meta region text" data-region="inspector-meta"><!-- Subordinate selected account metadata --><p style="font-size:var(--r-inspector-meta-font);line-height:1.05;margin:0">inspector-meta</p></div>
+  <div class="r-username-field region control" data-region="username-field"><!-- Nombre de usuario label and native input: rebuild the control's chrome from the crop (comp-spec.mjs --crop username-field); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-first-name-field region control" data-region="first-name-field"><!-- Nombre label and native input: rebuild the control's chrome from the crop (comp-spec.mjs --crop first-name-field); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-last-name-field region control" data-region="last-name-field"><!-- Apellidos label and native input: rebuild the control's chrome from the crop (comp-spec.mjs --crop last-name-field); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-email-field region control" data-region="email-field"><!-- Correo electrónico disabled input and label: rebuild the control's chrome from the crop (comp-spec.mjs --crop email-field); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-email-help region text" data-region="email-help"><!-- Native email unavailable explanation, actual form guidance takes precedence over comp abbreviation --><p style="font-size:var(--r-email-help-font);line-height:1.05;margin:0">email-help</p></div>
+  <div class="r-access-controls region control" data-region="access-controls"><!-- Acceso with small native Administrador and Lector radios: rebuild the control's chrome from the crop (comp-spec.mjs --crop access-controls); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-active-control region control" data-region="active-control"><!-- Usuario activo native checkbox: rebuild the control's chrome from the crop (comp-spec.mjs --crop active-control); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-permission-rule region chrome" data-region="permission-rule"><!-- Rule between access and edit permissions --></div>
+  <div class="r-permission-controls region control" data-region="permission-controls"><!-- Permisos de edición with native Artículos, Descargas, Usuarios y claves de API checkboxes: rebuild the control's chrome from the crop (comp-spec.mjs --crop permission-controls); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-save-rule region chrome" data-region="save-rule"><!-- Rule above inspector save action --></div>
+  <div class="r-save region control" data-region="save"><!-- Primary gold Guardar action: rebuild the control's chrome from the crop (comp-spec.mjs --crop save); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-account-actions region control" data-region="account-actions"><!-- Quiet manual password reset, API keys and individual delete links: rebuild the control's chrome from the crop (comp-spec.mjs --crop account-actions); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-rail-divider region chrome" data-region="rail-divider"><!-- Rule between portal rail and main area --></div>
+  <div class="r-inspector-divider region chrome" data-region="inspector-divider"><!-- Rule between roster and inspector --></div>
+  <div class="r-rail-brand-region region chrome" data-region="rail-brand-region"><!-- Portal wordmark ground and separator at the top of the rail --></div>
+  <div class="r-roster-table region chrome" data-region="roster-table"><!-- One semantic roster table with header and five illustrative rows --></div>
+  <div class="r-inspector-header-region region chrome" data-region="inspector-header-region"><!-- The inspector header on its dark ground --></div>
+  <div class="r-profile-fields-region region chrome" data-region="profile-fields-region"><!-- Native profile field group, username, names and disabled email --></div>
+  <div class="r-access-region region chrome" data-region="access-region"><!-- Native role, active and edit permission fieldsets --></div>
+</main>
+</body>
+</html>

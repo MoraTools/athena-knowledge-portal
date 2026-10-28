@@ -1,0 +1,266 @@
+{
+  "tool": "build-phase",
+  "version": 2,
+  "startedAt": "2026-09-30T01:52:07.439Z",
+  "comp": ".impeccable/mocks/decision/editor-split.png",
+  "direction": null,
+  "breakpoint": "1586x992",
+  "artifact": null,
+  "phase": "hero",
+  "phases": {
+    "comps": {
+      "status": "skipped",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [
+        {
+          "at": "2026-09-30T01:52:07.439Z",
+          "text": "started with an approved comp; the comp round happened before this state (surface round or manual)"
+        }
+      ],
+      "gate": null,
+      "forced": null
+    },
+    "spec": {
+      "status": "closed",
+      "openedAt": "2026-09-30T01:52:07.439Z",
+      "closedAt": "2026-09-30T01:52:43.905Z",
+      "attempts": 1,
+      "notes": [],
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "15 regions, 0 plates, 8 text regions measured",
+        "at": "2026-09-30T01:52:43.905Z"
+      },
+      "forced": null
+    },
+    "plates": {
+      "status": "closed",
+      "openedAt": "2026-09-30T01:52:43.905Z",
+      "closedAt": "2026-09-30T01:52:43.910Z",
+      "attempts": 1,
+      "notes": [],
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "no plates owed",
+        "at": "2026-09-30T01:52:43.910Z"
+      },
+      "forced": null
+    },
+    "hero": {
+      "status": "open",
+      "openedAt": "2026-09-30T01:52:43.910Z",
+      "closedAt": null,
+      "attempts": 2,
+      "notes": [
+        {
+          "at": "2026-09-30T02:19:54.638Z",
+          "text": "Implementation and responsive browser checks complete. Last hero comparison: 81% match. Control gates remain open: screenshot gold RGB(255,186,48), browser computed pinned gold RGB(255,185,0); established source wrapping and Con cuenta state retained. No forced gate or manual status edit. Independent finish review owns final acceptance."
+        }
+      ],
+      "gate": {
+        "ok": false,
+        "reasons": [
+          "control details drifts to 61% (structure 68%, color 48%): its chrome differs from the comp's; open .impeccable/review/diff/hero/regions/details.png and match the border, fill, radius, chevron or arrow, and label size",
+          "control save drifts to 65% (structure 74%, color 41%): its chrome differs from the comp's; open .impeccable/review/diff/hero/regions/save.png and match the border, fill, radius, chevron or arrow, and label size"
+        ],
+        "summary": "hero 81% (match)",
+        "score": 0.8085,
+        "verdict": "match",
+        "report": ".impeccable/review/diff/hero/report.json",
+        "sideBySide": "/home/superuser/Documents/automation-anywhere/athena-knowledge-portal/.impeccable/review/diff/hero/side-by-side.png",
+        "worst": [
+          "source-copy drift 54%",
+          "details drift 61%",
+          "state drift 62%"
+        ],
+        "worstIds": [
+          "source-copy",
+          "details",
+          "state"
+        ],
+        "worstCrops": [
+          {
+            "id": "source-copy",
+            "verdict": "drift",
+            "score": {
+              "overall": 0.5381,
+              "structure": 0.59,
+              "color": 0.5489,
+              "colorIntersection": 0.1368,
+              "paletteMatch": 0.7708,
+              "detail": 0.3247,
+              "detailRaw": 0.4445,
+              "detailAdded": 0.2396,
+              "bands": 0.5714
+            },
+            "file": ".impeccable/review/diff/hero/regions/source-copy.png"
+          },
+          {
+            "id": "details",
+            "verdict": "drift",
+            "score": {
+              "overall": 0.612,
+              "structure": 0.6813,
+              "color": 0.4763,
+              "colorIntersection": 0.0114,
+              "paletteMatch": 0.7266,
+              "detail": 0.6934,
+              "detailRaw": 0.7195,
+              "detailAdded": 0.0521,
+              "bands": 1
+            },
+            "file": ".impeccable/review/diff/hero/regions/details.png"
+          },
+          {
+            "id": "state",
+            "verdict": "drift",
+            "score": {
+              "overall": 0.6205,
+              "structure": 0.6576,
+              "color": 0.5331,
+              "colorIntersection": 0.09,
+              "paletteMatch": 0.7716,
+              "detail": 0.4898,
+              "detailRaw": 0.5159,
+              "detailAdded": 0.0521,
+              "bands": 0.85
+            },
+            "file": ".impeccable/review/diff/hero/regions/state.png"
+          }
+        ],
+        "advisories": [
+          "(advisory, above the 72% bar; fix in the polish pass before responsive) 1 reading:",
+          "  text state: it starts 29px further right than in the comp",
+          "(advisory, unchanged for 3+ attempts) text source-copy: 2 lines in the build, 3 in the comp; the measure (max-width, font-size, letter-spacing) wraps it differently, so the block is a different shape"
+        ],
+        "regionVerdicts": {
+          "rail": "drift",
+          "header": "drift",
+          "back": "drift",
+          "state": "drift",
+          "details": "drift",
+          "save": "drift",
+          "title": "match",
+          "source-header": "drift",
+          "preview-header": "drift",
+          "source-copy": "drift",
+          "preview-heading": "drift",
+          "preview-paragraph": "match",
+          "preview-next": "match",
+          "preview-strong": "match",
+          "image-helper": "drift"
+        },
+        "at": "2026-09-30T02:19:28.734Z"
+      },
+      "forced": null,
+      "readingsSeen": {
+        "text preview-paragraph: cap height 12.9px in the build, 18.1px in the comp (-29%); set font-size so the cap height renders at 18.1px": 1,
+        "text source-copy: 2 lines in the build, 3 in the comp; the measure (max-width, font-size, letter-spacing) wraps it differently, so the block is a different shape": 6,
+        "text state: it starts 23px further right than in the comp": 4,
+        "text source-copy: its first line starts 19px lower than in the comp (32px vs 13px into the region box); the spacing above it is too large": 1,
+        "chrome header: its ink is 87px tall in the build and 38px in the comp (+49px); match the height, not only the position": 1,
+        "control title: its rule sits 6px into the box in the comp and 15px in the build (+9px), so the strip is taller than the comp's; match the height, not only the position": 1,
+        "text state: it starts 29px further right than in the comp": 2
+      },
+      "records": 4,
+      "history": [
+        {
+          "at": "2026-09-30T02:16:15.703Z",
+          "score": 0.8087,
+          "worstIds": [
+            "source-copy",
+            "details",
+            "state"
+          ],
+          "regionVerdicts": {
+            "rail": "drift",
+            "header": "drift",
+            "back": "drift",
+            "state": "drift",
+            "details": "drift",
+            "save": "drift",
+            "title": "match",
+            "source-header": "drift",
+            "preview-header": "drift",
+            "source-copy": "drift",
+            "preview-heading": "drift",
+            "preview-paragraph": "match",
+            "preview-next": "match",
+            "preview-strong": "match",
+            "image-helper": "drift"
+          },
+          "artifactHash": null
+        },
+        {
+          "at": "2026-09-30T02:19:28.734Z",
+          "score": 0.8085,
+          "worstIds": [
+            "source-copy",
+            "details",
+            "state"
+          ],
+          "regionVerdicts": {
+            "rail": "drift",
+            "header": "drift",
+            "back": "drift",
+            "state": "drift",
+            "details": "drift",
+            "save": "drift",
+            "title": "match",
+            "source-header": "drift",
+            "preview-header": "drift",
+            "source-copy": "drift",
+            "preview-heading": "drift",
+            "preview-paragraph": "match",
+            "preview-next": "match",
+            "preview-strong": "match",
+            "image-helper": "drift"
+          },
+          "artifactHash": null
+        }
+      ]
+    },
+    "sections": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "motion": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "responsive": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "review": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    }
+  },
+  "finish": null,
+  "plates": {}
+}

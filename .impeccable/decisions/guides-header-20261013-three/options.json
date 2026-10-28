@@ -1,0 +1,73 @@
+{
+  "title": "Tres encabezados para Guías",
+  "question": "Elija la distribución del encabezado.",
+  "options": [
+    {
+      "id": "toolbar",
+      "label": "Barra única",
+      "kicker": "OPCIÓN 1",
+      "thesis": "Una barra reúne búsqueda, etiqueta, vistas y acción.",
+      "palette": [
+        "#000000",
+        "#101010",
+        "#191919",
+        "#ffffff",
+        "#ffb900"
+      ],
+      "materials": [
+        "barra horizontal compacta",
+        "serif y controles de Athena"
+      ],
+      "viewport": "Guías encabeza una barra con búsqueda, etiqueta, 13 resultados, ambas vistas y Nuevo artículo.",
+      "risk": "La barra puede ocupar dos líneas en una pantalla de portátil.",
+      "comp": ".impeccable/mocks/decision/guides-header-20261013-three/option-1-toolbar.png"
+    },
+    {
+      "id": "search",
+      "label": "Búsqueda protagonista",
+      "kicker": "OPCIÓN 2",
+      "thesis": "La búsqueda amplia es el punto de entrada.",
+      "palette": [
+        "#000000",
+        "#101010",
+        "#191919",
+        "#ffffff",
+        "#ffb900"
+      ],
+      "materials": [
+        "campo de búsqueda amplio",
+        "serif y controles de Athena"
+      ],
+      "viewport": "Guías y Nuevo artículo van arriba; búsqueda amplia, etiqueta, 13 resultados y vistas van debajo.",
+      "risk": "El encabezado ocupa más altura antes de las guías.",
+      "comp": ".impeccable/mocks/decision/guides-header-20261013-three/option-2-search.png"
+    },
+    {
+      "id": "tabs",
+      "label": "Vistas como pestañas",
+      "kicker": "OPCIÓN 3",
+      "thesis": "Las pestañas hacen visible la elección de vista.",
+      "palette": [
+        "#000000",
+        "#101010",
+        "#191919",
+        "#ffffff",
+        "#ffb900"
+      ],
+      "materials": [
+        "pestañas con subrayado",
+        "serif y controles de Athena"
+      ],
+      "viewport": "Guías comparte la línea superior con las vistas; búsqueda, etiqueta y 13 resultados forman una línea compacta.",
+      "risk": "Las pestañas pueden competir con el título.",
+      "comp": ".impeccable/mocks/decision/guides-header-20261013-three/option-3-tabs.png"
+    }
+  ],
+  "reroll": false,
+  "steer": true,
+  "canon": false,
+  "buildPath": {
+    "value": "comp",
+    "toggle": false
+  }
+}

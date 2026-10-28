@@ -1,0 +1,19 @@
+{
+  "archive": ".impeccable/build-history/admin-directory-before-article-details-20261013T101920Z",
+  "copiedAt": "2026-10-13T10:19:20.297153+00:00",
+  "fileCount": 8,
+  "sha256": {
+    "comp-grid.png": "77575fb155951f7b1ef00841e6f5cc4dd0e15ac722225d0247f1289ba4ed2b33",
+    "regions.json": "66b8990f0e8b0c24fff20a7923797c24e80b438eb206e166e58db4fb0dc8cb22",
+    "state.json": "613d82c8ba2c3349ef510a3bf7b0514ad6c33e481e25bfc50a8115c3841812cf",
+    "spec.json": "488e1f930b020f7a21645842674847513adb5d141389cea0b08284bd77893909",
+    "scaffold/layout.css": "2b1ff499d011320b0538a4caa813085b5f1a7a83b58dfd69ea302d94cd20dd25",
+    "scaffold/hero-reference.html": "fffbecc2e58260056c5b7067321fb8a5da55d272a8f7b846161d31af5214b352",
+    "font-match/page-title.png": "6c1c4e80f4ce13ce32a3afd4cffd677a1b1747b3e369d3dc5351e72ded5329ef",
+    "font-match/preview-heading.png": "80d2dc656a4a7e0bb5660142c7e1fde1efcf5a84daa7942a8b7f3a76509fed78"
+  },
+  "sourceState": {
+    "comp": ".impeccable/mocks/decision/admin-directory-20261007/roster-inspector.png",
+    "phase": "hero"
+  }
+}

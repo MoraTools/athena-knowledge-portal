@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Scaffold reference: editor-split.png</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Joan:wght@400&display=swap">
+  <link rel="stylesheet" href="layout.css">
+  <style>html,body{margin:0}body{background:#090908}.region{box-sizing:border-box}.region.text p{white-space:pre-wrap}</style>
+</head>
+<body>
+<!-- Reference only. Every region sits at its measured box inside a comp-aspect frame. Take the boxes (layout.css), keep your own semantic structure. -->
+<main class="comp-frame" style="max-width:1586px">
+  <div class="r-rail region chrome" data-region="rail"><!-- Compact navigation rail --></div>
+  <div class="r-header region chrome" data-region="header"><!-- Quiet single header. --></div>
+  <div class="r-back region control" data-region="back"><!-- Artículos back control.: rebuild the control's chrome from the crop (comp-spec.mjs --crop back); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-state region text" data-region="state"><!-- Publicado · Privado state. --><p style="font-size:var(--r-state-font);line-height:1.05;margin:0">state</p></div>
+  <div class="r-details region control" data-region="details"><!-- Detalles and overflow controls.: rebuild the control's chrome from the crop (comp-spec.mjs --crop details); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-save region control" data-region="save"><!-- Gold Guardar button.: rebuild the control's chrome from the crop (comp-spec.mjs --crop save); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-title region control" data-region="title"><!-- Full-width article title input.: rebuild the control's chrome from the crop (comp-spec.mjs --crop title); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-source-header region text" data-region="source-header"><!-- MARKDOWN pane label. --><p style="font-size:var(--r-source-header-font);line-height:1.05;margin:0">source-header</p></div>
+  <div class="r-preview-header region text" data-region="preview-header"><!-- VISTA PREVIA · EN VIVO pane label. --><p style="font-size:var(--r-preview-header-font);line-height:1.05;margin:0">preview-header</p></div>
+  <div class="r-source-copy region text" data-region="source-copy"><!-- Raw Markdown in native textarea. --><p style="font-size:var(--r-source-copy-font);line-height:1.05;margin:0">source-copy</p></div>
+  <div class="r-preview-heading region text" data-region="preview-heading"><!-- Themis Review, ahora en el editor --><p style="font-size:var(--r-preview-heading-font);font-family:var(--r-preview-heading-family),sans-serif;font-weight:var(--r-preview-heading-weight);line-height:1.05;margin:0">preview-heading</p></div>
+  <div class="r-preview-paragraph region text" data-region="preview-paragraph"><!-- Reader article paragraph. --><p style="font-size:var(--r-preview-paragraph-font);line-height:1.05;margin:0">preview-paragraph</p></div>
+  <div class="r-preview-next region text" data-region="preview-next"><!-- Second reader paragraph. --><p style="font-size:var(--r-preview-next-font);line-height:1.05;margin:0">preview-next</p></div>
+  <div class="r-preview-strong region text" data-region="preview-strong"><!-- Reader bold statement. --><p style="font-size:var(--r-preview-strong-font);line-height:1.05;margin:0">preview-strong</p></div>
+  <div class="r-image-helper region chrome" data-region="image-helper"><!-- Bottom image helper and plain-text status. --></div>
+</main>
+</body>
+</html>

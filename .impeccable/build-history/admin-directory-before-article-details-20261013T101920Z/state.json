@@ -1,0 +1,315 @@
+{
+  "tool": "build-phase",
+  "version": 2,
+  "startedAt": "2026-10-07T22:41:11.722Z",
+  "comp": ".impeccable/mocks/decision/admin-directory-20261007/roster-inspector.png",
+  "direction": null,
+  "breakpoint": "1672x941",
+  "artifact": null,
+  "phase": "hero",
+  "phases": {
+    "comps": {
+      "status": "skipped",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [
+        {
+          "at": "2026-10-07T22:41:11.722Z",
+          "text": "started with an approved comp; the comp round happened before this state (surface round or manual)"
+        }
+      ],
+      "gate": null,
+      "forced": null
+    },
+    "spec": {
+      "status": "closed",
+      "openedAt": "2026-10-07T22:41:11.722Z",
+      "closedAt": "2026-10-07T22:45:24.786Z",
+      "attempts": 3,
+      "notes": [
+        {
+          "at": "2026-10-07T22:45:24.738Z",
+          "text": "Actual account data and full current rail replace illustrative comp samples. Omit the redundant inspector USUARIO kicker and Datos de ejemplo disclosure. Keep pinned existing Cormorant/Archivo/Courier families; Cormorant 500 was measured at 47px for the title cap height. Full native email explanation and form validation take precedence over abbreviated comp copy."
+        }
+      ],
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "34 regions, 0 plates, 6 text regions measured",
+        "at": "2026-10-07T22:45:24.786Z"
+      },
+      "forced": null
+    },
+    "plates": {
+      "status": "closed",
+      "openedAt": "2026-10-07T22:45:24.786Z",
+      "closedAt": "2026-10-07T22:45:24.835Z",
+      "attempts": 1,
+      "notes": [],
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "no plates owed",
+        "at": "2026-10-07T22:45:24.835Z"
+      },
+      "forced": null
+    },
+    "hero": {
+      "status": "open",
+      "openedAt": "2026-10-07T22:45:24.835Z",
+      "closedAt": null,
+      "attempts": 1,
+      "notes": [
+        {
+          "at": "2026-10-07T23:08:03.115Z",
+          "text": "Fresh directory review disposition: fix. Keep actual account order, complete existing rail, native controls and pinned fonts. Repair utility icons/separators, narrow-table visibility and mobile menu separation. Retain honest pixel-gate results; no force or fabricated evidence."
+        },
+        {
+          "at": "2026-10-07T23:17:47.064Z",
+          "text": "Verdict pass: account icons/separators resolved; readable1280 table and390 scroll cue resolved; mobile menu separation resolved. All seven captures valid. Hero reproduction remains partial at71.66%, with no forced pass. Native account tests81, Node suites and asset build passed. DESIGN.md merged from the actual source. No release actions were requested for this task."
+        },
+        {
+          "at": "2026-10-07T23:21:29.683Z",
+          "text": "User accepted the displayed current implementation for release: commit push and deploy the vps now, always do it here. Proceed with this production version. Preserve the strict failed comparison as a recorded limit; do not report it as a passing image check."
+        }
+      ],
+      "gate": {
+        "ok": false,
+        "reasons": [
+          "hero overall 71.7% < 72% (structure 67%, color 76%, detail 67%)",
+          "region roster-heading-rule is missing (detail 1%, structure 64%): the comp shows material the build does not",
+          "region roster-third-row is missing (detail 0%, structure 82%): the comp shows material the build does not",
+          "region roster-fourth-row is missing (detail 0%, structure 58%): the comp shows material the build does not",
+          "region roster-fifth-row is missing (detail 0%, structure 77%): the comp shows material the build does not",
+          "region active-control is missing (detail 0%, structure 70%): the comp shows material the build does not",
+          "region permission-rule is missing (detail 0%, structure 94%): the comp shows material the build does not",
+          "region save-rule is missing (detail 3%, structure 91%): the comp shows material the build does not",
+          "region save is missing (detail 0%, structure 82%): the comp shows material the build does not",
+          "region rail-divider is missing (detail 13%, structure 71%): the comp shows material the build does not",
+          "region page-title (text) is contradicted (structure 45%, detail added 11%): the composition of this text region differs from the comp; re-derive it from the spec box",
+          "region rail-wordmark (text) is contradicted (structure 28%, detail added 32%): the composition of this text region differs from the comp; re-derive it from the spec box",
+          "region inspector-title (text) is contradicted (structure 31%, detail added 26%): the composition of this text region differs from the comp; re-derive it from the spec box",
+          "control new-user drifts to 57% (structure 53%, color 85%): its chrome differs from the comp's; open .impeccable/review/diff/hero/regions/new-user.png and match the border, fill, radius, chevron or arrow, and label size",
+          "control access-controls drifts to 59% (structure 77%, color 54%): its chrome differs from the comp's; open .impeccable/review/diff/hero/regions/access-controls.png and match the border, fill, radius, chevron or arrow, and label size",
+          "control permission-controls drifts to 58% (structure 79%, color 52%): its chrome differs from the comp's; open .impeccable/review/diff/hero/regions/permission-controls.png and match the border, fill, radius, chevron or arrow, and label size",
+          "control account-actions drifts to 59% (structure 73%, color 52%): its chrome differs from the comp's; open .impeccable/review/diff/hero/regions/account-actions.png and match the border, fill, radius, chevron or arrow, and label size",
+          "READINGS, each one CSS edit (3):",
+          "chrome roster-fourth-row: its ink is 53px tall in the build and 31px in the comp (+22px); match the height, not only the position",
+          "chrome roster-fifth-row: its ink is 72px tall in the build and 34px in the comp (+38px); match the height, not only the position",
+          "control save: its rule sits 1px into the box in the comp and 16px in the build (+15px), so the strip is taller than the comp's; match the height, not only the position"
+        ],
+        "summary": "hero 72% (drift)",
+        "score": 0.7166,
+        "verdict": "drift",
+        "report": ".impeccable/review/diff/hero/report.json",
+        "sideBySide": "/home/superuser/Documents/automation-anywhere/athena-knowledge-portal/.impeccable/review/diff/hero/side-by-side.png",
+        "worst": [
+          "roster-fourth-row missing 35%",
+          "rail-wordmark contradicted 40%",
+          "inspector-title contradicted 41%"
+        ],
+        "worstIds": [
+          "roster-fourth-row",
+          "rail-wordmark",
+          "inspector-title"
+        ],
+        "worstCrops": [
+          {
+            "id": "roster-fourth-row",
+            "verdict": "missing",
+            "score": {
+              "overall": 0.3507,
+              "structure": 0.5761,
+              "color": 0.5964,
+              "colorIntersection": 0.1396,
+              "paletteMatch": 0.8423,
+              "detail": 0,
+              "detailRaw": 0.0775,
+              "detailAdded": 0.4583,
+              "bands": 0
+            },
+            "file": ".impeccable/review/diff/hero/regions/roster-fourth-row.png"
+          },
+          {
+            "id": "rail-wordmark",
+            "verdict": "contradicted",
+            "score": {
+              "overall": 0.3963,
+              "structure": 0.2794,
+              "color": 0.8915,
+              "colorIntersection": 0.8318,
+              "paletteMatch": 0.9236,
+              "detail": 0.0719,
+              "detailRaw": 0.2333,
+              "detailAdded": 0.3229,
+              "bands": 0.2291
+            },
+            "file": ".impeccable/review/diff/hero/regions/rail-wordmark.png"
+          },
+          {
+            "id": "inspector-title",
+            "verdict": "contradicted",
+            "score": {
+              "overall": 0.4068,
+              "structure": 0.309,
+              "color": 0.5953,
+              "colorIntersection": 0.2205,
+              "paletteMatch": 0.7972,
+              "detail": 0.2678,
+              "detailRaw": 0.3981,
+              "detailAdded": 0.2604,
+              "bands": 0.6333
+            },
+            "file": ".impeccable/review/diff/hero/regions/inspector-title.png"
+          }
+        ],
+        "advisories": [
+          "(advisory, unchanged for 3+ attempts) text rail-example-note: letter-spacing is wider than the comp's (gap 0.183 vs 0.059 of the cap height); set letter-spacing to close it by about 1px",
+          "(advisory, unchanged for 3+ attempts) control new-user: its rule sits 1px into the box in the comp and 40px in the build (+39px), so the strip is taller than the comp's; match the height, not only the position",
+          "(advisory, unchanged for 3+ attempts) control email-field: its rule sits 22px into the box in the comp and 59px in the build (+37px), so the strip is taller than the comp's; match the height, not only the position"
+        ],
+        "regionVerdicts": {
+          "page-title": "contradicted",
+          "rail-wordmark": "contradicted",
+          "rail-navigation": "drift",
+          "rail-example-note": "match",
+          "search": "drift",
+          "new-user": "drift",
+          "roster-heading-rule": "missing",
+          "roster-table-head": "drift",
+          "roster-selected-row": "contradicted",
+          "roster-second-row": "drift",
+          "roster-third-row": "missing",
+          "roster-fourth-row": "missing",
+          "roster-fifth-row": "missing",
+          "inspector-title": "contradicted",
+          "inspector-meta": "drift",
+          "username-field": "drift",
+          "first-name-field": "drift",
+          "last-name-field": "drift",
+          "email-field": "drift",
+          "email-help": "drift",
+          "access-controls": "drift",
+          "active-control": "missing",
+          "permission-rule": "missing",
+          "permission-controls": "drift",
+          "save-rule": "missing",
+          "save": "missing",
+          "account-actions": "drift",
+          "rail-divider": "missing",
+          "inspector-divider": "drift",
+          "rail-brand-region": "drift",
+          "roster-table": "contradicted",
+          "inspector-header-region": "drift",
+          "profile-fields-region": "drift",
+          "access-region": "drift"
+        },
+        "at": "2026-10-07T23:12:20.397Z"
+      },
+      "forced": null,
+      "readingsSeen": {
+        "text rail-example-note: letter-spacing is wider than the comp's (gap 0.183 vs 0.059 of the cap height); set letter-spacing to close it by about 1px": 4,
+        "control new-user: its rule sits 1px into the box in the comp and 40px in the build (+39px), so the strip is taller than the comp's; match the height, not only the position": 4,
+        "chrome roster-second-row: its ink is 71px tall in the build and 30px in the comp (+41px); match the height, not only the position": 2,
+        "chrome roster-fourth-row: its ink is 43px tall in the build and 31px in the comp (+12px); match the height, not only the position": 2,
+        "chrome roster-fifth-row: its ink is 67px tall in the build and 34px in the comp (+33px); match the height, not only the position": 2,
+        "control email-field: its rule sits 22px into the box in the comp and 59px in the build (+37px), so the strip is taller than the comp's; match the height, not only the position": 4,
+        "chrome roster-fourth-row: its ink is 53px tall in the build and 31px in the comp (+22px); match the height, not only the position": 2,
+        "chrome roster-fifth-row: its ink is 72px tall in the build and 34px in the comp (+38px); match the height, not only the position": 2,
+        "control save: its rule sits 1px into the box in the comp and 16px in the build (+15px), so the strip is taller than the comp's; match the height, not only the position": 2
+      },
+      "records": 3,
+      "history": [
+        {
+          "at": "2026-10-07T22:52:47.323Z",
+          "score": 0.6002,
+          "worstIds": [
+            "save",
+            "roster-selected-row",
+            "roster-fifth-row"
+          ],
+          "regionVerdicts": {
+            "page-title": "contradicted",
+            "rail-wordmark": "contradicted",
+            "rail-navigation": "drift",
+            "rail-example-note": "match",
+            "search": "drift",
+            "new-user": "drift",
+            "roster-heading-rule": "missing",
+            "roster-table-head": "drift",
+            "roster-selected-row": "contradicted",
+            "roster-second-row": "missing",
+            "roster-third-row": "missing",
+            "roster-fourth-row": "drift",
+            "roster-fifth-row": "missing",
+            "inspector-title": "contradicted",
+            "inspector-meta": "drift",
+            "username-field": "drift",
+            "first-name-field": "drift",
+            "last-name-field": "drift",
+            "email-field": "drift",
+            "email-help": "drift",
+            "access-controls": "missing",
+            "active-control": "drift",
+            "permission-rule": "missing",
+            "permission-controls": "drift",
+            "save-rule": "drift",
+            "save": "missing",
+            "account-actions": "contradicted",
+            "rail-divider": "missing",
+            "inspector-divider": "drift",
+            "rail-brand-region": "drift",
+            "roster-table": "contradicted",
+            "inspector-header-region": "drift",
+            "profile-fields-region": "drift",
+            "access-region": "drift"
+          },
+          "artifactHash": null
+        }
+      ]
+    },
+    "sections": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "motion": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "responsive": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "review": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    }
+  },
+  "finish": {
+    "disposition": "fix",
+    "at": "2026-10-07T23:15:09.332Z",
+    "phaseAtFinish": "hero"
+  },
+  "plates": {}
+}

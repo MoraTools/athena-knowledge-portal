@@ -1,0 +1,1071 @@
+{
+  "tool": "comp-spec",
+  "version": 1,
+  "createdAt": "2026-09-30T01:52:07.521Z",
+  "comp": ".impeccable/mocks/decision/editor-split.png",
+  "warnings": [
+    "region rail: \"codeDrawn\": true set in the regions file (the painted-material refusal is overridden: code draws this region)",
+    "region source-copy: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+  ],
+  "uncoveredInkCells": [],
+  "compSize": {
+    "width": 1586,
+    "height": 992
+  },
+  "aspect": 1.5988,
+  "orientation": "landscape",
+  "palette": [
+    {
+      "hex": "#090908",
+      "coverage": 0.9687
+    },
+    {
+      "hex": "#4d4d4d",
+      "coverage": 0.0116
+    },
+    {
+      "hex": "#eaeaea",
+      "coverage": 0.0107
+    },
+    {
+      "hex": "#8f8f8f",
+      "coverage": 0.0066
+    },
+    {
+      "hex": "#f8bb08",
+      "coverage": 0.0025
+    }
+  ],
+  "bands": [
+    {
+      "y": 0.15,
+      "strength": 0.2244
+    },
+    {
+      "y": 0.3,
+      "strength": 0.2355
+    },
+    {
+      "y": 0.4,
+      "strength": 0.4799
+    },
+    {
+      "y": 0.4375,
+      "strength": 0.5422
+    },
+    {
+      "y": 0.5375,
+      "strength": 0.2352
+    },
+    {
+      "y": 0.5875,
+      "strength": 0.4892
+    }
+  ],
+  "regions": [
+    {
+      "id": "rail",
+      "kind": "chrome",
+      "note": "Compact navigation rail",
+      "grid": "A0:A9",
+      "codeDrawn": true,
+      "box": {
+        "x": 0.0,
+        "y": 0.0,
+        "w": 0.04539722572509458,
+        "h": 1.0
+      },
+      "px": {
+        "x": 0,
+        "y": 0,
+        "w": 72,
+        "h": 992
+      },
+      "aspect": 0.0726,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.9844
+        },
+        {
+          "hex": "#515151",
+          "coverage": 0.0068
+        },
+        {
+          "hex": "#909090",
+          "coverage": 0.0041
+        },
+        {
+          "hex": "#c9c9c9",
+          "coverage": 0.003
+        },
+        {
+          "hex": "#f8ce08",
+          "coverage": 0.0018
+        }
+      ],
+      "detail": {
+        "energy": 5.2199
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "coverBox": {
+        "x": 0.0,
+        "y": 0.0,
+        "w": 0.04539722572509458,
+        "h": 1.0
+      },
+      "measurement": "Pixel ROI verified against the approved comp; automatic grid selected adjacent content."
+    },
+    {
+      "id": "header",
+      "kind": "chrome",
+      "note": "Quiet single header.",
+      "grid": "B0:J0",
+      "box": {
+        "x": 0.04539722572509458,
+        "y": 0.0,
+        "w": 0.9546027742749055,
+        "h": 0.06451612903225806
+      },
+      "px": {
+        "x": 72,
+        "y": 0,
+        "w": 1514,
+        "h": 64
+      },
+      "aspect": 23.6562,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.9682
+        },
+        {
+          "hex": "#f8ba08",
+          "coverage": 0.0252
+        },
+        {
+          "hex": "#363636",
+          "coverage": 0.003
+        },
+        {
+          "hex": "#211808",
+          "coverage": 0.0019
+        },
+        {
+          "hex": "#888888",
+          "coverage": 0.0018
+        }
+      ],
+      "detail": {
+        "energy": 10.0237
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "coverBox": {
+        "x": 0.04539722572509458,
+        "y": 0.0,
+        "w": 0.9546027742749055,
+        "h": 0.06451612903225806
+      },
+      "measurement": "Pixel ROI verified against the approved comp; automatic grid selected adjacent content."
+    },
+    {
+      "id": "back",
+      "kind": "control",
+      "note": "Artículos back control.",
+      "grid": "B0:B0",
+      "coverBox": {
+        "x": 0.06305170239596469,
+        "y": 0.01310483870967742,
+        "w": 0.07629255989911728,
+        "h": 0.038306451612903226
+      },
+      "box": {
+        "x": 0.06305170239596469,
+        "y": 0.01310483870967742,
+        "w": 0.07629255989911728,
+        "h": 0.038306451612903226
+      },
+      "px": {
+        "x": 100,
+        "y": 13,
+        "w": 121,
+        "h": 38
+      },
+      "aspect": 3.1842,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.8
+        },
+        {
+          "hex": "#d0d1d2",
+          "coverage": 0.0889
+        },
+        {
+          "hex": "#3b3839",
+          "coverage": 0.0667
+        },
+        {
+          "hex": "#737373",
+          "coverage": 0.0333
+        },
+        {
+          "hex": "#9898a0",
+          "coverage": 0.0111
+        }
+      ],
+      "detail": {
+        "energy": 14.1739
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "measurement": "Pixel ROI verified against the approved comp; automatic grid selected adjacent content."
+    },
+    {
+      "id": "state",
+      "kind": "text",
+      "note": "Publicado · Privado state.",
+      "grid": "G0:H0",
+      "coverBox": {
+        "x": 0.6,
+        "y": 0,
+        "w": 0.2,
+        "h": 0.1
+      },
+      "box": {
+        "x": 0.691,
+        "y": 0.0181,
+        "w": 0.0946,
+        "h": 0.0302
+      },
+      "px": {
+        "x": 1096,
+        "y": 18,
+        "w": 150,
+        "h": 30
+      },
+      "aspect": 5,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.84
+        },
+        {
+          "hex": "#3c3c3c",
+          "coverage": 0.076
+        },
+        {
+          "hex": "#7f7f7f",
+          "coverage": 0.074
+        },
+        {
+          "hex": "#acb0b0",
+          "coverage": 0.008
+        },
+        {
+          "hex": "#282838",
+          "coverage": 0.002
+        }
+      ],
+      "detail": {
+        "energy": 22.8111
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 15,
+          "capHeightPx": 13,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.5758,
+          "advTall": 0.5758,
+          "advX": 0.595,
+          "gap": 0.0768,
+          "xRatio": 0.745,
+          "stemW": 0.1674,
+          "contrast": 1.0567,
+          "serif": 0.3527,
+          "densTall": 0.5446,
+          "densX": 0.5681,
+          "weight": 0.5446
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "details",
+      "kind": "control",
+      "note": "Detalles and overflow controls.",
+      "grid": "I0:I0",
+      "coverBox": {
+        "x": 0.8,
+        "y": 0,
+        "w": 0.1,
+        "h": 0.1
+      },
+      "box": {
+        "x": 0.8115,
+        "y": 0.0181,
+        "w": 0.0416,
+        "h": 0.0302
+      },
+      "px": {
+        "x": 1287,
+        "y": 18,
+        "w": 66,
+        "h": 30
+      },
+      "aspect": 2.2,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.7981
+        },
+        {
+          "hex": "#e7c20a",
+          "coverage": 0.0704
+        },
+        {
+          "hex": "#ad8a0a",
+          "coverage": 0.0469
+        },
+        {
+          "hex": "#231808",
+          "coverage": 0.0423
+        },
+        {
+          "hex": "#785608",
+          "coverage": 0.0423
+        }
+      ],
+      "detail": {
+        "energy": 16.6108
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "save",
+      "kind": "control",
+      "note": "Gold Guardar button.",
+      "grid": "J0:J0",
+      "coverBox": {
+        "x": 0.9110970996216898,
+        "y": 0.01310483870967742,
+        "w": 0.06998738965952081,
+        "h": 0.038306451612903226
+      },
+      "box": {
+        "x": 0.9110970996216898,
+        "y": 0.01310483870967742,
+        "w": 0.06998738965952081,
+        "h": 0.038306451612903226
+      },
+      "px": {
+        "x": 1445,
+        "y": 13,
+        "w": 111,
+        "h": 38
+      },
+      "aspect": 2.9211,
+      "palette": [
+        {
+          "hex": "#f8b908",
+          "coverage": 0.5169
+        },
+        {
+          "hex": "#090908",
+          "coverage": 0.4263
+        },
+        {
+          "hex": "#292808",
+          "coverage": 0.0352
+        },
+        {
+          "hex": "#281808",
+          "coverage": 0.0122
+        },
+        {
+          "hex": "#ca9808",
+          "coverage": 0.0095
+        }
+      ],
+      "detail": {
+        "energy": 17.1803
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "measurement": "Pixel ROI verified against the approved comp; automatic grid selected adjacent content."
+    },
+    {
+      "id": "title",
+      "kind": "control",
+      "note": "Full-width article title input.",
+      "grid": "B1:J1",
+      "coverBox": {
+        "x": 0.06305170239596469,
+        "y": 0.10685483870967742,
+        "w": 0.9174022698612863,
+        "h": 0.057459677419354836
+      },
+      "box": {
+        "x": 0.06305170239596469,
+        "y": 0.10685483870967742,
+        "w": 0.9174022698612863,
+        "h": 0.057459677419354836
+      },
+      "px": {
+        "x": 100,
+        "y": 106,
+        "w": 1455,
+        "h": 57
+      },
+      "aspect": 25.5263,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.9372
+        },
+        {
+          "hex": "#5d5b59",
+          "coverage": 0.0464
+        },
+        {
+          "hex": "#f2f2f2",
+          "coverage": 0.0067
+        },
+        {
+          "hex": "#b2b2b2",
+          "coverage": 0.0052
+        },
+        {
+          "hex": "#303030",
+          "coverage": 0.0045
+        }
+      ],
+      "detail": {
+        "energy": 15.0022
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "measurement": "Pixel ROI verified against the approved comp; automatic grid selected adjacent content."
+    },
+    {
+      "id": "source-header",
+      "kind": "text",
+      "note": "MARKDOWN pane label.",
+      "grid": "A1:D2",
+      "coverBox": {
+        "x": 0.05926860025220681,
+        "y": 0.20665322580645162,
+        "w": 0.05233291298865069,
+        "h": 0.015120967741935484
+      },
+      "box": {
+        "x": 0.05926860025220681,
+        "y": 0.20665322580645162,
+        "w": 0.05233291298865069,
+        "h": 0.015120967741935484
+      },
+      "px": {
+        "x": 94,
+        "y": 205,
+        "w": 83,
+        "h": 15
+      },
+      "aspect": 5.5333,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.8762
+        },
+        {
+          "hex": "#f3cf0a",
+          "coverage": 0.0523
+        },
+        {
+          "hex": "#d8a909",
+          "coverage": 0.0338
+        },
+        {
+          "hex": "#f7eb09",
+          "coverage": 0.0192
+        },
+        {
+          "hex": "#3f2f08",
+          "coverage": 0.0184
+        }
+      ],
+      "detail": {
+        "energy": 48.2765
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 8,
+          "capHeightPx": 9.6,
+          "inkIsDark": false,
+          "allCaps": true,
+          "advance": 0.7444,
+          "advTall": 0.7444,
+          "advX": null,
+          "gap": 0.2424,
+          "xRatio": null,
+          "stemW": 0.2156,
+          "contrast": 1.0869,
+          "serif": null,
+          "densTall": 0.6434,
+          "densX": null,
+          "weight": 0.6434
+        },
+        "widthClass": "normal",
+        "weightClass": "bold"
+      },
+      "measurement": "Pixel ROI verified against the approved comp; automatic grid selected adjacent content."
+    },
+    {
+      "id": "preview-header",
+      "kind": "text",
+      "note": "VISTA PREVIA · EN VIVO pane label.",
+      "grid": "F1:I2",
+      "coverBox": {
+        "x": 0.5346784363177806,
+        "y": 0.20665322580645162,
+        "w": 0.11601513240857503,
+        "h": 0.015120967741935484
+      },
+      "box": {
+        "x": 0.5346784363177806,
+        "y": 0.20665322580645162,
+        "w": 0.11601513240857503,
+        "h": 0.015120967741935484
+      },
+      "px": {
+        "x": 848,
+        "y": 205,
+        "w": 184,
+        "h": 15
+      },
+      "aspect": 12.2667,
+      "palette": [
+        {
+          "hex": "#090808",
+          "coverage": 0.9571
+        },
+        {
+          "hex": "#f2f2f2",
+          "coverage": 0.0331
+        },
+        {
+          "hex": "#333533",
+          "coverage": 0.0074
+        },
+        {
+          "hex": "#787878",
+          "coverage": 0.0012
+        },
+        {
+          "hex": "#a8a8a8",
+          "coverage": 0.0012
+        }
+      ],
+      "detail": {
+        "energy": 23.9958
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 18,
+          "capHeightPx": 9.7,
+          "inkIsDark": false,
+          "allCaps": true,
+          "advance": 0.5835,
+          "advTall": 0.5835,
+          "advX": null,
+          "gap": 0.2746,
+          "xRatio": null,
+          "stemW": 0.2149,
+          "contrast": 1.2617,
+          "serif": 0.2717,
+          "densTall": 0.5538,
+          "densX": null,
+          "weight": 0.5538
+        },
+        "measuredAt": "2026-09-30T01:52:43.797Z",
+        "note": "no separable lettering in the crop; size by the region box",
+        "widthClass": "condensed",
+        "weightClass": "medium"
+      },
+      "measurement": "Pixel ROI verified against the approved comp; automatic grid selected adjacent content."
+    },
+    {
+      "id": "source-copy",
+      "kind": "text",
+      "note": "Raw Markdown in native textarea.",
+      "grid": "A2:E5",
+      "container": true,
+      "coverBox": {
+        "x": 0.09646910466582598,
+        "y": 0.31451612903225806,
+        "w": 0.3770491803278688,
+        "h": 0.07258064516129033
+      },
+      "box": {
+        "x": 0.09646910466582598,
+        "y": 0.31451612903225806,
+        "w": 0.3770491803278688,
+        "h": 0.07258064516129033
+      },
+      "px": {
+        "x": 153,
+        "y": 312,
+        "w": 598,
+        "h": 72
+      },
+      "aspect": 8.3056,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.8925
+        },
+        {
+          "hex": "#d6d6d6",
+          "coverage": 0.0535
+        },
+        {
+          "hex": "#9b9a9c",
+          "coverage": 0.0234
+        },
+        {
+          "hex": "#404040",
+          "coverage": 0.0157
+        },
+        {
+          "hex": "#686868",
+          "coverage": 0.0149
+        }
+      ],
+      "detail": {
+        "energy": 44.1848
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 3,
+          "glyphs": 123,
+          "capHeightPx": 12.7,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.6933,
+          "advTall": 0.6637,
+          "advX": 0.6933,
+          "gap": 0.1541,
+          "xRatio": 0.7319,
+          "stemW": 0.1699,
+          "contrast": 1.1381,
+          "serif": 1.6593,
+          "densTall": 0.4153,
+          "densX": 0.5595,
+          "weight": 0.4153
+        },
+        "widthClass": "normal",
+        "weightClass": "regular"
+      },
+      "measurement": "Pixel ROI verified against the approved comp; automatic grid selected adjacent content."
+    },
+    {
+      "id": "preview-heading",
+      "kind": "text",
+      "note": "Themis Review, ahora en el editor",
+      "grid": "F2:J3",
+      "coverBox": {
+        "x": 0.5,
+        "y": 0.2,
+        "w": 0.5,
+        "h": 0.2
+      },
+      "box": {
+        "x": 0.534,
+        "y": 0.2722,
+        "w": 0.4048,
+        "h": 0.0605
+      },
+      "px": {
+        "x": 847,
+        "y": 270,
+        "w": 642,
+        "h": 60
+      },
+      "aspect": 10.7,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.8905
+        },
+        {
+          "hex": "#f3f3f3",
+          "coverage": 0.0708
+        },
+        {
+          "hex": "#616161",
+          "coverage": 0.0178
+        },
+        {
+          "hex": "#b9b9b9",
+          "coverage": 0.015
+        },
+        {
+          "hex": "#8f8f8f",
+          "coverage": 0.0059
+        }
+      ],
+      "detail": {
+        "energy": 69.0897
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 26,
+          "capHeightPx": 33.5,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.5071,
+          "advTall": 0.3579,
+          "advX": 0.5071,
+          "gap": 0.0597,
+          "xRatio": 0.5744,
+          "stemW": 0.1143,
+          "contrast": 1.9991,
+          "serif": 0.9758,
+          "densTall": 0.3381,
+          "densX": 0.3999,
+          "weight": 0.3381
+        },
+        "widthClass": "condensed",
+        "weightClass": "light",
+        "chosen": {
+          "family": "Joan",
+          "weight": 400,
+          "fontSizePx": 43,
+          "source": "index",
+          "fp": {
+            "lines": 1,
+            "glyphs": 26,
+            "capHeightPx": 32.6,
+            "inkIsDark": true,
+            "allCaps": false,
+            "advance": 0.5208,
+            "advTall": 0.337,
+            "advX": 0.5208,
+            "gap": 0.0613,
+            "xRatio": 0.5821,
+            "stemW": 0.1082,
+            "contrast": 1.5045,
+            "serif": 2.8933,
+            "densTall": 0.3253,
+            "densX": 0.4132,
+            "weight": 0.3253
+          },
+          "stamp": "94bfdea91d26"
+        }
+      }
+    },
+    {
+      "id": "preview-paragraph",
+      "kind": "text",
+      "note": "Reader article paragraph.",
+      "grid": "F4:J4",
+      "coverBox": {
+        "x": 0.5390920554854981,
+        "y": 0.3790322580645161,
+        "w": 0.42686002522068095,
+        "h": 0.0907258064516129
+      },
+      "box": {
+        "x": 0.5390920554854981,
+        "y": 0.3790322580645161,
+        "w": 0.42686002522068095,
+        "h": 0.0907258064516129
+      },
+      "px": {
+        "x": 855,
+        "y": 376,
+        "w": 677,
+        "h": 90
+      },
+      "aspect": 7.5222,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.9046
+        },
+        {
+          "hex": "#f4f4f4",
+          "coverage": 0.037
+        },
+        {
+          "hex": "#c1c2c1",
+          "coverage": 0.0219
+        },
+        {
+          "hex": "#818181",
+          "coverage": 0.0219
+        },
+        {
+          "hex": "#484849",
+          "coverage": 0.0145
+        }
+      ],
+      "detail": {
+        "energy": 44.5886
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 2,
+          "glyphs": 106,
+          "capHeightPx": 18,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.5263,
+          "advTall": 0.3469,
+          "advX": 0.5282,
+          "gap": 0.0834,
+          "xRatio": 0.7336,
+          "stemW": 0.1381,
+          "contrast": 1.0416,
+          "serif": null,
+          "densTall": 0.5115,
+          "densX": 0.5615,
+          "weight": 0.5115
+        },
+        "widthClass": "condensed",
+        "weightClass": "medium"
+      },
+      "measurement": "Pixel ROI verified against the approved comp; automatic grid selected adjacent content."
+    },
+    {
+      "id": "preview-next",
+      "kind": "text",
+      "note": "Second reader paragraph.",
+      "grid": "F5:J5",
+      "coverBox": {
+        "x": 0.5403530895334174,
+        "y": 0.5131048387096774,
+        "w": 0.3505674653215637,
+        "h": 0.029233870967741934
+      },
+      "box": {
+        "x": 0.5403530895334174,
+        "y": 0.5131048387096774,
+        "w": 0.3505674653215637,
+        "h": 0.029233870967741934
+      },
+      "px": {
+        "x": 857,
+        "y": 509,
+        "w": 556,
+        "h": 29
+      },
+      "aspect": 19.1724,
+      "palette": [
+        {
+          "hex": "#090909",
+          "coverage": 0.8091
+        },
+        {
+          "hex": "#f1f1f1",
+          "coverage": 0.1142
+        },
+        {
+          "hex": "#babbbb",
+          "coverage": 0.0317
+        },
+        {
+          "hex": "#454646",
+          "coverage": 0.0301
+        },
+        {
+          "hex": "#8f9191",
+          "coverage": 0.0148
+        }
+      ],
+      "detail": {
+        "energy": 82.3527
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 45,
+          "capHeightPx": 18,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.528,
+          "advTall": 0.528,
+          "advX": 0.528,
+          "gap": 0.1112,
+          "xRatio": 0.7136,
+          "stemW": 0.136,
+          "contrast": 1.0542,
+          "serif": 0.5232,
+          "densTall": 0.4911,
+          "densX": 0.5633,
+          "weight": 0.4911
+        },
+        "widthClass": "condensed",
+        "weightClass": "medium"
+      },
+      "measurement": "Pixel ROI verified against the approved comp; automatic grid selected adjacent content."
+    },
+    {
+      "id": "preview-strong",
+      "kind": "text",
+      "note": "Reader bold statement.",
+      "grid": "F5:J6",
+      "coverBox": {
+        "x": 0.5397225725094578,
+        "y": 0.5816532258064516,
+        "w": 0.39470365699873894,
+        "h": 0.06149193548387097
+      },
+      "box": {
+        "x": 0.5397225725094578,
+        "y": 0.5816532258064516,
+        "w": 0.39470365699873894,
+        "h": 0.06149193548387097
+      },
+      "px": {
+        "x": 856,
+        "y": 577,
+        "w": 626,
+        "h": 61
+      },
+      "aspect": 10.2623,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.8834
+        },
+        {
+          "hex": "#f1f1f1",
+          "coverage": 0.0656
+        },
+        {
+          "hex": "#464646",
+          "coverage": 0.0203
+        },
+        {
+          "hex": "#bbbbbb",
+          "coverage": 0.0159
+        },
+        {
+          "hex": "#828282",
+          "coverage": 0.0148
+        }
+      ],
+      "detail": {
+        "energy": 50.5758
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 2,
+          "glyphs": 71,
+          "capHeightPx": 18,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.5424,
+          "advTall": 0.3761,
+          "advX": 0.5564,
+          "gap": 0.1111,
+          "xRatio": 0.7345,
+          "stemW": 0.1809,
+          "contrast": 1.1883,
+          "serif": 0.3503,
+          "densTall": 0.5661,
+          "densX": 0.614,
+          "weight": 0.5661
+        },
+        "widthClass": "condensed",
+        "weightClass": "bold"
+      },
+      "measurement": "Pixel ROI verified against the approved comp; automatic grid selected adjacent content."
+    },
+    {
+      "id": "image-helper",
+      "kind": "chrome",
+      "note": "Bottom image helper and plain-text status.",
+      "grid": "B9:J9",
+      "box": {
+        "x": 0.04539722572509458,
+        "y": 0.9223790322580645,
+        "w": 0.9546027742749055,
+        "h": 0.07762096774193548
+      },
+      "px": {
+        "x": 72,
+        "y": 915,
+        "w": 1514,
+        "h": 77
+      },
+      "aspect": 19.6623,
+      "palette": [
+        {
+          "hex": "#080808",
+          "coverage": 0.9546
+        },
+        {
+          "hex": "#484848",
+          "coverage": 0.0363
+        },
+        {
+          "hex": "#7e7e7e",
+          "coverage": 0.0091
+        }
+      ],
+      "detail": {
+        "energy": 6.2145
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "coverBox": {
+        "x": 0.04539722572509458,
+        "y": 0.9223790322580645,
+        "w": 0.9546027742749055,
+        "h": 0.07762096774193548
+      },
+      "measurement": "Pixel ROI verified against the approved comp; automatic grid selected adjacent content."
+    }
+  ]
+}

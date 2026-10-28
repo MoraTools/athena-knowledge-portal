@@ -1,0 +1,405 @@
+{
+  "regions": [
+    {
+      "id": "page-title",
+      "kind": "text",
+      "box": {
+        "x": 0.17045454545454544,
+        "y": 0.04144527098831031,
+        "w": 0.10047846889952153,
+        "h": 0.04994686503719448
+      },
+      "note": "Usuarios page heading",
+      "grid": "B0:C0",
+      "snap": false
+    },
+    {
+      "id": "rail-wordmark",
+      "kind": "text",
+      "note": "ATHENA wordmark and knowledge portal label; reuse existing portal rail",
+      "grid": "A0:B0",
+      "snap": false,
+      "box": {
+        "x": 0.025717703349282296,
+        "y": 0.02975557917109458,
+        "w": 0.10466507177033493,
+        "h": 0.06376195536663125
+      }
+    },
+    {
+      "id": "rail-navigation",
+      "kind": "chrome",
+      "note": "Portal navigation links, account and administration groups; mock abbreviates the real link set",
+      "grid": "A1:B5",
+      "snap": false,
+      "box": {
+        "x": 0.016148325358851676,
+        "y": 0.1275239107332625,
+        "w": 0.1303827751196172,
+        "h": 0.4569606801275239
+      }
+    },
+    {
+      "id": "rail-example-note",
+      "kind": "text",
+      "box": {
+        "x": 0.016148325358851676,
+        "y": 0.9489904357066951,
+        "w": 0.07775119617224881,
+        "h": 0.028692879914984058
+      },
+      "note": "Illustrative-data disclosure in comp, omitted from the live actual-user directory",
+      "grid": "A9:A9",
+      "snap": false
+    },
+    {
+      "id": "search",
+      "kind": "control",
+      "note": "Buscar usuario search field",
+      "grid": "B1:D1",
+      "snap": false,
+      "box": {
+        "x": 0.17045454545454544,
+        "y": 0.12114771519659936,
+        "w": 0.2242822966507177,
+        "h": 0.048884165781083955
+      }
+    },
+    {
+      "id": "new-user",
+      "kind": "control",
+      "note": "Outlined Nuevo usuario action",
+      "grid": "E1:F1",
+      "snap": false,
+      "box": {
+        "x": 0.40669856459330145,
+        "y": 0.12114771519659936,
+        "w": 0.11244019138755981,
+        "h": 0.048884165781083955
+      }
+    },
+    {
+      "id": "roster-heading-rule",
+      "kind": "chrome",
+      "note": "Rule below roster toolbar",
+      "grid": "B1:G1",
+      "snap": false,
+      "box": {
+        "x": 0.17045454545454544,
+        "y": 0.19341126461211477,
+        "w": 0.48026315789473684,
+        "h": 0.0021253985122210413
+      }
+    },
+    {
+      "id": "roster-table-head",
+      "kind": "chrome",
+      "note": "Usuario, Acceso, Estado and Sesión table headings",
+      "grid": "B2:G2",
+      "snap": false,
+      "box": {
+        "x": 0.17045454545454544,
+        "y": 0.21147715196599362,
+        "w": 0.48026315789473684,
+        "h": 0.05951115834218916
+      }
+    },
+    {
+      "id": "roster-selected-row",
+      "kind": "chrome",
+      "note": "Selected account row, dark ground with gold selection line; sample user and dates are illustrative",
+      "grid": "B2:G3",
+      "snap": false,
+      "box": {
+        "x": 0.17045454545454544,
+        "y": 0.26992561105207225,
+        "w": 0.48026315789473684,
+        "h": 0.07545164718384698
+      }
+    },
+    {
+      "id": "roster-second-row",
+      "kind": "chrome",
+      "note": "Reader row with separate active status and session data",
+      "grid": "B3:G4",
+      "snap": false,
+      "box": {
+        "x": 0.17045454545454544,
+        "y": 0.34537725823591925,
+        "w": 0.48026315789473684,
+        "h": 0.07545164718384698
+      }
+    },
+    {
+      "id": "roster-third-row",
+      "kind": "chrome",
+      "note": "Reader row with separate active status and session data",
+      "grid": "B4:G4",
+      "snap": false,
+      "box": {
+        "x": 0.17045454545454544,
+        "y": 0.4208289054197662,
+        "w": 0.48026315789473684,
+        "h": 0.07438894792773645
+      }
+    },
+    {
+      "id": "roster-fourth-row",
+      "kind": "chrome",
+      "note": "Reader row with inactive status and session data",
+      "grid": "B4:G5",
+      "snap": false,
+      "box": {
+        "x": 0.17045454545454544,
+        "y": 0.4952178533475027,
+        "w": 0.48026315789473684,
+        "h": 0.07545164718384698
+      }
+    },
+    {
+      "id": "roster-fifth-row",
+      "kind": "chrome",
+      "note": "Administrator row with separate active status and session data",
+      "grid": "B5:G6",
+      "snap": false,
+      "box": {
+        "x": 0.17045454545454544,
+        "y": 0.5706695005313497,
+        "w": 0.48026315789473684,
+        "h": 0.0765143464399575
+      }
+    },
+    {
+      "id": "inspector-title",
+      "kind": "text",
+      "note": "Selected account heading, using actual full name or username",
+      "grid": "G0:I0",
+      "snap": false,
+      "box": {
+        "x": 0.6866028708133971,
+        "y": 0.05100956429330499,
+        "w": 0.12320574162679426,
+        "h": 0.04782146652497343
+      }
+    },
+    {
+      "id": "inspector-meta",
+      "kind": "text",
+      "note": "Subordinate selected account metadata",
+      "grid": "G1:H1",
+      "snap": false,
+      "box": {
+        "x": 0.6866028708133971,
+        "y": 0.10414452709883103,
+        "w": 0.09569377990430622,
+        "h": 0.021253985122210415
+      }
+    },
+    {
+      "id": "username-field",
+      "kind": "control",
+      "note": "Nombre de usuario label and native input",
+      "grid": "G1:J2",
+      "snap": false,
+      "box": {
+        "x": 0.687200956937799,
+        "y": 0.15727948990435706,
+        "w": 0.2930622009569378,
+        "h": 0.06907545164718384
+      }
+    },
+    {
+      "id": "first-name-field",
+      "kind": "control",
+      "note": "Nombre label and native input",
+      "grid": "G2:I3",
+      "snap": false,
+      "box": {
+        "x": 0.687200956937799,
+        "y": 0.2507970244420829,
+        "w": 0.13995215311004786,
+        "h": 0.07120085015940489
+      }
+    },
+    {
+      "id": "last-name-field",
+      "kind": "control",
+      "note": "Apellidos label and native input",
+      "grid": "I2:J3",
+      "snap": false,
+      "box": {
+        "x": 0.840311004784689,
+        "y": 0.2507970244420829,
+        "w": 0.13995215311004786,
+        "h": 0.07120085015940489
+      }
+    },
+    {
+      "id": "email-field",
+      "kind": "control",
+      "note": "Correo electrónico disabled input and label",
+      "grid": "G3:J4",
+      "snap": false,
+      "box": {
+        "x": 0.687200956937799,
+        "y": 0.3485653560042508,
+        "w": 0.2930622009569378,
+        "h": 0.07332624867162593
+      }
+    },
+    {
+      "id": "email-help",
+      "kind": "text",
+      "box": {
+        "x": 0.687200956937799,
+        "y": 0.42720510095642933,
+        "w": 0.25239234449760767,
+        "h": 0.025504782146652496
+      },
+      "note": "Native email unavailable explanation, actual form guidance takes precedence over comp abbreviation",
+      "grid": "G4:J4",
+      "snap": false
+    },
+    {
+      "id": "access-controls",
+      "kind": "control",
+      "note": "Acceso with small native Administrador and Lector radios",
+      "grid": "G4:I5",
+      "snap": false,
+      "box": {
+        "x": 0.687200956937799,
+        "y": 0.46971307120085015,
+        "w": 0.18421052631578946,
+        "h": 0.06269925611052073
+      }
+    },
+    {
+      "id": "active-control",
+      "kind": "control",
+      "note": "Usuario activo native checkbox",
+      "grid": "G5:I5",
+      "snap": false,
+      "box": {
+        "x": 0.687200956937799,
+        "y": 0.5536663124335813,
+        "w": 0.13337320574162678,
+        "h": 0.03506907545164718
+      }
+    },
+    {
+      "id": "permission-rule",
+      "kind": "chrome",
+      "note": "Rule between access and edit permissions",
+      "grid": "G6:J6",
+      "snap": false,
+      "box": {
+        "x": 0.687200956937799,
+        "y": 0.6046758767268863,
+        "w": 0.2930622009569378,
+        "h": 0.0021253985122210413
+      }
+    },
+    {
+      "id": "permission-controls",
+      "kind": "control",
+      "note": "Permisos de edición with native Artículos, Descargas, Usuarios y claves de API checkboxes",
+      "grid": "G6:I7",
+      "snap": false,
+      "box": {
+        "x": 0.687200956937799,
+        "y": 0.6269925611052072,
+        "w": 0.2063397129186603,
+        "h": 0.1339001062699256
+      }
+    },
+    {
+      "id": "save-rule",
+      "kind": "chrome",
+      "note": "Rule above inspector save action",
+      "grid": "G7:J7",
+      "snap": false,
+      "box": {
+        "x": 0.687200956937799,
+        "y": 0.7800212539851222,
+        "w": 0.2930622009569378,
+        "h": 0.0021253985122210413
+      }
+    },
+    {
+      "id": "save",
+      "kind": "control",
+      "note": "Primary gold Guardar action",
+      "grid": "G8:J8",
+      "snap": false,
+      "box": {
+        "x": 0.687200956937799,
+        "y": 0.8023379383634431,
+        "w": 0.2930622009569378,
+        "h": 0.053134962805526036
+      }
+    },
+    {
+      "id": "account-actions",
+      "kind": "control",
+      "note": "Quiet manual password reset, API keys and individual delete links",
+      "grid": "G8:J9",
+      "snap": false,
+      "box": {
+        "x": 0.687200956937799,
+        "y": 0.8884165781083954,
+        "w": 0.2930622009569378,
+        "h": 0.04675876726886291
+      }
+    },
+    {
+      "id": "rail-divider",
+      "kind": "chrome",
+      "note": "Rule between portal rail and main area",
+      "grid": "B0:B9",
+      "snap": false
+    },
+    {
+      "id": "inspector-divider",
+      "kind": "chrome",
+      "note": "Rule between roster and inspector",
+      "grid": "G0:G9",
+      "snap": false
+    },
+    {
+      "id": "rail-brand-region",
+      "kind": "chrome",
+      "grid": "A0:B0",
+      "note": "Portal wordmark ground and separator at the top of the rail",
+      "snap": false
+    },
+    {
+      "id": "roster-table",
+      "kind": "chrome",
+      "grid": "B2:G6",
+      "note": "One semantic roster table with header and five illustrative rows",
+      "snap": false,
+      "container": true
+    },
+    {
+      "id": "inspector-header-region",
+      "kind": "chrome",
+      "grid": "G0:J0",
+      "note": "The inspector header on its dark ground",
+      "snap": false
+    },
+    {
+      "id": "profile-fields-region",
+      "kind": "chrome",
+      "grid": "G1:J4",
+      "note": "Native profile field group, username, names and disabled email",
+      "snap": false
+    },
+    {
+      "id": "access-region",
+      "kind": "chrome",
+      "grid": "G4:J7",
+      "note": "Native role, active and edit permission fieldsets",
+      "snap": false
+    }
+  ]
+}
