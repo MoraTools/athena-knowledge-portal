@@ -232,7 +232,8 @@ body .markdown-section p.tip:before{color:var(--on-accent)}
 .account-button.danger{border-color:var(--crit);color:var(--crit-text)!important}
 .account-button.danger:hover{border-color:var(--crit-text)}
 
-.visitor-note{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);margin:var(--space-3) 0;color:var(--muted)}
+/* The home note is a text and a button in a row; the library note is one sentence with an inline link. */
+.visitor-note{margin:var(--space-3) 0;color:var(--muted)}div.visitor-note{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2)}
 .visitor-note p{margin:0;flex:1 1 24rem}
 
 /* Suite shell: rail state still belongs to rail.js. */
