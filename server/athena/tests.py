@@ -239,7 +239,7 @@ class PortalTests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertTrue(self.client.login(username='renamed', password='Second-Password-3492!'))
         self.assertEqual(self.client.delete(url, **headers).status_code, 204)
-        self.assertContains(self.client.get('/'), 'BIBLIOTECA PÚBLICA')
+        self.assertContains(self.client.get('/'), 'Biblioteca pública')
         self.assertEqual(self.client.get('/account.md').status_code, 404)
         self.assertEqual(self.client.delete(f'/api/v1/users/{self.admin.pk}/', **headers).status_code, 400)
         self.assertEqual(self.client.patch(f'/api/v1/users/{self.admin.pk}/', '{"admin":false}',

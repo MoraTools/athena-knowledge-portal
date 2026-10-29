@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#000000">
+  <script src="/assets/boot.js"></script>
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f3f1">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#191715">
+  <link rel="stylesheet" href="/assets/suite-tokens.css">
   <meta name="description" content="Guías y recursos de Automation Anywhere en Athena.">
   <title>Athena — Knowledge Portal</title>
   <meta name="robots" content="noindex, nofollow">
@@ -18,7 +21,7 @@
   <a class="skip-link" href="#main">Saltar al contenido</a>
   <aside id="rail" class="rail" aria-label="Navegación del portal">
     <div class="rail-inner">
-      <a class="rail-brand" href="#/" aria-label="Athena, inicio"><span>ATHENA</span><small>KNOWLEDGE PORTAL</small></a>
+      <a class="rail-brand" href="#/" aria-label="Athena, inicio"><span>Athena</span><small>KNOWLEDGE PORTAL</small></a>
       <div class="rail-search-slot"></div>
       <button class="rail-item rail-search-button" type="button" data-icon="search"><span class="rail-label">Buscar</span></button>
       <!-- A div, not <nav>: Docsify takes the first <nav> in the page as its navbar. -->
@@ -36,10 +39,17 @@
       </div>
     </form>
   </template>
-  <span class="access-label">{% if user.is_authenticated %}ACCESO CON CUENTA{% else %}BIBLIOTECA PÚBLICA{% endif %}</span>
+  <header class="reader-command">
+    <button class="suite-icon command-menu rail-reveal" type="button" aria-controls="rail" aria-label="Mostrar la navegación" data-icon="menu"></button>
+    <div class="command-lead"><div class="command-crumb">Automation Anywhere › Inicio</div><div class="command-title">Inicio</div></div>
+    <span class="access-label">{% if user.is_authenticated %}Acceso con cuenta{% else %}Biblioteca pública{% endif %}</span>
+    <div class="suite-toggles"><button class="suite-icon" type="button" data-suite-toggle="lang" aria-label="Switch the language to English" title="English"></button><button class="suite-icon" type="button" data-suite-toggle="theme" aria-label="Cambiar a tema claro" title="Cambiar a tema claro"></button></div>
+  </header>
   <div id="main">
     <div id="app" aria-live="polite">Cargando Athena…</div>
   </div>
+  <script src="/assets/suite-i18n.js"></script>
+  <script src="/assets/suite.js"></script>
   <script src="/vendor/purify.min.js"></script>
   <script src="/config.js"></script>
   <script src="/vendor/docsify.min.js"></script>

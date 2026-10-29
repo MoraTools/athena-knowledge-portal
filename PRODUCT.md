@@ -33,7 +33,7 @@ Existing article routes must remain stable.
 ## Experience principles
 
 - Search is the primary way to enter the library.
-- Preserve Athena's incumbent visual system and improve it through clear hierarchy, strong text contrast, and restrained interaction.
+- Use the suite theme A (One gold) in light and dark, with a Spanish interface by default and an English interface on request; article content stays Spanish.
 - Prefer readable text and generous spacing over decorative borders or dense controls.
 - Desktop and mobile experiences must remain keyboard accessible.
 

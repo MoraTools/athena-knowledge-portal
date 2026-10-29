@@ -15,7 +15,7 @@
 <ol>{% for article in month.list %}<li class="timeline-post">
 <time datetime="{{ article.date|date:'Y-m-d' }}"><span class="day">{{ article.date|date:'d' }}</span><span class="mon">{{ article.date|date:'M' }}</span></time>
 <article class="library-card timeline-card">
-<small class="post-meta">{{ article.get_kind_display }} · {{ article.author }} · {{ article.date|date:'d/m/Y' }}</small>
+<small class="post-meta"><span>{{ article.get_kind_display }}</span> · {{ article.author }} · <time datetime="{{ article.date|date:'Y-m-d' }}">{{ article.date|date:'d/m/Y' }}</time></small>
 <h2><a href="#/content/{{ article.slug }}">{{ article.title }}</a></h2><p class="post-summary">{{ article.summary }}</p>
 {% if article.status %}<p class="status status-{{ article.status }}">{{ article.get_status_display }}</p>{% endif %}
 <p class="tag-list">{% for tag in article.tags %}<span>{{ tag }}</span>{% endfor %}</p>
@@ -24,7 +24,7 @@
 </ol>
 {% elif section == 'tools' %}<div class="library-grid">
 {% for article in articles %}<article class="library-card" data-search="{{ article.title }} {{ article.author }} {{ article.summary }} {{ article.tags|join:' ' }}" data-tags="{{ article.tags|join:'|' }}">
-<h2><a href="#/content/{{ article.slug }}">{{ article.title }}</a></h2><p>{{ article.summary }}</p><small>{{ article.date|date:'Y-m-d' }} · {{ article.author }}</small>
+<h2><a href="#/content/{{ article.slug }}">{{ article.title }}</a></h2><p>{{ article.summary }}</p><small><time datetime="{{ article.date|date:'Y-m-d' }}">{{ article.date|date:'Y-m-d' }}</time> · {{ article.author }}</small>
 {% if article.status %}<p class="status status-{{ article.status }}">{{ article.get_status_display }}</p>{% endif %}
 <p class="tag-list">{% for tag in article.tags %}<span>{{ tag }}</span>{% endfor %}</p>
 {% if article.pdf_name %}<p><a class="pdf-link" href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a></p>{% endif %}

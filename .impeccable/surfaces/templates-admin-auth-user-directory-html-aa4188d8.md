@@ -16,7 +16,7 @@ Approval: user selected option 1 on 2026-10-07.
 
 THESIS: A comparison table and an inspector make user management one task.
 
-OWN-WORLD: Keep Athena's existing black, neutral surfaces, gold selection and primary action, serif headings, narrow sans controls, and Courier metadata. Reuse the full current rail.
+OWN-WORLD: The suite theme A (One gold, light and dark): warm graphite or marble surfaces, gold selection and primary action, Cormorant headings, Inter controls, and mono labels and metadata. Reuse the full current rail. (Updated 2026-10-29 for the suite theme.)
 
 STORY: Search the roster, select a user, inspect profile and access, and save. Username/password management and account protections remain.
 

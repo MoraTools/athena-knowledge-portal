@@ -1,4 +1,4 @@
-/* The directory uses the shared Athena tokens, fonts and native controls. */
+/* The directory uses the suite tokens (through admin.css), the suite fonts and native controls. */
 .directory-page #content { padding: 0; }
 .directory {
   display: grid;
@@ -7,10 +7,10 @@
   line-height: 1.5;
 }
 .directory-list { min-width: 0; padding: var(--space-4); container-type: inline-size; }
-.directory-page #directory-title { margin: 0 0 var(--space-3); font-size: 47px; line-height: 56px; }
+.directory-page #directory-title { margin: 0 0 var(--space-3); }
 .directory-toolbar {
   display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2);
-  margin-bottom: var(--space-2); padding-bottom: var(--space-3); border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-2); padding-bottom: var(--space-3); border-bottom: 1px solid var(--border);
 }
 .directory-search { position: relative; flex: 1 1 240px; max-width: 375px; min-width: 0; }
 .directory input[type=text], .directory input[type=email], .directory input[type=search], .directory input[type=password] {
@@ -20,80 +20,82 @@
 .directory-search button {
   position: absolute; top: 0; left: 0; display: flex; align-items: center; justify-content: center;
   width: var(--control-height); height: var(--control-height); padding: 0;
-  border: 0; border-radius: var(--radius); background: transparent; color: var(--muted); cursor: pointer;
+  border: 0; border-radius: var(--radius); background: transparent; color: var(--text-subtle); cursor: pointer;
 }
-.directory-search button:hover { color: var(--gold-soft); }
-.directory svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; }
-.directory .directory-add { min-width: 168px; }
+.directory-search button:hover { color: var(--text); }
+.directory svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.75; }
+.directory .directory-add { min-width: 0; }
 .directory-results { max-width: 100%; overflow-x: auto; }
-.directory-scroll-hint { display: none; margin: 0 0 var(--space-1); color: var(--muted); font-size: 14px; }
+.directory-scroll-hint { display: none; margin: 0 0 var(--space-1); color: var(--text-muted); font-size: 12px; }
 @container (max-width: 619px) {
   .directory-scroll-hint { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); }
   .directory-scroll-hint svg { flex: 0 0 20px; }
 }
-.directory-table { width: 100%; min-width: 620px; table-layout: fixed; border-collapse: collapse; background: var(--surface); }
+.directory-results { border: 1px solid var(--border); border-radius: var(--radius); }
+.directory-table { width: 100%; min-width: 620px; table-layout: fixed; border-collapse: collapse; background: var(--surface); font-variant-numeric: tabular-nums; }
 .directory-user-column { width: 28%; }
 .directory-role-column { width: 25%; }
 .directory-status-column { width: 18%; }
 .directory-session-column { width: 29%; }
-.directory-table th, .directory-table td { padding: 0 var(--space-2); border-bottom: 1px solid var(--line); vertical-align: middle; text-align: left; }
-.directory-table thead th { box-sizing: border-box; background: var(--surface-2); font: 500 14px var(--font-ui); letter-spacing: .06em; }
+.directory-table th, .directory-table td { padding: 0 var(--cell-pad-x); border-bottom: 1px solid var(--border); vertical-align: middle; text-align: left; }
+.directory-table thead th { box-sizing: border-box; background: var(--surface-strong); font: var(--label); letter-spacing: .06em; text-transform: uppercase; }
 .directory-table tbody th, .directory-table tbody td { height: 40px; box-sizing: border-box; }
-.directory-table tbody th { font-weight: 400; }
-.directory-table th a { box-sizing: border-box; display: flex; align-items: center; min-height: 40px; padding: calc(var(--space-1) / 2) 0; color: var(--text); overflow-wrap: anywhere; text-decoration: none; }
-.directory-table thead th a { gap: var(--space-1); color: var(--muted); }
-.directory-table thead th[aria-sort]:not([aria-sort=none]) a { color: var(--gold-soft); }
-.directory-table th a:hover { color: var(--gold-soft); text-decoration: underline; }
+.directory-table tbody th { font-weight: 500; }
+.directory-table tbody td { font-size: 13px; }
+.directory-table th a { box-sizing: border-box; display: flex; align-items: center; min-height: 40px; padding: calc(var(--space-1) / 2) 0; color: var(--text); font-size: 13px; overflow-wrap: anywhere; text-decoration: none; }
+.directory-table thead th a { gap: var(--space-1); color: var(--text-muted); font-size: inherit; }
+.directory-table thead th[aria-sort]:not([aria-sort=none]) a { color: var(--accent-text); }
+.directory-table th a:hover { color: var(--accent-text); text-decoration: underline; }
 @media (pointer: coarse) { .directory-table th a { min-height: var(--control-height); } }
 .directory-table tr:hover { background: var(--row-hover); }
-.directory-table tr.is-selected { background: var(--row-selected); outline: 1px solid var(--gold); outline-offset: -1px; }
-.directory-table tr.is-selected th a { color: var(--gold-soft); }
+.directory-table tr.is-selected { background: var(--row-selected); outline: 1px solid var(--accent-edge); outline-offset: -1px; }
+.directory-table tr.is-selected th a { color: var(--accent-text); }
 .directory-status { display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
-.directory-status::before { content: ''; width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--gold); }
-.directory-status.off { color: var(--muted); }
-.directory-status.off::before { background: var(--quiet); }
-.directory-session { color: var(--muted); font: 12px/1.5 var(--font-mono); font-variant-numeric: tabular-nums; }
+.directory-status::before { content: ''; width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--ok); }
+.directory-status.off { color: var(--text-muted); }
+.directory-status.off::before { background: var(--text-subtle); }
+.directory-session { color: var(--text-muted); font: 500 13px/1.45 var(--font-mono); font-variant-numeric: tabular-nums; }
 .directory-session time { white-space: nowrap; }
-.directory-empty { margin: 0; padding: var(--space-3) var(--space-2); color: var(--muted); }
+.directory-empty { margin: 0; padding: var(--space-3) var(--space-2); color: var(--text-muted); }
 
-.directory-panel { min-width: 0; margin: 0; padding: var(--space-4); border-left: 1px solid var(--line); background: var(--surface); scroll-margin-top: var(--space-2); }
+.directory-panel { min-width: 0; margin: 0; padding: var(--space-4); border-left: 1px solid var(--border); background: var(--surface); scroll-margin-top: var(--space-2); }
 .directory-panel header { margin: 0 0 var(--space-4); }
-.directory-panel h2 { margin: 0; color: var(--text); font: 500 44px/1.2 var(--font-display); overflow-wrap: anywhere; }
-.directory .mono { margin: var(--space-1) 0 0; color: var(--quiet); font: 12px/1.5 var(--font-mono); font-variant-numeric: tabular-nums; }
-.directory .label { display: block; margin: 0 0 var(--space-1); padding: 0; color: var(--muted); font: 13px/1.5 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+.directory-panel h2 { margin: 0; color: var(--text); font: 600 var(--title-size)/32px var(--font-display); overflow-wrap: anywhere; text-wrap: balance; }
+.directory .mono { margin: var(--space-1) 0 0; color: var(--text-subtle); font: 500 12px/1.45 var(--font-mono); font-variant-numeric: tabular-nums; }
+.directory .label { display: block; margin: 0 0 var(--space-1); padding: 0; color: var(--text-muted); font: var(--label); letter-spacing: .06em; text-transform: uppercase; }
 .directory .compact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2); }
 .directory .compact > * { min-width: 0; }
 .directory .compact .full { grid-column: 1 / -1; }
 .directory fieldset { margin: 0; padding: 0; border: 0; }
 .directory-choices { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); }
-.directory-choice { display: flex; align-items: center; gap: var(--space-2); min-height: 36px; color: var(--text); cursor: pointer; }
-.directory-choice input { flex: 0 0 18px; }
+.directory-choice { display: flex; align-items: center; gap: var(--space-1); min-height: var(--control-height); color: var(--text); font-size: 13px; cursor: pointer; }
+.directory-choice input { flex: 0 0 16px; }
 @media (pointer: coarse) { .directory-choice { min-height: var(--control-height); } }
 .directory-active { margin-top: var(--space-1); }
-.directory-edit-area { padding-top: var(--space-2); border-top: 1px solid var(--line); }
+.directory-edit-area { padding-top: var(--space-2); border-top: 1px solid var(--border); }
 /* Hiding edit areas does not change checked values; the native form validates the submitted role. */
 .directory-panel:not(:has(input[name="role"][value="admin"]:checked)) .directory-edit-area:not(:has(.errorlist)) { display: none; }
 .directory-panel:not(:has(input[name="role"][value="admin"]:checked)) .directory-edits { display: none; }
-.directory .errorlist { margin: var(--space-1) 0; color: var(--error); }
+.directory .errorlist { margin: var(--space-1) 0; color: var(--crit-text); }
 .directory .errorlist li { overflow-wrap: anywhere; }
-.directory .help { margin: var(--space-1) 0 0; color: var(--quiet); font-size: 14px; }
+.directory .help { margin: var(--space-1) 0 0; color: var(--text-subtle); font-size: 12px; }
 .directory .help ul { margin: 0; padding-left: var(--space-3); }
-.directory .help li { font-size: 14px; list-style: square; }
-.directory .bar { margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--line); }
+.directory .help li { font-size: 12px; list-style: square; }
+.directory .bar { margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--border); }
 .directory .bar > .button { width: 100%; }
 .directory-actions { display: flex; align-items: center; flex-wrap: wrap; margin-top: var(--space-2); }
-.directory-actions .link { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; min-height: var(--control-height); color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
-.directory-actions .link + .link { margin-left: var(--space-2); padding-left: var(--space-2); border-left: 1px solid var(--line); }
-.directory-actions svg { flex: 0 0 20px; stroke-linecap: round; stroke-linejoin: round; }
-.directory-actions a.link:hover { color: var(--gold-soft); }
-.directory-actions .link.danger { color: var(--error); }
-.directory-actions span.link.danger { color: var(--quiet); cursor: not-allowed; }
+.directory-actions .link { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; min-height: var(--control-height); color: var(--text-muted); font-size: 13px; overflow-wrap: anywhere; }
+.directory-actions .link + .link { margin-left: var(--space-2); padding-left: var(--space-2); border-left: 1px solid var(--border); }
+.directory-actions svg { flex: 0 0 18px; stroke-linecap: round; stroke-linejoin: round; }
+.directory-actions a.link:hover { color: var(--accent-text); }
+.directory-actions .link.danger { color: var(--crit-text); }
+.directory-actions span.link.danger { color: var(--text-subtle); cursor: not-allowed; }
 
 /* Keep the 620px table and the inspector readable beside the shared rail. */
 .directory-page #content { container-type: inline-size; }
 @container (max-width: 1140px) {
   .directory { grid-template-columns: 1fr; min-height: 0; }
-  .directory-panel { border-left: 0; border-top: 1px solid var(--line); }
+  .directory-panel { border-left: 0; border-top: 1px solid var(--border); }
 }
 @media (max-width: 1024px) { .directory-list, .directory-panel { padding: var(--space-3); } }
 @media (max-width: 1024px) {
@@ -104,12 +106,9 @@
 @media (max-width: 767px) {
   .directory-list, .directory-panel { padding: var(--space-3) var(--space-2); }
   .directory-panel { padding-bottom: var(--space-4); }
-  .directory-page #directory-title { font-size: 40px; line-height: 48px; }
-  .directory-panel h2 { font-size: 36px; }
   .directory-toolbar { gap: var(--space-2); }
   .directory-search { flex-basis: 100%; max-width: none; }
   .directory .compact { grid-template-columns: 1fr; }
   .directory-actions { display: grid; }
-  .directory-actions .link + .link { margin-left: 0; padding-left: 0; border-left: 0; border-top: 1px solid var(--line); }
+  .directory-actions .link + .link { margin-left: 0; padding-left: 0; border-left: 0; border-top: 1px solid var(--border); }
 }
-@media (prefers-reduced-motion: reduce) { .directory .button { transition: none; } }

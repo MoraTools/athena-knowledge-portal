@@ -40,6 +40,7 @@
         </div>
       </details>
       {% if has_change_permission or add and has_add_permission %}<button class="button default desk-save" type="submit" name="_save">Guardar</button>{% endif %}
+      <div class="suite-toggles"><button class="suite-icon" type="button" data-suite-toggle="lang" aria-label="Switch the language to English" title="English"></button><button class="suite-icon" type="button" data-suite-toggle="theme" aria-label="Cambiar a tema claro" title="Cambiar a tema claro"></button></div>
     </header>
     {% if errors %}<div class="desk-errors" role="alert"><p class="errornote">Corrija los campos indicados.</p>{{ adminform.form.non_field_errors }}<button class="button" type="button" data-open-details>Revisar detalles</button></div>{% endif %}
     <div class="desk-title">

@@ -26,6 +26,7 @@
   };
   // Icons follow the link label from /_sidebar.md and the admin model names.
   const LABEL_ICONS = {
+    Home: 'home', Guides: 'book', Tools: 'tool', Downloads: 'download', Contribute: 'plus', 'My account': 'user', 'Sign in': 'user', 'Manage Athena': 'gear', 'API for agents': 'code', Articles: 'file', 'API keys': 'key', Users: 'users',
     Inicio: 'home', 'Guías': 'book', Feed: 'clock', Herramientas: 'tool', Descargas: 'download',
     Contribuir: 'plus', 'Mi cuenta': 'user', Ingresar: 'user', 'Administrar Athena': 'gear', 'API para agentes': 'code',
     'Artículos': 'file', 'Claves de API': 'key', Usuarios: 'users'
@@ -51,10 +52,10 @@
       toggle.setAttribute('aria-label', action + ' la navegación');
       toggle.setAttribute('aria-expanded', String(state === 'expanded'));
     }
-    document.querySelector('.rail-reveal')?.setAttribute('aria-expanded', String(state !== 'hidden'));
+    document.querySelector('.command-menu, .rail-reveal:not(body:has(.reader-command, .account-command)>.rail-reveal)')?.setAttribute('aria-expanded', String(state !== 'hidden'));
     tip.classList.remove('is-visible');
     const rail = document.querySelector('.rail');
-    if (state === 'hidden' && rail?.contains(document.activeElement)) document.querySelector('.rail-reveal')?.focus();
+    if (state === 'hidden' && rail?.contains(document.activeElement)) document.querySelector('.command-menu, .rail-reveal:not(body:has(.reader-command, .account-command)>.rail-reveal)')?.focus();
   }
 
   function decorate(scope = document) {
@@ -108,7 +109,7 @@
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && narrow.matches && root.dataset.rail === 'expanded') {
       set('hidden');
-      document.querySelector('.rail-reveal')?.focus();
+      document.querySelector('.command-menu, .rail-reveal:not(body:has(.reader-command, .account-command)>.rail-reveal)')?.focus();
       return;
     }
     if (event.ctrlKey || event.metaKey || event.altKey || event.target.closest('input, textarea, select, [contenteditable]')) return;

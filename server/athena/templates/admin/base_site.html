@@ -1,9 +1,12 @@
 {% extends 'admin/base.html' %}{% load static athena_nav %}
 {% block title %}{{ title }} · Athena{% endblock %}
+{# The first block that can hold an element in <head>; only Django's base.css precedes it, through an href-only block. #}
+{# boot.js replaces Django's theme.js, which would reset data-theme to "auto"; the suite tokens replace dark_mode.css. #}
+{% block dark-mode-vars %}<script src="/assets/boot.js"></script><meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f3f1"><meta name="theme-color" media="(prefers-color-scheme: dark)" content="#191715"><link rel="stylesheet" href="/assets/suite-tokens.css">{% endblock %}
 {% block extrahead %}{{ block.super }}<link rel="icon" href="/assets/favicon.svg"><meta name="robots" content="noindex, nofollow"><script src="/assets/session.js" data-session="{{ user.pk|default:0 }}" defer></script>{% if cl %}<script src="{% static 'athena/admin-list.js' %}" defer></script>{% endif %}{% endblock %}
 {# Loaded after Django's responsive.css so the Athena system wins at equal specificity; rail.js after the viewport meta so its narrow-screen check is right. #}
 {% block responsive %}{{ block.super }}<script src="/assets/rail.js"></script><link rel="stylesheet" href="{% static 'athena/admin.css' %}"><link rel="stylesheet" href="/assets/rail.css"><link rel="stylesheet" href="{% static 'athena/admin-sidebar.css' %}">{% endblock %}
-{# Signed-in administration uses the portal rail; sign-in keeps its branding. #}
-{% block header %}{% if not has_permission %}{{ block.super }}{% endif %}{% endblock %}
-{% block branding %}<div id="site-name"><a class="site-brand" href="/">ATHENA</a><a class="site-section" href="{% url 'admin:index' %}">Administración</a></div>{% endblock %}
+{# Signed-in pages: a command bar (no Django #header) that shares its row with the breadcrumbs. Sign-in: Django's #header with the branding. Both end with the toggles. #}
+{% block header %}<header{% if not has_permission %} id="header"{% endif %} class="admin-command">{% if not has_permission %}<div id="branding">{% block branding %}<div id="site-name"><a class="site-brand" href="/">ATHENA</a><a class="site-section" href="{% url 'admin:index' %}">Administración</a></div>{% endblock %}</div>{% endif %}<div class="suite-toggles"><button class="suite-icon" type="button" data-suite-toggle="lang" aria-label="Switch the language to English" title="English"></button><button class="suite-icon" type="button" data-suite-toggle="theme" aria-label="Cambiar a tema claro" title="Cambiar a tema claro"></button></div></header>{% endblock %}
 {% block nav-sidebar %}{% portal_sidebar %}{% endblock %}
+{% block extrabody %}{{ block.super }}<script src="/assets/suite-i18n.js"></script><script src="/assets/suite.js"></script>{% endblock %}

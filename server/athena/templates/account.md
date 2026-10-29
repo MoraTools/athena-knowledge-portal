@@ -1,6 +1,6 @@
 # {{ user.get_username }}
 
-<p class="account-meta">{% if is_admin %}Administrador{% else %}Lector{% endif %} · Última sesión {% if user.last_login %}{{ user.last_login|date:'d/m/Y H:i' }}{% else %}nunca{% endif %}</p>
+<p class="account-meta">{% if is_admin %}Administrador{% else %}Lector{% endif %} · Última sesión {% if user.last_login %}<time datetime="{{ user.last_login|date:'c' }}">{{ user.last_login|date:'d/m/Y H:i' }}</time>{% else %}<span>nunca</span>{% endif %}</p>
 
 <div class="account-grid">
 <section class="account-panel">

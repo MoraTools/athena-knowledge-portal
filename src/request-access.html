@@ -4,15 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <meta name="theme-color" content="#000000">
+  <script src="/assets/boot.js"></script>
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f3f1">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#191715">
+  <link rel="stylesheet" href="/assets/suite-tokens.css">
   <title>Solicitar acceso a Athena</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Cpath d='M16 5 27 27h-6l-2-5h-7l-2 5H5L16 5Zm0 8-2 5h4l-2-5Z' fill='%23ffb900'/%3E%3C/svg%3E">
-  <style>
-    :root{color-scheme:dark;font-family:Arial,sans-serif;background:#000;color:#fff}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#000}main{width:min(680px,100%);padding:clamp(28px,7vw,64px);background:#101010}p,li{font-size:18px;line-height:1.55}h1{margin-top:0;font-size:clamp(38px,8vw,66px);line-height:1;color:#fff}h2{margin-top:36px;color:#ffcf40}a{color:#ffcf40;text-underline-offset:3px}a.button{display:inline-block;margin-top:12px;padding:14px 18px;background:#ffb900;color:#000;font-weight:700;text-decoration:none}code{color:#ffe08a}small{display:block;margin-top:32px;color:#d0d0d0;line-height:1.5}a:focus-visible{outline:3px solid #fff;outline-offset:4px}
-  </style>
+  <link rel="icon" href="/assets/favicon.svg">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/assets/request-access.css">
 </head>
 <body>
-  <main>
+  <header class="account-command"><div class="suite-toggles"><button class="suite-icon" type="button" data-suite-toggle="lang" aria-label="Switch the language to English" title="English"></button><button class="suite-icon" type="button" data-suite-toggle="theme" aria-label="Cambiar a tema claro" title="Cambiar a tema claro"></button></div></header>
+  <main class="request-main">
     <p>ATHENA · ACCESO INTERNO</p>
     <h1>Solicite acceso</h1>
     <p>Athena permite únicamente direcciones IP públicas aprobadas.</p>
@@ -27,5 +30,7 @@
     <p>Una VPN, una red móvil o un cambio del proveedor de internet puede modificar su dirección pública. Si ocurre, solicite acceso otra vez.</p>
     <small>Athena usa la dirección IP solo para controlar la lista de acceso. Esta página no publica el número de WhatsApp ni crea un enlace hacia ese servicio.</small>
   </main>
+  <script src="/assets/suite-i18n.js"></script>
+  <script src="/assets/suite.js"></script>
 </body>
 </html>

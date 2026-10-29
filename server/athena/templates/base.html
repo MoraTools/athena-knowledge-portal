@@ -5,6 +5,10 @@
   <title>{% block title %}Athena{% endblock %}</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="/assets/favicon.svg">
+  <script src="/assets/boot.js"></script>
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f3f1">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#191715">
+  <link rel="stylesheet" href="/assets/suite-tokens.css">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="{% static 'athena/accounts.css' %}">
   {% if user.is_authenticated %}<link rel="stylesheet" href="/assets/rail.css"><script src="/assets/rail.js"></script>{% endif %}
@@ -12,8 +16,11 @@
 <body class="account-page">
   <a class="skip-link" href="#account-main">Saltar al contenido</a>
   {% if user.is_authenticated %}{% portal_sidebar %}{% endif %}
-  <header class="account-header"><a class="brand" href="/"><span>ATHENA</span><small>KNOWLEDGE PORTAL</small></a></header>
+  <header class="account-command">{% if user.is_authenticated %}<button class="suite-icon command-menu rail-reveal" type="button" aria-controls="rail" aria-label="Mostrar la navegación" data-icon="menu"></button>{% endif %}<div class="suite-toggles"><button class="suite-icon" type="button" data-suite-toggle="lang" aria-label="Switch the language to English" title="English"></button><button class="suite-icon" type="button" data-suite-toggle="theme" aria-label="Cambiar a tema claro" title="Cambiar a tema claro"></button></div></header>
+  <header class="account-header"><a class="brand" href="/"><span>Athena</span><small>KNOWLEDGE PORTAL</small></a></header>
   <main id="account-main" class="account-main">{% block content %}{% endblock %}</main>
+  <script src="/assets/suite-i18n.js"></script>
+  <script src="/assets/suite.js"></script>
   <script src="/assets/session.js" data-session="{{ user.pk|default:0 }}"></script>
 </body>
 </html>

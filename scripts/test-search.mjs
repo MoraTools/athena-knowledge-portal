@@ -308,36 +308,36 @@ const outlineArticle = {
 };
 context.document.createElement = (tag) => new Element(tag);
 context.document.querySelector = (selector) => ({ '.markdown-section': outlineArticle, '.page-tree': pageTree })[selector] || null;
-context.getComputedStyle = () => ({ position: outlineArticle.parentElement.clientWidth >= 1200 ? 'sticky' : 'static' });
+context.getComputedStyle = () => ({ position: outlineArticle.parentElement.clientWidth >= 900 ? 'sticky' : 'static' });
 context.location.hash = '#/content/guide';
-for (const width of [1000, 1199, 1200, 1320]) {
+for (const width of [700, 899, 900, 1320]) {
   outlineArticle.parentElement.clientWidth = width;
   context.buildPageTree();
   const details = pageTree.children[0];
-  assert.equal(details.open, width >= 1200, 'The outline opens only when the content area supports a side column.');
+  assert.equal(details.open, width >= 900, 'The outline opens only when the content area supports a side column.');
   assert.equal(details.children[0].tagName, 'SUMMARY');
   const link = details.children[1].children[0].children[0];
   assert.equal(link.href, '#reader-guide');
   assert.equal(link.getAttribute('aria-current'), 'location');
   details.open = !details.open;
   context.updatePageTreeCurrent();
-  assert.equal(details.open, width < 1200, 'Scroll tracking preserves the reader toggle.');
+  assert.equal(details.open, width < 900, 'Scroll tracking preserves the reader toggle.');
   details.open = true;
   link.closest = (selector) => selector === 'details' ? details : pageTree;
   await handlers.click({ target: { closest: (selector) => selector === '.page-tree a' ? link : null } });
-  assert.equal(details.open, width >= 1200, 'Following an outline link closes only the inline tree.');
+  assert.equal(details.open, width >= 900, 'Following an outline link closes only the inline tree.');
 }
 const responsiveDetails = pageTree.children[0];
 responsiveDetails.open = false;
 outlineArticle.parentElement.clientWidth = 1294;
 outlineResize();
 assert.equal(responsiveDetails.open, false, 'A reader choice stays when a compact rail keeps the outline beside the article.');
-outlineArticle.parentElement.clientWidth = 1086;
+outlineArticle.parentElement.clientWidth = 886;
 outlineResize();
 assert.equal(pageTree.dataset.layout, 'inline', 'Expanding the rail can move the outline above the article.');
 assert.equal(responsiveDetails.open, false);
 responsiveDetails.open = true;
-outlineArticle.parentElement.clientWidth = 1000;
+outlineArticle.parentElement.clientWidth = 800;
 outlineResize();
 assert.equal(responsiveDetails.open, true, 'A reader choice stays through width changes within the inline layout.');
 outlineArticle.parentElement.clientWidth = 1320;
