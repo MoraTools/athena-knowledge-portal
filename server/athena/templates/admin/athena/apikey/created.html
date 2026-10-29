@@ -4,7 +4,7 @@
 <div class="key-created">
   <p class="key-warning">Copie la clave ahora. Athena guarda solo su hash y <strong>no volverá a mostrarla</strong>.</p>
   <dl>
-    <dt>Clave de API · {{ original.name }} · {{ original.get_scope_display }} · vence {{ original.expires_at|date:'d/m/Y' }}</dt>
+    <dt>Clave de API · {{ original.name }} · {{ original.get_scope_display }} · vence <time datetime="{{ original.expires_at|date:'Y-m-d' }}">{{ original.expires_at|date:'d/m/Y' }}</time></dt>
     <dd><code class="secret" id="raw-key">{{ raw }}</code></dd>
     <dt>Configurar en la terminal</dt>
     <dd><code class="secret">export ATHENA_API_KEY={{ raw }}</code></dd>

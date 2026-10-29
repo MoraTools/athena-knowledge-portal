@@ -81,7 +81,7 @@ body:has(#rail) #container > nav div.breadcrumbs { min-height: 51px; border-bott
 /* Breadcrumbs: the left part of the command bar. */
 div.breadcrumbs {
   box-sizing: border-box; min-height: 52px; padding: 18px var(--space-4); background: var(--bg); color: var(--text-muted);
-  border-bottom: 1px solid var(--border); line-height: 15px;
+  border-bottom: 1px solid var(--border); line-height: 15px; font-weight: 400; letter-spacing: 0; text-transform: none;
 }
 div.breadcrumbs a:link, div.breadcrumbs a:visited { color: var(--accent-text); }
 div.breadcrumbs a:hover, div.breadcrumbs a:focus { color: var(--text); }

@@ -238,7 +238,7 @@ body .markdown-section p.tip:before{color:var(--on-accent)}
 /* Suite shell: rail state still belongs to rail.js. */
 .reader-command{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;height:52px;margin-left:var(--rail-current);padding:0 24px;border-bottom:1px solid var(--border);background:var(--surface)}
 /* Crumb (12px line) and title (24px line) make a 36px block: 8px above and below in the 52px bar, as in the kit. */
-.command-lead{display:flex;flex-direction:column;justify-content:center;min-width:0;flex:1}.command-crumb{color:var(--text-subtle);font:11px/12px var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.command-title{color:var(--text);font:600 26px/24px var(--font-display)}
+.command-lead{display:flex;flex-direction:column;justify-content:center;min-width:0;flex:1}.command-crumb{color:var(--text-muted);font:400 11px/14px var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.command-title{color:var(--text);font:600 26px/24px var(--font-display)}
 .reader-command .access-label{position:static;margin:0;padding:0;color:var(--text-subtle);font:600 11px/1.3 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
 @media(min-width:1025px){html:not([data-rail=hidden]) .command-menu{display:none}}
 .reader-command .suite-toggles{margin-left:0}.reader-command .article-actions{margin:0}

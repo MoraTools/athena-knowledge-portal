@@ -43,7 +43,7 @@
     <header>
       {% if selected %}
       <h2 id="inspector-title">{% if selected.get_full_name %}{{ selected.get_full_name }}{% else %}{{ selected.username }}{% endif %}</h2>
-      <p class="mono">alta {{ selected.date_joined|date:'d/m/Y' }} · sesión {% if selected.last_login %}{{ selected.last_login|date:'d/m/Y H:i' }}{% else %}nunca{% endif %}</p>
+      <p class="mono">alta <time datetime="{{ selected.date_joined|date:'Y-m-d' }}">{{ selected.date_joined|date:'d/m/Y' }}</time> · sesión {% if selected.last_login %}<time datetime="{{ selected.last_login|date:'c' }}">{{ selected.last_login|date:'d/m/Y H:i' }}</time>{% else %}nunca{% endif %}</p>
       {% else %}
       <h2 id="inspector-title">Nuevo usuario</h2>
       {% endif %}
