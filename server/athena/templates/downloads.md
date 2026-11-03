@@ -2,7 +2,7 @@
 
 Archivos aprobados. Solo para usuarios de Athena.
 {% if sections %}
-<div class="library-controls download-controls"><label>Buscar descargas<input id="download-filter" type="search" placeholder="Buscar archivo, sección o nota" autocomplete="off"></label><label>Sección<select id="download-section"><option value="">Todas</option>{% for key, label, items in sections %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></label><p id="download-count" class="result-count" aria-live="polite"></p></div>
+<div class="library-controls download-controls"><label>Sección<select id="download-section"><option value="">Todas</option>{% for key, label, items in sections %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></label><p id="download-count" class="result-count" role="status" aria-live="polite" aria-atomic="true"></p></div>
 {% endif %}{% for key, label, items in sections %}
 <section class="download-section" data-section="{{ key }}">
 

@@ -2,7 +2,6 @@
   <div class="hero-copy">
     <h1>Athena</h1>
     <p>{% if user.is_authenticated %}Centro de conocimiento, herramientas y feed de actualizaciones para desarrolladores.{% else %}Guías, herramientas y conocimiento compartido por el equipo.{% endif %}</p>
-    <div id="home-search-slot" aria-label="Buscar en Athena"></div>
   </div>
   <img src="/assets/athena-dither-2.webp" alt="" width="900" height="900">
 </section>

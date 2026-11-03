@@ -148,7 +148,7 @@ for (const page of readerEntries.pages) {
   const html = compiler.compile(page.markdown);
   assert.ok(!/<pre><code[^>]*>\s*&lt;/.test(html), `${page.name}: ${html}`);
   if (page.name === 'search.md') {
-    for (const id of ['search-page-slot', 'athena-search-type', 'search-result-count', 'search-results']) {
+    for (const id of ['athena-search-type', 'search-result-count', 'search-results']) {
       assert.ok(html.includes(`id="${id}"`), `${page.name}: missing ${id}`);
     }
     assert.ok(html.includes('<option value="pdf">PDF</option>'));
@@ -162,7 +162,7 @@ for (const page of readerEntries.pages) {
       for (const removed of ['guide-index', 'guide-table', 'guide-scroll-hint', 'data-guide-view']) assert.ok(!html.includes(removed));
     }
   }
-  if (page.name === 'home.md') assert.ok(html.includes('id="home-search-slot"'), `${page.name}: ${html}`);
+  if (page.name === 'home.md') assert.ok(!html.includes('home-search-slot'), 'Home keeps no second search field.');
   if (page.name === 'account.md') assert.ok(html.includes('action="/accounts/logout/"'), `${page.name}: ${html}`);
   if (page.name === 'downloads.md') assert.ok(html.includes('href="/downloads/file"'), `${page.name}: ${html}`);
 }
@@ -206,6 +206,16 @@ const metadataEntry = context.prepareSearchEntry({
 const metadata = context.findSnippet(metadataEntry, context.searchTerms('Especial'));
 assert.equal(metadata.text, '');
 assert.equal(metadata.source, 'Coincidencia en: etiqueta');
+
+// Crumb parents come from the article kind, not from the current section.
+for (const [kind, parent] of [['guide', '#/guides'], ['tool', '#/tools'], ['announcement', '#/updates'], ['release', '#/updates'], ['page', '#/?id=explorar']]) {
+  const levels = context.commandLevels('/content/example', '<Exact title>', kind);
+  assert.equal(levels.at(-2).href, parent);
+  assert.equal(levels.at(-1).label, '<Exact title>');
+  assert.ok(levels.slice(0, -1).every((level) => level.href));
+  assert.ok(!levels.at(-1).href);
+}
+assert.equal(context.commandLevels('/content/private', 'Artículo no disponible', 'guide', true).length, 2, 'Unavailable content must disclose no section.');
 
 // Query typing, filtering and submitting all update the sign-in return target without a hashchange.
 const signIn = { href: '/accounts/login/' };
@@ -570,7 +580,7 @@ function guidePage(entries, legacy = false) {
   topics.hidden = false;
   const count = new Element('p');
   const empty = new Element('p');
-  const query = { value: '', matches: (selector) => selector === '#guide-filter' };
+  const query = { value: '', matches: (selector) => selector === '#athena-search-input' };
   const tag = { value: '', matches: (selector) => selector === '#guide-tag' };
   const rows = entries.map((entry, i) => {
     const row = new Element('article');
@@ -615,7 +625,7 @@ let guides;
 delete context.localStorage;
 context.location.hash = '#/guides';
 context.document.querySelector = (selector) => ({
-  '.guide-library': guides?.grid, '#guide-filter': guides?.query, '#guide-tag': guides?.tag,
+  '.guide-library': guides?.grid, '#athena-search-input': guides?.query,
   '#guide-count': guides?.count, '.library-empty': guides?.empty
 })[selector] || null;
 context.document.querySelectorAll = () => [];
@@ -626,6 +636,7 @@ const entries = [
   { title: 'Tema vacío', author: 'Another author', summary: 'Sin etiquetas útiles', date: '2026-01-03', tags: ['  '] }
 ];
 guides = guidePage(entries);
+vm.runInContext("searchScope = 'guide'", context);
 context.syncView();
 assert.equal(guides.count.textContent, '4 resultados', 'Multi-tag guides count once.');
 assert.equal(guides.source.hidden, true, 'Source records stay hidden while filters update them.');
@@ -658,14 +669,10 @@ handlers.input({ target: guides.query });
 assert.equal(guides.count.textContent, '1 resultado');
 assert.ok(groupFor('Sin etiqueta').children.slice(1).every((row) => row.hidden), 'A query hides every copy of unmatched guides.');
 assert.ok(['RPA', 'CAFE', 'Helios', 'Seguridad'].every((label) => !groupFor(label).children[1].hidden), 'A matching guide stays visible in each of its topics.');
-guides.tag.value = ' cafe ';
-handlers.change({ target: guides.tag });
-assert.equal(guides.count.textContent, '1 resultado');
-assert.deepEqual(topicSections.filter((section) => !section.hidden), [groupFor('CAFE')], 'Exact tag selection shows only that group.');
 const jumps = guides.topics.children[0];
-assert.equal(jumps.children.filter((jump) => !jump.hidden).length, 1);
+assert.equal(jumps.children.filter((jump) => !jump.hidden).length, 5, 'A matching guide keeps each of its topic jumps.');
 const activeJump = jumps.children.find((jump) => !jump.hidden);
-const activeHeading = groupFor('CAFE').children[0];
+const activeHeading = groupFor('RPA').children[0];
 let jumpFocused = false;
 let jumpScrolled = false;
 let jumpPrevented = false;
@@ -679,14 +686,6 @@ await handlers.click({
 assert.ok(jumpFocused && jumpScrolled && jumpPrevented, 'A topic jump focuses its heading without starting a new Docsify route.');
 assert.equal(context.location.hash, '#/guides');
 assert.equal(guides.source.hidden, true, 'Filtering never exposes the source records.');
-guides.query.value = '';
-guides.tag.value = 'RPA';
-handlers.change({ target: guides.tag });
-assert.equal(guides.count.textContent, '1 resultado', 'A whole-tag filter does not match RPA avanzado by itself.');
-guides.tag.value = 'A|B <tema> "x"';
-handlers.change({ target: guides.tag });
-assert.equal(guides.count.textContent, '1 resultado', 'The pipe inside a tag is preserved.');
-guides.tag.value = '';
 for (const query of ['jeiser', 'seguridad', 'alvaro']) {
   guides.query.value = query;
   handlers.input({ target: guides.query });
@@ -728,8 +727,8 @@ context.syncView();
 assert.equal(guides.topics.children.length, 1, 'An empty library initializes once.');
 guides = guidePage([entries[0], entries[2]], true);
 context.syncView();
-guides.tag.value = 'Helios';
-handlers.change({ target: guides.tag });
+guides.query.value = 'Helios';
+handlers.input({ target: guides.query });
 assert.equal(guides.count.textContent, '1 resultado', 'The documented legacy card library keeps its filter behavior.');
 assert.equal(context.prepareGuideLibrary(guides.grid).groups, null, 'Legacy cards do not build topic copies.');
 context.document.querySelector = () => null;

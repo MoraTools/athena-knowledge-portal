@@ -62,6 +62,15 @@ class PublicArticleTests(TestCase):
                         if response.streaming:
                             self.assertTrue(b''.join(response.streaming_content).startswith(b'%PDF'))
 
+    def test_breadcrumb_metadata_follows_article_access(self):
+        for (published, public), article in self.articles.items():
+            response = self.client.get(f'/content/{article.slug}.md')
+            if published and public:
+                self.assertContains(response, 'data-article-kind="guide"')
+            else:
+                self.assertEqual(response.status_code, 404)
+                self.assertNotIn(b'data-article-kind', response.content)
+
     def test_public_search_and_libraries_never_disclose_private_metadata_or_downloads(self):
         Download.objects.create(title='Secret package', file=ContentFile(b'secret', name='secret.zip'))
         public = self.articles[True, True]

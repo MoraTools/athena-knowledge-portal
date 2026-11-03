@@ -6,6 +6,9 @@
     'Biblioteca': 'Library', 'Participar': 'Contribute', 'Cuenta': 'Account', 'Administración': 'Administration',
     'Inicio': 'Home', 'Guías': 'Guides', 'Herramientas': 'Tools', 'Descargas': 'Downloads', 'Contribuir': 'Contribute',
     'Mi cuenta': 'My account', 'Ingresar': 'Sign in', 'Ingrese': 'Sign in', 'Administrar Athena': 'Manage Athena',
+    'Ruta de navegación': 'Breadcrumb', 'Mostrar niveles ocultos': 'Show hidden levels',
+    'En Guías': 'In Guides', 'En Descargas': 'In Downloads', 'Filtrar guías': 'Filter guides', 'Filtrar descargas': 'Filter downloads',
+    'Buscar en todo Athena': 'Search all of Athena',
     'API para agentes': 'API for agents', 'Buscar': 'Search', 'Buscar en Athena': 'Search Athena',
     'Mostrar la navegación': 'Show navigation', 'Contraer': 'Collapse', 'Expandir': 'Expand', 'Cerrar': 'Close',
     'Contraer la navegación': 'Collapse navigation', 'Expandir la navegación': 'Expand navigation', 'Cerrar la navegación': 'Close navigation',
@@ -122,7 +125,7 @@
   };
   const sourceText = new WeakMap();
   const sourceAttributes = new WeakMap();
-  const content = '.guide-title,.guide-summary,.guide-author,.guide-topic-meta>span,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div';
+  const content = '[data-article-title],.guide-title,.guide-summary,.guide-author,.guide-topic-meta>span,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div';
   const articleUI = '.article-actions,.article-tools,.pdf-viewer__actions,.page-tree summary,.pagination-item,.unavailable-page';
   // Admin user content: titles, names, authors, usernames, the Markdown source and the raw key.
   const adminContent = '#result_list tbody :is(.field-title,.field-name,.field-author,.field-user),.actionlist a,.actionlist strong,.directory-table tbody th,.directory-panel header h2,.desk-user,.key-created code,textarea,.readonly a';

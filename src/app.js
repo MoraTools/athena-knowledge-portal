@@ -6,6 +6,9 @@ const sortLabel = (label, descending = false) => t('Ordenar') + ' ' + t(label) +
 let pageTreeItems = [];
 let searchIndexPromise;
 let searchRenderVersion = 0;
+let searchScope = '';
+let searchPageNode;
+let searchPath;
 
 const normalize = (value) => String(value || '')
   .normalize('NFD')
@@ -168,21 +171,20 @@ function filterGuides() {
   const library = document.querySelector('.guide-library');
   if (!library) return;
   const state = prepareGuideLibrary(library);
-  const query = normalize(document.querySelector('#guide-filter')?.value.trim() || '');
-  const tag = normalize(document.querySelector('#guide-tag')?.value || '');
+  const query = normalize(searchScope === 'guide' ? document.querySelector('#athena-search-input')?.value || '' : '');
   let visible = 0;
   state.rows.forEach((entry) => {
-    entry.row.hidden = !((!query || entry.search.includes(query)) && (!tag || entry.tags.has(tag)));
+    entry.row.hidden = Boolean(query && !entry.search.includes(query));
     if (!entry.row.hidden) visible += 1;
   });
   if (library.querySelector('#guide-topics')) buildGuideTopics(library, state);
-  state.groups?.forEach((group, key) => {
+  state.groups?.forEach((group) => {
     let shown = 0;
     group.entries.forEach(({ entry, article }) => {
       article.hidden = entry.row.hidden;
       if (!article.hidden) shown += 1;
     });
-    group.section.hidden = group.jump.hidden = !shown || Boolean(tag && key !== tag);
+    group.section.hidden = group.jump.hidden = !shown;
   });
   const count = document.querySelector('#guide-count');
   const empty = document.querySelector('.library-empty');
@@ -191,9 +193,8 @@ function filterGuides() {
 }
 
 function filterDownloads() {
-  const input = document.querySelector('#download-filter');
-  if (!input) return;
-  const query = normalize(input.value);
+  if (!document.querySelector('#download-count')) return;
+  const query = normalize(searchScope === 'download' ? document.querySelector('#athena-search-input')?.value || '' : '');
   const section = document.querySelector('#download-section')?.value || '';
   let visible = 0;
   document.querySelectorAll('.download-section').forEach((block) => {
@@ -645,37 +646,25 @@ async function renderSearchPage() {
   }
 }
 
-function placeSearch() {
-  let search = document.querySelector('#athena-search');
-  if (!search) {
-    const template = document.querySelector('#athena-search-template');
-    search = template?.content.firstElementChild.cloneNode(true);
-    if (!search) return;
-    search.hidden = true;
-    document.body.append(search);
-  }
+function syncSearch() {
+  const input = document.querySelector('#athena-search-input');
+  const scope = document.querySelector('#search-scope');
+  if (!input || !scope) return;
   const { path, params } = getRouteState();
-  const home = path === '/';
-  const searchPage = path === '/search';
-  const railSlot = document.querySelector('.rail-search-slot');
-  const homeSlot = document.querySelector('#home-search-slot');
-  const pageSlot = document.querySelector('#search-page-slot');
-
-  let placed = false;
-  if (searchPage && pageSlot) {
-    if (search.parentElement !== pageSlot) pageSlot.append(search);
-    placed = true;
-  } else if (home && homeSlot) {
-    if (search.parentElement !== homeSlot) homeSlot.append(search);
-    placed = true;
-  } else if (!home && !searchPage && railSlot) {
-    if (search.parentElement !== railSlot) railSlot.append(search);
-    placed = true;
+  const page = document.querySelector('.guide-library, #download-count');
+  // Docsify syncs before and after rendering, and again when the language changes.
+  if (path !== searchPath || page !== searchPageNode) {
+    searchScope = path === '/guides' && document.querySelector('.guide-library') ? 'guide'
+      : path === '/downloads' && document.querySelector('#download-count') ? 'download' : '';
+    if (path !== '/search') input.value = '';
+    searchPath = path;
+    searchPageNode = page;
   }
-
-  search.hidden = !placed;
-  const input = search.querySelector('#athena-search-input');
-  if (input) input.value = searchPage ? params.get('q') || '' : '';
+  if (path === '/search') input.value = params.get('q') || '';
+  scope.hidden = !searchScope;
+  scope.querySelector('span').textContent = t(searchScope === 'guide' ? 'En Guías' : 'En Descargas');
+  input.placeholder = t(searchScope === 'guide' ? 'Filtrar guías' : searchScope === 'download' ? 'Filtrar descargas' : 'Buscar en Athena');
+  document.querySelector('#athena-search kbd').textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
 }
 
 // The server and legacy build mark the article's attachment, apart from PDF citations.
@@ -726,7 +715,7 @@ function syncView() {
   updateCommand(path);
   buildRail();
   markRail();
-  placeSearch();
+  syncSearch();
   filterGuides();
   filterDownloads();
   buildPageTree();
@@ -738,14 +727,86 @@ function syncView() {
   window.AthenaI18n?.translate();
 }
 
+function commandLevels(path, name, kind, unavailable = false) {
+  const home = { label: 'Athena', href: '#/' };
+  const library = { label: 'Biblioteca', href: '#/?id=explorar' };
+  if (path === '/') return [home, { label: 'Inicio' }];
+  if (path.startsWith('/content/') && !unavailable) {
+    const sections = { guide: ['Guías', '#/guides'], tool: ['Herramientas', '#/tools'], announcement: ['Actualizaciones', '#/updates'], release: ['Actualizaciones', '#/updates'] };
+    const section = sections[kind];
+    return [home, library, ...(section ? [{ label: section[0], href: section[1] }] : []), { label: name, article: true }];
+  }
+  return [home, ...( ['/guides', '/tools', '/updates', '/downloads'].includes(path) ? [library] : []), { label: name }];
+}
+
 function updateCommand(path) {
-  const title = document.querySelector('.command-title');
-  const crumb = document.querySelector('.command-crumb');
-  if (!title || !crumb) return;
+  const box = document.querySelector('.command-crumbs');
+  if (!box) return;
   const pages = { '/': 'Inicio', '/guides': 'Guías', '/tools': 'Herramientas', '/updates': 'Actualizaciones', '/downloads': 'Descargas', '/search': 'Buscar en Athena', '/account': 'Mi cuenta', '/api': 'API para agentes' };
-  const name = t(path.startsWith('/content/') ? 'Guías' : pages[path] || 'Biblioteca');
-  title.textContent = name;
-  crumb.textContent = (path === '/' ? 'Automation Anywhere' : t('Biblioteca')) + ' › ' + name;
+  const heading = document.querySelector('.markdown-section h1');
+  const unavailable = Boolean(document.querySelector('.unavailable-page'));
+  const article = path.startsWith('/content/') && !unavailable;
+  const name = unavailable ? 'Artículo no disponible' : article ? heading?.textContent.trim() || 'Biblioteca' : pages[path] || heading?.textContent.trim() || 'Biblioteca';
+  const levels = commandLevels(path, name, document.querySelector('[data-article-kind]')?.dataset.articleKind, unavailable);
+  const label = (level) => level.article ? level.label : t(level.label);
+  const link = (level) => {
+    const node = document.createElement('a');
+    node.href = level.href;
+    node.textContent = label(level);
+    return node;
+  };
+  const separator = () => {
+    const node = document.createElement('span');
+    node.textContent = '›';
+    node.setAttribute('aria-hidden', 'true');
+    return node;
+  };
+  box.replaceChildren(link(levels[0]), separator());
+  const middle = levels.slice(1, -1);
+  if (middle.length) {
+    const details = document.createElement('details');
+    details.className = 'crumb-collapse';
+    const summary = document.createElement('summary');
+    summary.setAttribute('aria-label', t('Mostrar niveles ocultos'));
+    summary.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>';
+    const menu = document.createElement('div');
+    menu.className = 'crumb-menu';
+    menu.append(...middle.map(link));
+    details.append(summary, menu);
+    const sep = separator();
+    sep.className = 'crumb-more-sep';
+    box.append(details, sep);
+    middle.forEach((level) => {
+      const node = link(level), sep = separator();
+      node.className = sep.className = 'crumb-middle';
+      box.append(node, sep);
+    });
+  }
+  const current = document.createElement('span');
+  current.setAttribute('aria-current', 'page');
+  if (article) current.dataset.articleTitle = '';
+  current.textContent = label(levels.at(-1));
+  box.append(current);
+  const parent = levels.at(-2), back = document.querySelector('.command-parent');
+  back.hidden = !parent;
+  if (parent) {
+    back.href = parent.href;
+    back.querySelector('span').textContent = label(parent);
+  }
+  document.title = (article ? name : t(name)) + ' · Athena';
+  fitCommand();
+}
+
+function fitCommand() {
+  const bar = document.querySelector('.reader-command');
+  const box = document.querySelector('.command-crumbs');
+  if (!bar || !box) return;
+  bar.classList.remove('is-tight');
+  box.classList.remove('is-collapsed');
+  if (bar.scrollWidth > bar.clientWidth + 1 || [...box.children].some((node) => node.scrollWidth > node.clientWidth + 1)) {
+    box.classList.add('is-collapsed');
+    bar.classList.add('is-tight');
+  }
 }
 
 function updateSignInLinks() {
@@ -755,6 +816,23 @@ function updateSignInLinks() {
 }
 
 document.addEventListener('click', async (event) => {
+  if (event.target.closest('.skip-link')) {
+    event.preventDefault();
+    const main = document.querySelector('div#main');
+    // Docsify replaces the shell node, so focusability is set at use time.
+    main.tabIndex = -1;
+    main.focus({ preventScroll: true });
+    main.scrollIntoView({ block: 'start' });
+    return;
+  }
+  if (event.target.closest('#search-scope')) {
+    searchScope = '';
+    syncSearch();
+    filterGuides();
+    filterDownloads();
+    document.querySelector('#athena-search-input').focus();
+  }
+  document.querySelectorAll('.crumb-collapse[open]').forEach((menu) => { if (!menu.contains(event.target)) menu.open = false; });
   const topicJump = event.target.closest('[data-guide-topic]');
   if (topicJump) {
     const heading = document.getElementById(topicJump.dataset.guideTopic);
@@ -777,7 +855,7 @@ document.addEventListener('click', async (event) => {
     const route = getRouteState().path;
     const response = await fetch(route.endsWith('.md') ? route : route + '.md');
     if (!response.ok) throw new Error('Article request failed: ' + response.status);
-    const text = (await response.text()).replace(/\n*<div class="article-tools">.*<\/div>\n?$/, '\n');
+    const text = (await response.text()).replace(/\n*<div class="article-tools">.*<\/div>\n?$/, '\n').replace(/\n*<span class="article-context"[^>]*><\/span>\n?/, '\n');
     await navigator.clipboard.writeText(text);
     copyButton.classList.add('copied');
     label.textContent = t('Copiado');
@@ -795,8 +873,9 @@ document.addEventListener('submit', (event) => {
   if (!event.target.matches('#athena-search')) return;
   event.preventDefault();
   const query = event.target.querySelector('#athena-search-input').value;
+  if (!query.trim()) return;
   const { path } = getRouteState();
-  const type = path === '/search' ? document.querySelector('#athena-search-type')?.value || '' : '';
+  const type = path === '/search' ? document.querySelector('#athena-search-type')?.value || '' : searchScope;
   if (path === '/search') {
     replaceSearchUrl(query, type);
     renderSearchPage();
@@ -806,8 +885,10 @@ document.addEventListener('submit', (event) => {
 });
 
 document.addEventListener('input', (event) => {
-  if (event.target.matches('#guide-filter')) filterGuides();
-  if (event.target.matches('#download-filter')) filterDownloads();
+  if (event.target.matches('#athena-search-input')) {
+    filterGuides();
+    filterDownloads();
+  }
   if (event.target.matches('#athena-search-input') && getRouteState().path === '/search') {
     const type = document.querySelector('#athena-search-type')?.value || '';
     replaceSearchUrl(event.target.value, type);
@@ -816,12 +897,30 @@ document.addEventListener('input', (event) => {
 });
 
 document.addEventListener('change', (event) => {
-  if (event.target.matches('#guide-tag')) filterGuides();
   if (event.target.matches('#download-section')) filterDownloads();
   if (event.target.matches('#athena-search-type')) {
     const query = document.querySelector('#athena-search-input')?.value || '';
     replaceSearchUrl(query, event.target.value);
     renderSearchPage();
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  const input = document.querySelector('#athena-search-input');
+  if (!input) return;
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    window.athenaRail?.closeDrawer();
+    input.focus();
+    input.select();
+  } else if (event.key === 'Escape') {
+    document.querySelectorAll('.crumb-collapse[open]').forEach((menu) => { menu.open = false; });
+    if (event.target !== input) return;
+    event.preventDefault();
+    if (input.value) {
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    } else input.blur();
   }
 });
 
@@ -838,3 +937,9 @@ window.addEventListener('hashchange', syncView);
 window.addEventListener('scroll', updatePageTreeCurrent, { passive: true });
 const reader = document.querySelector('div#main');
 if (reader) new ResizeObserver(updatePageTreeLayout).observe(reader);
+
+const commandBar = document.querySelector('.reader-command');
+if (commandBar) {
+  new ResizeObserver(fitCommand).observe(commandBar);
+  document.fonts.ready.then(fitCommand);
+}

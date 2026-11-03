@@ -37,11 +37,6 @@ html[data-rail=compact] .rail-brand span::first-letter { font-size: 26px; }
 html[data-rail=compact] .rail-brand small { max-height: 0; margin: 0; opacity: 0; }
 
 /* Search: the form in expanded, one icon button in compact (reader only) */
-.rail-search-slot { max-height: 120px; margin: 0 0 18px; overflow: hidden; transition: opacity .18s var(--rail-ease), max-height var(--rail-dur) var(--rail-ease), margin var(--rail-dur) var(--rail-ease); }
-.rail-search-slot:empty { display: none; }
-html[data-rail=compact] .rail-search-slot { max-height: 0; margin: 0; opacity: 0; }
-.rail .rail-item.rail-search-button { display: none; width: 100%; margin: 0 0 6px; border: 0; background: transparent; cursor: pointer; }
-html[data-rail=compact] .rail .rail-item.rail-search-button { display: grid; }
 
 /* Groups: the label rule is separate from the item rules. */
 .rail-nav { flex: 1; min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }

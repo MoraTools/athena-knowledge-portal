@@ -21,16 +21,6 @@ div#main{min-height:100vh;width:auto;padding-left:var(--rail-current);container:
 .search .input-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto}
 .search input{width:100%;min-width:0;background:var(--field-bg);color:var(--text);border:1px solid var(--border-strong)!important;border-radius:var(--radius);padding:6px 12px!important;font:14px var(--font-ui)}
 .search input::placeholder{color:var(--text-subtle);opacity:1}
-.search-submit{min-height:32px;border:0;background:var(--accent);color:var(--on-accent);padding:6px 12px;font:600 13px/1 var(--font-ui);text-transform:none;cursor:pointer}
-.rail .search{margin:0!important}.rail .search .input-wrap{grid-template-columns:1fr}.rail .search input{height:32px;padding:0 12px!important;font-size:16px}.rail .search-submit{height:32px;padding:0 1rem}
-#home-search-slot{width:min(520px,100%);margin-top:1.6rem}
-#home-search-slot .search{margin:0!important;background:var(--field-bg)}
-#home-search-slot .search input{background:var(--field-bg);color:var(--text);padding:6px 12px!important}
-#home-search-slot .search input::placeholder{color:var(--text-subtle)}
-#search-page-slot{margin:var(--space-3) 0}
-#search-page-slot .search{margin:0!important;background:var(--field-bg)}
-#search-page-slot .search input{background:var(--field-bg);color:var(--text);padding:6px 12px!important;font-size:14px}
-#search-page-slot .search input::placeholder{color:var(--text-subtle)}
 .search-page{max-width:none}
 .search-toolbar{display:flex;align-items:center;gap:.8rem;margin:0 0 var(--space-2)}
 .search-toolbar label{color:var(--muted);font-weight:700}
@@ -237,10 +227,7 @@ body .markdown-section p.tip:before{color:var(--on-accent)}
 .visitor-note p{margin:0;flex:1 1 24rem}
 
 /* Suite shell: rail state still belongs to rail.js. */
-.reader-command{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;height:52px;margin-left:var(--rail-current);padding:0 24px;border-bottom:1px solid var(--border);background:var(--surface)}
-/* Crumb (12px line) and title (24px line) make a 36px block: 8px above and below in the 52px bar, as in the kit. */
-.command-lead{display:flex;flex-direction:column;justify-content:center;min-width:0;flex:1}.command-crumb{color:var(--text-muted);font:400 11px/14px var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.command-title{color:var(--text);font:600 26px/24px var(--font-display)}
-.reader-command .access-label{position:static;margin:0;padding:0;color:var(--text-subtle);font:600 11px/1.3 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.reader-command{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;height:52px;margin-left:var(--rail-current);padding:0 24px;border-bottom:1px solid var(--border);background:var(--bg)}
 @media(min-width:1025px){html:not([data-rail=hidden]) .command-menu{display:none}}
 .reader-command .suite-toggles{margin-left:0}.reader-command .article-actions{margin:0}
 body.article-view .markdown-section{max-width:calc(70ch + 48px);font-size:17px;line-height:1.65}
@@ -259,9 +246,57 @@ body .markdown-section p.tip::before{display:none}body .markdown-section p.tip :
 .status-coming-soon{color:var(--text-subtle)!important}
 .download-link,.download-pending,.pdf-link,.post-link{border-radius:var(--radius);font:600 13px/18px var(--font-ui);text-transform:none}
 @media(max-width:1024px){.reader-command{margin-left:0;padding:0 16px;gap:12px}}
-@media(max-width:600px){.reader-command{gap:8px}.reader-command .access-label{display:none!important}.command-crumb{font-size:10px}.command-title{font-size:22px}.reader-command .article-actions{display:none}}
+
 
 .suite-icon.command-menu{position:static;opacity:1;visibility:visible;transform:none;inset:auto;width:32px;height:32px;background:transparent;color:var(--text-muted);border-color:transparent}
 .search-result mark{background:var(--selection);color:var(--text);padding:0 .08em}
 .account-panel{border:1px solid var(--border);border-radius:var(--radius)}
 .timeline-card .post-meta time{font:inherit}
+
+/* Variant 1: the field shrinks before the middle breadcrumb levels collapse. */
+.command-lead{flex:1 0 auto;min-width:0}
+.reader-command.is-tight .command-lead{flex-shrink:1}
+.command-crumbs{display:flex;align-items:center;gap:var(--s-2);white-space:nowrap;color:var(--text-muted);font:var(--label-weight) var(--label-size)/1.3 var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform)}
+.command-crumbs a{color:var(--accent-text)}
+.command-parent{color:var(--text-muted);text-decoration:none}
+.command-crumbs a:hover,.command-parent:hover{color:var(--accent-text);text-decoration:underline}
+.command-crumbs>[aria-current]{overflow:hidden;text-overflow:ellipsis}
+.command-crumbs>[aria-current]{color:var(--text-muted)}
+.command-parent{display:none}
+.reader-command .athena-search{flex:0 100 420px;width:420px;min-width:240px;margin:0 0 0 auto!important;background:transparent}
+.reader-command .input-wrap{position:relative;display:flex;align-items:center;gap:var(--s-2);height:var(--control-h);padding:0 var(--s-2);border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--field-bg)}
+.reader-command .input-wrap:focus-within{outline:2px solid var(--focus);outline-offset:2px}
+.reader-command .search input{flex:1;width:0;height:100%;padding:0!important;border:0!important;outline:0;background:transparent;font-size:14px}
+.reader-command svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.search-icon{color:var(--text-subtle)}
+.reader-command kbd{flex:none;margin:0;padding:2px 5px;border:1px solid var(--border-strong);border-radius:var(--radius-chip);background:var(--surface-strong);font:500 11px/1.2 var(--font-mono);color:var(--text-muted);white-space:nowrap}
+.search-scope{display:flex;align-items:center;gap:var(--s-1);flex:none;height:22px;margin:0;padding:0 var(--s-2);border:1px solid var(--accent-edge);border-radius:var(--radius-chip);background:var(--surface-strong);color:var(--accent-text);font:var(--chip-weight) var(--chip-size)/1 var(--chip-font);letter-spacing:var(--chip-tracking);text-transform:var(--chip-transform);cursor:pointer;white-space:nowrap}
+.search-scope[hidden]{display:none}
+.search-scope:hover{background:var(--surface-raised)}
+.search-scope svg{width:12px;height:12px}
+.crumb-collapse,.crumb-more-sep{display:none}
+.is-collapsed .crumb-collapse{display:block;position:relative}
+.is-collapsed .crumb-more-sep{display:inline}
+.is-collapsed .crumb-middle{display:none}
+.crumb-collapse summary{display:grid;place-items:center;cursor:pointer;list-style:none;min-width:var(--control-h);min-height:var(--control-h);color:var(--text)}
+.crumb-collapse summary::-webkit-details-marker{display:none}
+.crumb-menu{position:absolute;top:100%;left:0;min-width:160px;padding:var(--s-2);border:1px solid var(--border-strong);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow-overlay)}
+.crumb-menu a{display:block;padding:var(--s-2)}
+html{scroll-padding-top:76px}
+@media(max-width:760px){
+  .reader-command{height:auto;min-height:113px;flex-wrap:wrap;gap:var(--s-2);padding:var(--s-2) var(--space-2)}
+  .reader-command .command-lead{flex:1 1 0;min-width:0}
+  .command-crumbs{display:none}
+  .reader-command .access-label{display:none!important}
+  .command-parent:not([hidden]){display:flex;align-items:center;gap:var(--s-1);min-height:44px}
+  .command-parent span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .reader-command .athena-search{order:3;flex:1 1 100%;min-width:0;width:100%}
+  .reader-command .input-wrap{height:44px}
+  .reader-command .search input{font-size:16px}
+  .reader-command kbd{display:none}
+  .reader-command .suite-icon{width:44px;height:44px}
+  .search-scope{min-width:44px;min-height:44px}
+  html{scroll-padding-top:140px}
+  .skip-link{min-height:44px}
+}
+@media print{.reader-command{display:none}}

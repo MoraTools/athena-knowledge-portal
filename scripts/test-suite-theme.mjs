@@ -44,6 +44,8 @@ console.log('Suite preferences, browser fallbacks, reset rules, head ordering, C
 const urlIndex = process.argv.indexOf('--url');
 if (urlIndex === -1) process.exit(0);
 const origin = new URL(process.argv[urlIndex + 1]).origin;
+const topbar = process.argv.includes('--topbar');
+const widths = topbar ? [1440, 960, 390] : [1440, 390];
 const sessionIndex = process.argv.indexOf('--session');
 const session = sessionIndex === -1 ? '' : process.argv[sessionIndex + 1];
 const shotsIndex = process.argv.indexOf('--screenshots');
@@ -115,7 +117,10 @@ try {
     }
     await ready(path);
   }
-  const routes = [
+  const routes = topbar ? [
+    ['home', '/#/'], ['guides', '/#/guides'], ['article', '/#/content/core-framework'],
+    ['search', '/#/search?q=credential+vault'], ['downloads', '/#/downloads']
+  ] : [
     ['home', '/#/'], ['guides', '/#/guides'], ['article', '/#/content/domxpath'], ['search', '/#/search?q=recorder'],
     ['tools', '/#/tools'], ['updates', '/#/updates'], ['signin', '/accounts/login/'], ['admin-signin', '/admin/login/']
   ];
@@ -244,6 +249,21 @@ try {
     assert.deepEqual(state.clipped, [], `${name}: text clipped at the viewport edge`);
     assert(state.lastToggle >= width - 48, `${name}: toggles must end at the far right`);
     assert(state.toggles.every((box) => box.width > 0 && box.x >= 0 && box.x + box.width <= width && box.y < 52), `${name}: toggles clipped`);
+    if (topbar) {
+      const bar = await evaluate(`(() => {
+        const input = document.querySelector('#athena-search-input'), rect = input.getBoundingClientRect();
+        const current = document.querySelector('.command-crumbs>[aria-current]');
+        const parent = document.querySelector('.command-parent');
+        return { fields:document.querySelectorAll('input[type=search]').length, inBar:!!input.closest('.reader-command'), visible:input.checkVisibility(), left:rect.left, right:rect.right, width:rect.width, h1:document.querySelectorAll('.markdown-section h1').length, old:!!document.querySelector('#guide-filter,#guide-tag,#download-filter,.rail-search-button,.rail-search-slot,.command-title'), parent:parent.checkVisibility(), linked:[...document.querySelectorAll('.command-crumbs a')].every(a=>a.getAttribute('href')?.startsWith('#/')), current:current?.textContent, heading:document.querySelector('.markdown-section h1')?.textContent, title:document.title, targets:[...document.querySelectorAll('.reader-command button')].filter(e=>e.checkVisibility()).map(e=>e.getBoundingClientRect().height) };
+      })()`);
+      assert.equal(bar.fields, 1, name + ': one field');
+      assert(bar.inBar && bar.visible && bar.left >= 0 && bar.right <= width && bar.width > 40, name + ': visible field');
+      assert.equal(bar.h1, 1, name + ': one page heading');
+      assert(!bar.old && bar.linked, name + ': old controls gone and crumbs linked');
+      assert(bar.title.includes('Athena'), name + ': route title');
+      if (name.startsWith('article')) assert.equal(bar.current, bar.heading, 'Authored article title stays literal.');
+      if (width <= 760) assert(bar.targets.every(h=>h>=44), name + ': 44px controls');
+    }
     if (shots) {
       mkdirSync(shots, { recursive: true });
       const image = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
@@ -251,8 +271,8 @@ try {
     }
   }
   // Public screens, then the same reader with an isolated test account.
-  for (const [name, path] of routes) {
-    for (const width of [1440, 390]) for (const theme of ['dark', 'light']) for (const lang of ['es', 'en']) {
+  for (const [name, path] of routes.filter(([name]) => !topbar || name !== 'downloads')) {
+    for (const width of widths) for (const theme of ['dark', 'light']) for (const lang of ['es', 'en']) {
       await navigate(path, theme, lang, width);
       await checkLayout(name, theme, lang, width);
       if (lang === 'en' && width === 1440 && theme === 'dark') await audit(name);
@@ -261,21 +281,22 @@ try {
   }
   if (session) {
     await send('Network.setCookie', { name: 'sessionid', value: session, url: origin, httpOnly: true, sameSite: 'Lax' });
-    for (const [name, path] of [...routes.filter(([name]) => !name.endsWith('signin')), ['downloads', '/#/downloads'], ['account', '/#/account'], ['password', '/accounts/password_change/']]) {
-      for (const width of [1440, 390]) for (const [theme, lang] of [['dark', 'en'], ['light', 'es']]) {
+    for (const [name, path] of (topbar ? routes : [...routes.filter(([name]) => !name.endsWith('signin')), ['downloads', '/#/downloads'], ['account', '/#/account'], ['password', '/accounts/password_change/']])) {
+      for (const width of widths) for (const [theme, lang] of (topbar ? [['dark', 'es'], ['dark', 'en'], ['light', 'es'], ['light', 'en']] : [['dark', 'en'], ['light', 'es']])) {
         await navigate(path, theme, lang, width);
         await checkLayout(name + '-account', theme, lang, width);
         if (lang === 'en' && width === 1440) await audit(name + '-account');
         if (width === 1440) await measureContrast(name + '-account', theme);
       }
     }
+    if (!topbar) {
     // Admin pages: every combination of width, theme and language.
     await navigate('/admin/athena/article/', 'dark', 'es');
     const articlePath = await evaluate(`new URL(document.querySelector('#result_list a[href*="/change/"]').href).pathname`);
     const adminRoutes = [['admin-index', '/admin/'], ['admin-articles', '/admin/athena/article/'], ['admin-article-form', articlePath],
       ['admin-users', '/admin/auth/user/'], ['admin-api-keys', '/admin/athena/apikey/'], ['admin-password', '/admin/password_change/']];
     for (const [name, path] of adminRoutes) {
-      for (const width of [1440, 390]) for (const theme of ['dark', 'light']) for (const lang of ['es', 'en']) {
+      for (const width of widths) for (const theme of ['dark', 'light']) for (const lang of ['es', 'en']) {
         await navigate(path, theme, lang, width);
         await checkLayout(name, theme, lang, width);
         if (lang === 'en' && width === 1440 && theme === 'dark') await audit(name);
@@ -291,6 +312,70 @@ try {
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
     assert.deepEqual(await evaluate(`(() => { const style = getComputedStyle(document.activeElement); return [document.activeElement.matches(':focus-visible'), style.outlineWidth, style.outlineStyle]; })()`), [true, '2px', 'solid'], 'admin focus outline');
+  }
+  }
+  if (topbar) {
+    assert(session, '--topbar requires an isolated test session');
+    await navigate('/#/guides', 'dark', 'es', 390);
+    assert.equal(await evaluate(`document.querySelector('#search-scope').hidden`), false);
+    await evaluate(`document.querySelector('.command-menu').click()`);
+    await send('Input.dispatchKeyEvent', { type:'keyDown', key:'k', code:'KeyK', modifiers:2, windowsVirtualKeyCode:75 });
+    await send('Input.dispatchKeyEvent', { type:'keyUp', key:'k', code:'KeyK', modifiers:2, windowsVirtualKeyCode:75 });
+    assert.deepEqual(await evaluate(`[document.documentElement.dataset.rail,document.activeElement.id]`), ['hidden','athena-search-input']);
+    await send('Input.insertText', { text:'framework' });
+    const filtered = await evaluate(`document.querySelector('#guide-count').textContent`);
+    assert.match(filtered, /^[1-9]/);
+    await evaluate(`document.querySelector('[data-suite-toggle=lang]').click()`);
+    assert.equal(await evaluate(`document.querySelector('#athena-search-input').value`), 'framework', 'Language switch retains a scoped query.');
+    const key = async (key, code=key, modifiers=0) => {
+      await send('Input.dispatchKeyEvent', { type:'keyDown', key, code, modifiers, ...(key === 'Enter' ? { windowsVirtualKeyCode:13, text:'\r' } : key === 'Escape' ? { windowsVirtualKeyCode:27 } : {}) });
+      await send('Input.dispatchKeyEvent', { type:'keyUp', key, code, modifiers });
+    };
+    await key('k','KeyK',4);
+    assert.equal(await evaluate(`document.querySelector('#athena-search-input').selectionEnd`), 9, 'Cmd+K selects the field.');
+    await key('Escape');
+    assert.equal(await evaluate(`document.querySelector('#athena-search-input').value`), '');
+    assert.equal(await evaluate(`document.activeElement.id`), 'athena-search-input');
+    await key('Escape');
+    assert.notEqual(await evaluate(`document.activeElement.id`), 'athena-search-input');
+    await evaluate(`document.querySelector('#athena-search-input').focus()`);
+    await key('Enter');
+    assert.equal(await evaluate('location.hash'), '#/guides', 'Empty Enter does nothing.');
+    await send('Input.insertText', {text:'no-such-guide-7283'});
+    assert.equal(await evaluate(`document.querySelector('#guide-count').textContent`), '0 results');
+    assert.equal(await evaluate(`document.querySelector('.library-empty').hidden`), false);
+    await evaluate(`document.querySelector('#search-scope').click()`);
+    assert.equal(await evaluate(`document.querySelector('#search-scope').hidden`), true);
+    assert.notEqual(await evaluate(`document.querySelector('#guide-count').textContent`), '0 results', 'Removing scope restores all guides.');
+    await evaluate(`document.querySelector('#athena-search-input').value='credential vault'`);
+    await key('Enter'); await delay(500);
+    assert.match(await evaluate('location.hash'), /^#\/search\?q=credential\+vault$/);
+    await navigate('/#/guides','dark','es',1440);
+    await evaluate(`document.querySelector('#athena-search-input').focus()`);
+    await send('Input.insertText',{text:'framework'}); await key('Enter'); await delay(500);
+    assert.match(await evaluate('location.hash'), /type=guide/);
+    assert.equal(await evaluate(`document.querySelector('#athena-search-type').value`),'guide');
+    await navigate('/#/downloads','light','en',960);
+    assert.equal(await evaluate(`document.querySelector('#search-scope span').textContent`),'In Downloads');
+    await evaluate(`document.querySelector('#athena-search-input').focus()`);
+    await send('Input.insertText',{text:'no-such-file-7283'});
+    assert.equal(await evaluate(`document.querySelector('#download-count').textContent`),'0 files');
+    await evaluate(`document.querySelector('#search-scope').click()`);
+    assert.notEqual(await evaluate(`document.querySelector('#download-count').textContent`),'0 files');
+    await navigate('/#/content/core-framework','dark','es',1040);
+    assert.deepEqual(await evaluate(`[document.querySelector('.command-crumbs').classList.contains('is-collapsed'), document.querySelector('.reader-command').scrollWidth <= document.querySelector('.reader-command').clientWidth + 1]`),[true,true],'Long crumbs collapse beside the expanded rail.');
+    await evaluate(`document.querySelector('.crumb-collapse summary').click()`);
+    assert.equal(await evaluate(`document.querySelector('.crumb-menu a').checkVisibility()`),true);
+    if(shots) { const image=await send('Page.captureScreenshot',{format:'png'}); writeFileSync(join(shots,'article-crumb-menu-dark-es-1040.png'),Buffer.from(image.data,'base64')); }
+    for(const route of ['/#/tools','/#/updates','/#/account','/#/api','/#/missing-route','/#/content/missing-article']) {
+      await navigate(route,'light','en',390);
+      await checkLayout(route.split('/').at(-1),'light','en',390);
+    }
+    await navigate('/#/guides','dark','es',390);
+    await evaluate(`document.querySelector('.skip-link').focus()`); await key('Enter');
+    assert.equal(await evaluate('location.hash'),'#/guides','Skip link must not change the reader route.');
+    assert.equal(await evaluate(`document.activeElement.matches('div#main')`),true,'Skip link focuses the main content.');
+    console.log('Top bar scopes, counts, Enter, empty Enter, Ctrl/Cmd+K, drawer, Escape, collapsed crumbs, route headings and skip link passed.');
   }
   await navigate('/#/guides', 'light', 'en');
   // Toggles must persist overrides, clear browser-equivalent choices, and translate repeat renders.

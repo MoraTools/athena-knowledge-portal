@@ -564,6 +564,30 @@ class PortalTests(TestCase):
         self.reader.refresh_from_db()
         self.assertEqual((self.reader.username, self.reader.is_staff, self.reader.is_superuser), ('reader', False, False))
 
+    def test_reader_has_one_persistent_header_search(self):
+        for user in [None, self.reader]:
+            if user:
+                self.client.force_login(user)
+            shell = self.client.get('/').content.decode()
+            header = shell.split('<header class="reader-command">', 1)[1].split('</header>', 1)[0]
+            self.assertEqual(shell.count('type="search"'), 1)
+            self.assertIn('id="athena-search-input"', header)
+            self.assertIn('class="command-crumbs"', header)
+            self.assertIn('class="command-parent"', header)
+            self.assertIn('id="search-scope"', header)
+            self.assertIn('href="#main"', shell)
+            for removed in ['rail-search-slot', 'rail-search-button', 'command-title', 'command-crumb"', 'athena-search-template']:
+                self.assertNotIn(removed, shell)
+            for route in ['/README.md', '/guides.md', '/tools.md', '/updates.md', '/search.md']:
+                self.assertNotContains(self.client.get(route), 'type="search"')
+
+    def test_article_breadcrumb_kind_comes_from_readable_article(self):
+        self.client.force_login(self.reader)
+        for kind in ['guide', 'tool', 'announcement', 'release', 'page']:
+            self.article.kind = kind
+            self.article.save()
+            self.assertContains(self.client.get('/content/first-guide.md'), f'data-article-kind="{kind}"')
+
     def test_new_article_button_on_guides_for_editors(self):
         self.client.force_login(self.reader)
         self.assertNotContains(self.client.get('/guides.md'), 'Nuevo artículo')
@@ -587,9 +611,9 @@ class PortalTests(TestCase):
         self.assertIn('<div class="guide-library"><div id="guide-source" hidden>', public)
         self.assertIn('<article class="guide-row"', public)
         self.assertIn('href="#/content/first-guide">Álvaro &lt;tema&gt; &amp; &quot;guía&quot;</a>', public)
-        self.assertIn('<label for="guide-filter">Buscar guías', public)
-        self.assertIn('placeholder="Título, autor, resumen o etiqueta"', public)
-        self.assertIn('<label for="guide-tag">Etiqueta', public)
+        self.assertIn('id="guide-count" class="result-count" role="status"', public)
+        self.assertNotIn('<input', public)
+        self.assertNotIn('guide-tag', public)
         for removed in ['guide-index', 'guide-table', 'guide-scroll-hint', 'guide-view-switch', 'data-guide-view']:
             self.assertNotIn(removed, public)
         self.assertIn('Equipo &lt;A&gt;', public)
@@ -1117,15 +1141,15 @@ class DownloadTests(TestCase):
         Download.objects.create(title='Versión 2025', section='previous', note='Solo lectura', file=ContentFile(b'old', name='old.zip'))
         self.client.force_login(self.reader)
         page = self.client.get('/downloads.md').content.decode()
-        self.assertIn('<input id="download-filter" type="search" placeholder="Buscar archivo, sección o nota" autocomplete="off">', page)
+        self.assertNotIn('<input', page)
         self.assertIn('<select id="download-section"><option value="">Todas</option><option value="framework">Framework</option>'
                       '<option value="previous">Versiones anteriores</option></select>', page)
-        self.assertIn('<p id="download-count" class="result-count" aria-live="polite"></p>', page)
+        self.assertIn('<p id="download-count" class="result-count" role="status" aria-live="polite" aria-atomic="true"></p>', page)
         self.assertIn('<section class="download-section" data-section="framework">', page)
         self.assertIn('<article class="catalog-item" data-search="Framework actual Plantilla A360+2024.zip Framework ">', page)
         self.assertIn('<article class="catalog-item" data-search="Versión 2025 old.zip Versiones anteriores Solo lectura">', page)
         self.assertIn('<p class="library-empty download-empty" hidden>No hay archivos que coincidan.</p>', page)
-        self.assertLess(page.index('id="download-filter"'), page.index('## Framework'))
+        self.assertLess(page.index('id="download-section"'), page.index('## Framework'))
         Download.objects.all().delete()
         page = self.client.get('/downloads.md').content.decode()
         self.assertIn('Todavía no hay archivos publicados.', page)

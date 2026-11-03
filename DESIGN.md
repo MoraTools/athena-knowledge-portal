@@ -65,7 +65,7 @@ In sortable reader tables, a column with body text longer than 60 characters has
 `.markdown-section` pads `--space-3 --space-3 --space-5`; at 768px and below `--space-3 --space-2 --space-4`.
 When the available reader container is at least 900px wide, article headings appear in a 216px sticky right-hand page tree. The article and tree share one grid and the page gutters. Below that width, the same native details tree appears above the article and starts closed. Its toggle stays available in both layouts. A width change restores the default only when the tree changes between the side and inline layouts; reader choices stay within the same layout.
 At reader widths of 900px and below, the home hero and account panels stack. At 600px and below, portal cards, search results, filter controls, and catalog entries use one column. The feed keeps each date above its post at this width, so the date column does not reduce the reading space.
-Guías and Descargas share one filter panel (`library-controls`): a search field and a select, 44px high, with a live result count.
+Guías shows one live result count and no in-page search field. Descargas keeps its section select and one live file count; its text filter comes from the command-bar field.
 Actualizaciones cards pad `--space-4` (`--space-3` at a reader width of 600px and below), with the meta line above a 2rem title and a 17px/1.6 summary. In the date-column layout, the badge is centred on the first line of the title.
 
 Mi cuenta shows the username, a role and last-session line, then Sesión and Mis claves de API side by side (1:2) above a 900px reader width and stacked below; administrators also get an Administración row of shortcuts.
@@ -96,8 +96,8 @@ Each item is a 20px line icon and an Inter 13px 500 label on a 40px row (44px fo
 
 | State | Rail | Behavior |
 | --- | --- | --- |
-| Expanded | 256px | Group labels, icons and labels; the reader search form sits above the groups. |
-| Compact | 72px | Icons only. Group labels fade out and thin rules separate the groups. A tooltip names the item on hover or focus. The current item is a filled tile. The wordmark shrinks to its A, and the search becomes an icon that expands the rail and focuses the field. |
+| Expanded | 256px | Group labels, icons and labels. |
+| Compact | 72px | Icons only. Group labels fade out and thin rules separate the groups. A tooltip names the item on hover or focus. The current item is a filled tile. The wordmark shrinks to its A. |
 | Hidden | 0 | The rail slides away; the menu button in the command bar brings it back (the admin keeps its floating button). |
 
 The control at the bottom of the rail switches Contraer and Expandir; its chevron turns. Keys: `]` toggles compact, `[` toggles hidden; both are ignored inside form fields.
@@ -108,7 +108,7 @@ On the directory at 1024px and below, `.rail-reveal` occupies a normal-flow row 
 
 ## Command bar and preferences
 
-The reader has a 52px sticky command bar: the menu button (when the rail is hidden or a drawer), the crumb and the Cormorant page title from the route, the access label on the home, then two icon toggles at the far right. Account pages and sign-in show the same toggles at the top right.
+The reader has a 52px sticky command bar: the menu button (when the rail is hidden or a drawer), linked breadcrumbs in the label voice, the only search field (420px, shrinking to 240px before middle breadcrumb levels collapse into a menu), the access label on the home, then two icon toggles at the far right. The page or article h1 is the only title. At 760px and below, row 1 has the menu, parent link and toggles; row 2 has the full-width field. Controls are 44px there. Ctrl/Cmd+K focuses and selects the field; Escape clears it, then leaves it. Guías and Descargas show a removable page-scope chip; with it, typing filters the page and Enter opens search with that type. Without it, Enter searches all Athena. Account pages and sign-in show the same toggles at the top right.
 The language toggle uses the Lucide languages icon; the theme toggle shows a sun in dark and a moon in light. Labels follow the current language.
 `src/assets/boot.js` runs blocking in `<head>` before the stylesheets and sets `data-theme` and `lang` from `suite.athena.theme` and `suite.athena.lang`, else from the browser (default language Spanish). A toggle back to the browser value removes the key; with no key, system changes apply live. While English loads, the body stays hidden until the first translation pass (1.5 s fallback).
 `src/assets/suite-i18n.js` translates interface text by its exact Spanish source after each Docsify render; article prose under `/content/` stays Spanish. Dates in `time[datetime]` use `Intl` in the current language. Theme changes animate colours for 160ms, none under reduced motion.

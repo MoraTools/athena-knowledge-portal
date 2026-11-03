@@ -127,6 +127,7 @@ EXPORT_ICON = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11m-5-
 def article_markdown(request, slug):
     article = get_object_or_404(visible_articles(request.user, include_drafts=True).defer('pdf'), slug=slug)
     body = article_body(article)
+    body += f'\n\n<span class="article-context" data-article-kind="{escape(article.kind)}" hidden></span>\n'
     tools = []
     if request.user.has_perm('athena.change_article'):
         edit = reverse('admin:athena_article_change', args=[article.pk])
