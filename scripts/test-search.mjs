@@ -75,7 +75,7 @@ if (process.argv.includes('--reader-integration')) {
   try {
     const result = spawnSync(join(root, '.venv/bin/python'), ['-c', `
 import json, sys
-from datetime import date
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 sys.path.insert(0, 'server')
 import django
@@ -86,11 +86,13 @@ from athena.models import Article
 entries = []
 for body in json.load(sys.stdin):
     article = SimpleNamespace(title='Guide', slug='guide', kind='guide', summary='Summary', author='Author',
-                              date=date(2026, 10, 9), tags=[], body=body, pdf_name='', published=True, format='markdown')
+                              date=date(2026, 10, 9), tags=[], body=body, pdf_name='', published=True, format='markdown',
+                              updated_at=datetime(2026, 10, 9, 12, tzinfo=timezone.utc))
     entries.append(search_entry(article) | {'markdown': article_body(article)})
 pages = []
 sample = Article(title='Guide', slug='guide', kind='guide', summary='Summary', author='Author',
-                 date=date(2026, 10, 9), tags=['RPA'], body='# Guide', published=True)
+                 date=date(2026, 10, 9), tags=['RPA'], body='# Guide', published=True,
+                 updated_at=datetime(2026, 10, 9, 12, tzinfo=timezone.utc))
 for authenticated in (False, True):
     user = SimpleNamespace(is_authenticated=authenticated, get_username=lambda: 'Reader', last_login=None)
     for template in ('search.md', 'home.md', 'not-found.md', 'account.md'):

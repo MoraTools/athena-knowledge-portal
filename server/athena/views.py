@@ -12,6 +12,7 @@ from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.defaultfilters import filesizeformat
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.html import escape, strip_tags
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from markdown_it import MarkdownIt
@@ -121,7 +122,7 @@ def search_entry(article):
     if article.format == 'html':
         # Headings live inside the sandboxed frame; results link to the article itself.
         return {'title': article.title, 'kind': article.kind, 'summary': article.summary, 'author': article.author,
-                'date': article.date.isoformat(), 'tags': article.tags, 'route': '#/content/' + article.slug,
+                'date': timezone.localdate(article.updated_at).isoformat(), 'tags': article.tags, 'route': '#/content/' + article.slug,
                 'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '', 'text': html_text(article.body),
                 'headings': []}
     body = article_body(article)
@@ -130,7 +131,7 @@ def search_entry(article):
     headings = [(token, tokens[i + 1]) for i, token in enumerate(tokens) if token.type == 'heading_open']
     return {
         'title': article.title, 'kind': article.kind, 'summary': article.summary,
-        'author': article.author, 'date': article.date.isoformat(), 'tags': article.tags,
+        'author': article.author, 'date': timezone.localdate(article.updated_at).isoformat(), 'tags': article.tags,
         'route': '#/content/' + article.slug, 'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '',
         'text': search_text(article.body), 'headings': [
             {'level': int(heading.tag[1:]), 'raw': inline.content,
@@ -380,7 +381,7 @@ def downloads_page(request):
 
 def library(request, section):
     kinds = {'guides': ['guide'], 'tools': ['tool'], 'updates': ['guide', 'announcement', 'release']}
-    articles = visible_articles(request.user).filter(kind__in=kinds[section]).defer('body', 'pdf')
+    articles = visible_articles(request.user).filter(kind__in=kinds[section]).defer('body', 'pdf').order_by('-updated_at', 'title')
     tags = sorted({tag for article in articles for tag in article.tags})
     return render(request, 'library.md', {'section': section, 'articles': articles, 'tags': tags},
                   content_type='text/markdown; charset=utf-8')

@@ -5,7 +5,7 @@ import os
 import re
 import tempfile
 import zlib
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
@@ -22,6 +22,8 @@ from .admin import since
 from .forms import ArticleForm, DirectoryUserForm, EMAIL_UNAVAILABLE
 from .models import ApiKey, Article, Download, LoginAttempt
 from .views import article_html, pdf_fetcher, sidebar_links
+
+LIMA = timezone.get_fixed_timezone(-300)  # settings.TIME_ZONE has no daylight saving time.
 
 
 @override_settings(SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False)
@@ -600,13 +602,14 @@ class PortalTests(TestCase):
         self.article.author = 'Equipo <A>'
         self.article.summary = 'Resumen real & completo'
         self.article.tags = ['Café', 'A|B <tema> "x"', 'Helios', 'Seguridad']
-        self.article.date = date(2026, 1, 2)
+        self.article.date = date(2025, 5, 5)
         self.article.status = 'stable'
         self.article.pdf_name = 'original.pdf'
         self.article.url = 'https://example.test/guide?a=1&b=2'
         self.article.download_file = 'approved.zip'
         self.article.is_public = True
         self.article.save()
+        Article.objects.filter(pk=self.article.pk).update(updated_at=datetime(2026, 1, 2, 15, tzinfo=LIMA))
         public = self.client.get('/guides.md').content.decode()
         self.assertIn('<div class="guide-library"><div id="guide-source" hidden>', public)
         self.assertIn('<article class="guide-row"', public)
@@ -621,6 +624,7 @@ class PortalTests(TestCase):
         for tag in ['Café', 'A|B &lt;tema&gt; &quot;x&quot;', 'Helios', 'Seguridad']:
             self.assertIn(f'<span>{tag}</span>', public)
         self.assertIn('<time datetime="2026-01-02">2026-01-02</time>', public)
+        self.assertNotIn('2025-05-05', public)
         self.assertIn('status-stable', public)
         self.assertIn('href="#/content/first-guide"', public)
         self.assertIn('href="/pdf/first-guide.pdf"', public)
@@ -639,11 +643,14 @@ class PortalTests(TestCase):
 
     def test_guides_keep_access_filters_draft_exclusion_and_server_date_order(self):
         public = Article.objects.create(title='Public guide', slug='public-guide', summary='Public summary',
-                                        author='Public author', tags=['Public'], date=date(2026, 10, 13),
+                                        author='Public author', tags=['Public'], date=date(2020, 1, 1),
                                         published=True, is_public=True)
-        self.article.date = date(2026, 1, 1)
+        self.article.date = date(2026, 12, 31)
         self.article.tags = ['Private tag']
         self.article.save()
+        # The list follows the last update, not the editable article date.
+        Article.objects.filter(pk=self.article.pk).update(updated_at=datetime(2026, 1, 1, 12, tzinfo=LIMA))
+        Article.objects.filter(pk=public.pk).update(updated_at=datetime(2026, 10, 13, 12, tzinfo=LIMA))
         Article.objects.create(title='Public draft', slug='public-draft', summary='Draft summary', author='Draft author',
                                tags=['Draft tag'], published=False, is_public=True)
         Article.objects.create(title='Private draft', slug='private-draft', summary='Secret draft', author='Draft author',
@@ -665,6 +672,29 @@ class PortalTests(TestCase):
             self.assertNotIn('Public draft', page)
             self.assertNotIn('Private draft', page)
             self.assertNotIn('Secret draft tag', page)
+
+    def test_tools_and_feed_show_and_order_by_last_update_in_site_time(self):
+        Article.objects.filter(pk=self.article.pk).update(
+            date=date(2026, 12, 31), updated_at=datetime(2026, 9, 2, 3, tzinfo=timezone.get_fixed_timezone(0)))  # 2026-09-01 in Lima
+        for slug, kind in [('old-tool', 'tool'), ('new-tool', 'tool'), ('b-release', 'release'), ('a-release', 'release')]:
+            Article.objects.create(title=slug, slug=slug, kind=kind, summary='S', author='A', date=date(2020, 1, 1),
+                                   published=True)
+        stamps = {'old-tool': datetime(2026, 3, 1, 12, tzinfo=LIMA), 'new-tool': datetime(2026, 10, 20, 12, tzinfo=LIMA),
+                  'a-release': datetime(2026, 10, 5, 12, tzinfo=LIMA), 'b-release': datetime(2026, 10, 5, 12, tzinfo=LIMA)}
+        for slug, stamp in stamps.items():
+            Article.objects.filter(slug=slug).update(updated_at=stamp)
+        self.client.force_login(self.reader)
+        tools = self.client.get('/tools.md').content.decode()
+        self.assertLess(tools.index('#/content/new-tool'), tools.index('#/content/old-tool'))
+        self.assertIn('<time datetime="2026-10-20">2026-10-20</time>', tools)
+        self.assertNotIn('2020-01-01', tools)
+        updates = self.client.get('/updates.md').content.decode()
+        slugs = re.findall(r'<h2><a href="#/content/([\w-]+)">', updates)
+        self.assertEqual(slugs, ['a-release', 'b-release', 'first-guide'])  # Equal updates fall back to the title.
+        self.assertIn('<time datetime="2026-09-01"><span class="day">01</span>', updates)
+        self.assertIn('<time datetime="2026-09-01">01/09/2026</time>', updates)
+        self.assertRegex(updates, r'(?s)<h2>Octubre 2026</h2>.*<h2>Septiembre 2026</h2>')
+        self.assertNotIn('31/12/2026', updates)
 
     def test_guide_topics_do_not_change_tools_or_updates(self):
         Article.objects.create(title='Real tool', slug='real-tool', kind='tool', summary='Tool summary', author='Tool author',

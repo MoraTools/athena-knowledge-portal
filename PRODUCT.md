@@ -41,7 +41,7 @@ Existing article routes must remain stable.
 
 - Replace the Docsify dropdown results with a dedicated, shareable route such as `#/search?q=recorder`.
 - Search all Athena content: guides, tools, updates, downloads, and PDF-only entries.
-- Each result shows its title, content type, summary, author, date, tags, best matching excerpt, and a direct link to the matching section when available.
+- Each result shows its title, content type, summary, author, last update date, tags, best matching excerpt, and a direct link to the matching section when available.
 - Results update while the user types and the query stays synchronized with the URL.
 - Include one simple content-type filter.
 - Matching is case-insensitive and accent-insensitive.

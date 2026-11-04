@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 
 from django.test import SimpleTestCase
@@ -9,7 +9,8 @@ from .views import article_body, search_entry
 class ReaderRegressionTests(SimpleTestCase):
     def article(self, body, **changes):
         fields = dict(title='Guide', slug='guide', kind='guide', summary='Summary', author='Author',
-                      date=date(2026, 10, 9), tags=['RPA'], body=body, pdf_name='', published=True, format='markdown')
+                      date=date(2026, 10, 9), tags=['RPA'], body=body, pdf_name='', published=True, format='markdown',
+                      updated_at=datetime(2026, 10, 12, 3, 0, tzinfo=timezone.utc))
         return SimpleNamespace(**(fields | changes))
 
     def test_search_uses_actual_h1_and_ignores_fenced_headings(self):
@@ -21,6 +22,8 @@ class ReaderRegressionTests(SimpleTestCase):
         self.assertIn('needle', entry['headings'][1]['text'])
         self.assertEqual(entry['route'], '#/content/guide')
         self.assertEqual(entry['tags'], ['RPA'])
+        # The last update in the site time zone (America/Lima), not the editable article date.
+        self.assertEqual(entry['date'], '2026-10-11')
 
     def test_search_preserves_inline_source_setext_and_duplicate_order(self):
         article = self.article('## **Deploy** and [help](https://example.test)\n\nFirst\n\n'
