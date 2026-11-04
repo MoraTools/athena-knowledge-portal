@@ -2,7 +2,7 @@ from django import template
 from django.utils import timezone
 
 from ..admin import since as _since
-from ..models import Article, readable_articles
+from ..models import Article, DownloadEvent, readable_articles
 from ..views import sidebar_links
 
 register = template.Library()
@@ -38,3 +38,14 @@ def readable_log(entries, user):
     existing = Article.objects.filter(pk__in=ids)
     hidden = {str(pk) for pk in existing.exclude(pk__in=readable_articles(user, existing).values('pk')).values_list('pk', flat=True)}
     return [entry for entry in entries if entry.content_type_id != kind or entry.object_id not in hidden]
+
+
+@register.simple_tag
+def recent_activity(user, limit=15):
+    """Última actividad: readable admin log entries and, for view_downloadevent holders, downloads; newest first."""
+    from django.contrib.admin.models import LogEntry
+    items = [(entry.action_time, entry) for entry in
+             readable_log(LogEntry.objects.select_related('content_type', 'user')[:limit], user)]
+    if user.has_perm('athena.view_downloadevent'):
+        items += [(event.downloaded_at, event) for event in DownloadEvent.objects.all()[:limit]]
+    return [item for _, item in sorted(items, key=lambda pair: pair[0], reverse=True)[:limit]]

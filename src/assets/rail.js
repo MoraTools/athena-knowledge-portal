@@ -25,14 +25,15 @@
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
     collapse: '<path d="m15 6-6 6 6 6"/><path d="M5 5v14"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+    log: '<path d="M12 3v9m-4-4 4 4 4-4"/><path d="M4 16h16M4 20h10"/>',
     dot: '<circle cx="12" cy="12" r="3"/>'
   };
   // Icons follow the link label from /_sidebar.md and the admin model names.
   const LABEL_ICONS = {
-    Home: 'home', Guides: 'book', Tools: 'tool', Downloads: 'download', Contribute: 'plus', 'My account': 'user', 'Sign in': 'user', 'Manage Athena': 'gear', 'API for agents': 'code', Articles: 'file', 'API keys': 'key', Users: 'users',
+    Home: 'home', Guides: 'book', Tools: 'tool', Downloads: 'download', Contribute: 'plus', 'My account': 'user', 'Sign in': 'user', 'Manage Athena': 'gear', 'API for agents': 'code', Articles: 'file', 'API keys': 'key', 'Logged downloads': 'log', Users: 'users',
     Inicio: 'home', 'Guías': 'book', Feed: 'clock', Herramientas: 'tool', Descargas: 'download',
     Contribuir: 'plus', 'Mi cuenta': 'user', Ingresar: 'user', 'Administrar Athena': 'gear', 'API para agentes': 'code',
-    'Artículos': 'file', 'Claves de API': 'key', Usuarios: 'users'
+    'Artículos': 'file', 'Claves de API': 'key', 'Descargas registradas': 'log', Usuarios: 'users'
   };
   const tip = document.createElement('div');
   tip.className = 'rail-tip';

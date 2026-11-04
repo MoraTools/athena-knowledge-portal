@@ -2,7 +2,7 @@
 
 Athena runs on a DigitalOcean VPS with Django, SQLite, Gunicorn, and Caddy.
 The Spanish reader keeps its existing Docsify routes. Published articles can be public or require an account. Existing articles remain private by default.
-The current portal version is `1.16.0`; the REST API is `1.8.0`.
+The current portal version is `1.17.0`; the REST API is `1.8.0`.
 
 ## Production
 
@@ -85,6 +85,8 @@ The reader's **Descargas** page lists them in sections: Framework, Paquetes, Eje
 1. Open **Administración → Descargas → Añadir**.
 2. Enter a title, choose the section, and select the file. The original file name is kept. Optionally add a short note.
 3. Save. Athena records the size and SHA-256 checksum. Clear **Publicado** to hide a file without deleting it.
+
+Every file that a signed-in user downloads (`/downloads/<slug>` or `/downloads/framework/latest`) is logged: the username, the download record, the title, file name, size and SHA-256 of the file that was served, the path, and the time. A missing file (404) and a visitor who is sent to sign in are not logged. Athena does not store IP addresses or user agents, and there is no retention limit yet. Only superusers and holders of the `athena.view_downloadevent` permission see the log: **Administración → Descargas registradas** (read-only; filters by user, download and date; search by username, title or file name) and the download lines in **Última actividad** on the admin index. Other administrators see Última actividad as before. The user directory does not grant this permission, so in practice only superusers see the log. The log entry keeps the username and the file data after the account is renamed or deleted, or the download is replaced or deleted.
 
 Deleting a download also deletes its file. Uploads of up to 512 MB pass the proxy on `/admin/` and `/api/`; agents can use the API (see [API.md](API.md)).
 Files are in `/var/lib/athena/media/downloads/`. To load a folder tree once, copy it to the VPS and run:

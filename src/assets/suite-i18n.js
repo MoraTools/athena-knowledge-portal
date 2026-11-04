@@ -131,6 +131,7 @@
     'Sin marcar, el administrador solo consulta.': 'Unchecked, the administrator can only view.', 'Restablecer contraseña': 'Reset password', 'Confirmar contraseña': 'Confirm password',
     'No puedes eliminar tu propia cuenta': 'You cannot delete your own account', 'Solo un administrador con todos los permisos puede editar esta cuenta.': 'Only an administrator with all permissions can edit this account.',
     'Copie la clave ahora. Athena guarda solo su hash y': 'Copy the key now. Athena stores only its hash and', 'no volverá a mostrarla': 'will not show it again',
+    'Descargas registradas': 'Logged downloads', 'descarga registrada': 'logged download', 'descargó': 'downloaded', 'Ver todas las descargas': 'View all downloads', 'Ruta': 'Path',
     'Configurar en la terminal': 'Set up in the terminal', 'Comprobar acceso': 'Check access', 'Ya la copié': 'I copied it', 'Documentación de la API': 'API documentation'
   };
   const sourceText = new WeakMap();
@@ -138,7 +139,7 @@
   const content = '[data-article-title],.guide-title,.guide-summary,.guide-author,.guide-topic-meta>span,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div,.image-viewer__caption';
   const articleUI = '.article-actions,.article-tools,.article-access,.pdf-viewer__actions,.page-tree summary,.pagination-item,.unavailable-page';
   // Admin user content: titles, names, authors, usernames, the Markdown source and the raw key.
-  const adminContent = '#result_list tbody :is(.field-title,.field-name,.field-author,.field-user),.actionlist a,.actionlist strong,.directory-table tbody th,.directory-panel header h2,.desk-user,.key-created code,textarea,.readonly a';
+  const adminContent = '#result_list tbody :is(.field-title,.field-name,.field-author,.field-user,.field-username,.field-filename,.field-path),.actionlist .download-file,.actionlist a,.actionlist strong,.directory-table tbody th,.directory-panel header h2,.desk-user,.key-created code,textarea,.readonly a';
   const drafts = new WeakSet();
   const articleRoute = () => /^#\/content\//.test(location.hash);
   function eligible(element, attributes = false) {
@@ -157,13 +158,14 @@
   const nouns = { 'artículo': 'article', 'clave de API': 'API key', 'claves de API': 'API key', 'descarga': 'download', 'usuario': 'user', 'archivo': 'file', 'palabra': 'word', 'imagen': 'image', 'imágenes': 'image' };
   const patterns = [[/^Mostrar (\d+) archivos?$/, (n) => `Show ${plural(n, 'file')}`], [/^(\d+) resultados?$/, (n) => plural(n, 'result')],
     [/^(\d+) (artículos?|claves? de API|descargas?|usuarios?|palabras?)$/, (n, noun) => plural(n, nouns[noun.replace(/s$/, '')] || nouns[noun])],
+    [/^(\d+) descargas? registradas?$/, (n) => plural(n, 'logged download')],
     [/^(\d+) seleccionados?$/, (n) => `${n} selected`], [/^Restringido \((\d+)\)$/, (n) => `Restricted (${n})`],
     [/^Acceso restringido: (\d+) usuarios?\.$/, (n) => `Restricted access: ${plural(n, 'user')}.`], [/^hace (\d+) (min|h)$/, (n, unit) => `${n} ${unit} ago`], [/^hace (\d+) días$/, (n) => `${n} days ago`],
     [/^(Ver|Editar|Eliminar|Descargar): (.+)$/s, (verb, name) => `${english(verb)}: ${name}`],
     [/^(creó|editó|eliminó) (.+?) · (.+)$/, (verb, noun, when) => `${english(verb)} ${english(noun)} · ${english(when)}`],
     [/^Ordenar (.+) en orden (ascendente|descendente)$/, (label, order) => `Sort ${english(label)} in ${english(order)}`],
     [/^Clave de API · (.+) · (.+) · vence$/s, (name, scope) => `API key · ${name} · ${english(scope)} · expires`],
-    [/^› (.+)$/s, (rest) => `› ${english(rest)}`],
+    [/^› (.+)$/s, (rest) => `› ${english(rest)}`], [/^· (.+)$/s, (rest) => `· ${english(rest)}`],
     [/^Subiendo (\d+) imág?(?:en|enes)\. Puede seguir escribiendo; espere para guardar\.$/, (n) => `Uploading ${plural(n, 'image')}. You can keep writing; wait before you save.`],
     [/^(.+) importado\. Puede editar el Markdown antes de guardar\.$/s, (name) => `${name} imported. You can edit the Markdown before you save.`],
     [/^(.+?): (.+) Su texto se conservó\.$/s, (name, error) => `${name}: ${english(error)} Your text was kept.`]];

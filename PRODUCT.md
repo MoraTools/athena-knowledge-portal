@@ -28,6 +28,7 @@ Existing article routes must remain stable.
 - Article lists and indexes are generated from published database records at request time. Existing approved package catalogs are preserved.
 - Search and filtering run in the browser using an access-filtered search index. Anonymous visitors receive only published public articles; signed-in readers also receive private published articles and approved download records.
 - Admins can add/remove users, rename accounts, reset passwords, edit/upload Markdown and PDFs, and publish drafts.
+- Each file download by a signed-in user is logged (user, file as served, path, time; no IP address or user agent). Only superusers and `view_downloadevent` holders see the log, in Descargas registradas and in Última actividad.
 - Agents use scoped, expiring bearer keys and the documented REST API.
 
 ## Experience principles

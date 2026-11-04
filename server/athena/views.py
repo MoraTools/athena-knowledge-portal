@@ -17,7 +17,7 @@ from django.utils.html import escape, strip_tags
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from markdown_it import MarkdownIt
 
-from .models import ApiKey, Article, Download, ManagedImage, readable_articles, visible_articles
+from .models import ApiKey, Article, Download, DownloadEvent, ManagedImage, readable_articles, visible_articles
 
 
 def article_image_upload(request):
@@ -346,18 +346,25 @@ def pdf(request, slug):
     })
 
 
-def send_download(item):
+def send_download(request, item):
     try:
         file = open(item.file.path, 'rb')
     except FileNotFoundError:
         raise Http404
+    try:  # The row was read with the path just opened, so the snapshot names the bytes served.
+        DownloadEvent.objects.create(user=request.user, username=request.user.get_username(), download=item,
+                                     title=item.title, filename=item.filename, size=item.size, sha256=item.sha256,
+                                     path=request.path)
+    except BaseException:
+        file.close()
+        raise
     # FileResponse sets Content-Length and lets Gunicorn stream the file through wsgi.file_wrapper.
     return FileResponse(file, as_attachment=True, filename=item.filename)
 
 
 @login_required
 def download(request, slug):
-    return send_download(get_object_or_404(Download, slug=slug, published=True))
+    return send_download(request, get_object_or_404(Download, slug=slug, published=True))
 
 
 @login_required
@@ -366,7 +373,7 @@ def latest_framework(request):
     item = Download.objects.filter(section='framework', published=True).order_by('-created_at', '-pk').first()
     if item is None:
         raise Http404
-    return send_download(item)
+    return send_download(request, item)
 
 
 @login_required

@@ -247,6 +247,28 @@ class Download(models.Model):
             raise
 
 
+class DownloadEvent(models.Model):
+    """One served download file. Snapshots keep the user and the file as served, after a rename, swap or deletion."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, verbose_name='cuenta')
+    username = models.CharField('usuario', max_length=150)
+    download = models.ForeignKey(Download, null=True, on_delete=models.SET_NULL, verbose_name='descarga')
+    title = models.CharField('título', max_length=240)
+    filename = models.CharField('archivo', max_length=300)
+    size = models.PositiveBigIntegerField('tamaño')
+    sha256 = models.CharField('SHA-256', max_length=64)
+    path = models.CharField('ruta', max_length=200)
+    downloaded_at = models.DateTimeField('fecha', default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ['-downloaded_at', '-pk']
+        default_permissions = ('view',)  # A log: nobody adds, changes or deletes events.
+        verbose_name = 'descarga registrada'
+        verbose_name_plural = 'descargas registradas'
+
+    def __str__(self):
+        return f'{self.username} · {self.filename}'
+
+
 @receiver(models.signals.post_delete, sender=Download)
 def delete_download_file(sender, instance, **kwargs):
     name, storage = instance.file.name, instance.file.storage

@@ -19,7 +19,7 @@ from django.utils.safestring import mark_safe
 
 from .forms import (AdminArticleForm, ApiKeyForm, DirectoryUserCreationForm, DirectoryUserForm,
                     SafeUserChangeForm, may_manage_user, permissions, user_permission_names)
-from .models import ApiKey, Article, Download, readable_articles
+from .models import ApiKey, Article, Download, DownloadEvent, readable_articles
 
 admin.site.site_header = 'Athena · Administración'
 admin.site.site_title = 'Athena'
@@ -349,6 +349,36 @@ class DownloadAdmin(RowControlsAdmin):
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         return super().change_view(request, object_id, form_url, {'title': 'Editar descarga', 'subtitle': None, **(extra_context or {})})
+
+
+@admin.register(DownloadEvent)
+class DownloadEventAdmin(RowControlsAdmin):
+    """Descargas registradas: a read-only log for superusers and view_downloadevent holders."""
+    list_display = ['time', 'username', 'title', 'filename', 'human_size', 'path']
+    list_display_links = None
+    list_filter = ['username', 'download', 'downloaded_at']
+    search_fields = ['username', 'title', 'filename']
+    ordering = ['-downloaded_at', '-pk']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description='Fecha', ordering='downloaded_at')
+    def time(self, obj):
+        return formats.localize(timezone.localtime(obj.downloaded_at))
+
+    @admin.display(description='Tamaño', ordering='size')
+    def human_size(self, obj):
+        return filesizeformat(obj.size)
+
+    def changelist_view(self, request, extra_context=None):
+        return super().changelist_view(request, {'title': 'Descargas registradas', **(extra_context or {})})
 
 
 @admin.register(ApiKey)
