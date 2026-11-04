@@ -108,7 +108,7 @@ body .markdown-section p.tip:before{color:var(--on-accent)}
 body.article-view .markdown-section:has(.html-article,.html-article-frame){max-width:var(--content-max)}
 /* Image viewer for HTML articles: a modal dialog over the rail, the command bar and the article. */
 html:has(.image-viewer[open]){overflow:hidden}
-.image-viewer{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;grid-template:"bar bar bar" auto "prev stage next" minmax(0,1fr) "caption caption caption" auto/72px minmax(0,1fr) 72px;background:color-mix(in oklab,var(--rail) 94%,transparent);color:var(--text);font:14px/1.5 var(--font-ui);overscroll-behavior:contain}
+.image-viewer{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;grid-template:"bar bar bar" auto "prev stage next" minmax(0,1fr) "caption caption caption" auto/72px minmax(0,1fr) 72px;background:var(--rail);color:var(--text);font:14px/1.5 var(--font-ui);overscroll-behavior:contain}
 .image-viewer[open]{display:grid;animation:image-viewer-in .2s cubic-bezier(.16,1,.3,1)}
 .image-viewer::backdrop{background:transparent}
 @keyframes image-viewer-in{from{opacity:0}}
