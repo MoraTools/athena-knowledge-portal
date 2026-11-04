@@ -268,7 +268,7 @@ class HtmlArticleTests(TestCase):
         self.assertEqual(page.count('name="format"'), 2)
         response = self.client.post(f'/admin/athena/article/{self.article.pk}/change/', {
             'title': 'Demos', 'kind': 'guide', 'summary': 'Demos', 'author': 'Author', 'tags': '', 'date': '2026-11-03',
-            'format': 'markdown', 'body': '# Demos\n\nAhora Markdown.', 'published': 'on', 'is_public': 'False',
+            'format': 'markdown', 'body': '# Demos\n\nAhora Markdown.', 'published': 'on', 'access': 'account',
             'status': '', 'url': '', 'download_file': '', '_save': '1',
             'loaded_revision': self.article.updated_at.isoformat()})
         self.assertEqual(response.status_code, 302)

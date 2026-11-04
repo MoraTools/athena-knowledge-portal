@@ -10,7 +10,7 @@
 {% endblock %}
 {% block content %}
 <div id="content-main">
-  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="article_form" novalidate data-article-slug="{{ original.slug|default:'' }}" data-article-kind="{{ original.kind|default:'guide' }}" data-pdf-name="{{ original.pdf_name|default:'' }}" data-published="{{ original.published|yesno:'true,false' }}" data-public="{{ original.is_public|yesno:'true,false' }}" data-pdf-only="{{ original.pdf_only|yesno:'true,false' }}" data-format="{{ original.format|default:'markdown' }}">
+  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="article_form" novalidate data-article-slug="{{ original.slug|default:'' }}" data-article-kind="{{ original.kind|default:'guide' }}" data-pdf-name="{{ original.pdf_name|default:'' }}" data-published="{{ original.published|yesno:'true,false' }}" data-access="{{ original.access|default:'account' }}" data-pdf-only="{{ original.pdf_only|yesno:'true,false' }}" data-format="{{ original.format|default:'markdown' }}">
     {% csrf_token %}
     {{ adminform.form.loaded_revision }}
     {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
@@ -18,7 +18,7 @@
     <header class="desk-header">
       {% url opts|admin_urlname:'changelist' as list_url %}
       <a class="desk-back" href="{% add_preserved_filters list_url %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg>Artículos</a>
-      <span id="desk-state" class="desk-state">{% if original.published %}Publicado{% else %}Borrador{% endif %} · {% if original.is_public %}Público{% else %}Con cuenta{% endif %}</span>
+      <span id="desk-state" class="desk-state">{% if original.published %}Publicado{% else %}Borrador{% endif %} · {% if original.is_restricted %}Restringido{% elif original.is_public %}Público{% else %}Con cuenta{% endif %}</span>
       <button type="button" class="button desk-details" data-open-details>Detalles</button>
       <details class="desk-overflow">
         <summary class="button" aria-label="Más opciones"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></summary>
@@ -74,7 +74,7 @@
         {% for fieldset in adminform %}<button type="button" role="tab" id="desk-detail-tab-{{ forloop.counter }}" aria-controls="desk-detail-panel-{{ forloop.counter }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"{% if not forloop.first %} tabindex="-1"{% endif %} data-detail-tab>{{ fieldset.name }}</button>{% endfor %}
       </div>
       <div class="desk-dialog-body">
-        <div class="desk-dialog-status"><span id="desk-details-state">{% if original.published %}Publicado{% else %}Borrador{% endif %} · {% if original.is_public %}Público{% else %}Con cuenta{% endif %}</span><span class="desk-dialog-help">Cerrar conserva los cambios pendientes.</span></div>
+        <div class="desk-dialog-status"><span id="desk-details-state">{% if original.published %}Publicado{% else %}Borrador{% endif %} · {% if original.is_restricted %}Restringido{% elif original.is_public %}Público{% else %}Con cuenta{% endif %}</span><span class="desk-dialog-help">Cerrar conserva los cambios pendientes.</span></div>
         {% for fieldset in adminform %}
           <section class="desk-detail-panel" id="desk-detail-panel-{{ forloop.counter }}" role="tabpanel" aria-labelledby="desk-detail-tab-{{ forloop.counter }}">
             <h3 class="desk-detail-fallback-heading">{{ fieldset.name }}</h3>

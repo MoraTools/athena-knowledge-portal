@@ -14,7 +14,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from .forms import ArticleForm, protect_admin
-from .models import ApiKey, Article, Download, visible_articles
+from .models import ApiKey, Article, Download, readable_articles, visible_articles
 
 
 DOCS = '/api/docs/'
@@ -113,9 +113,12 @@ def me(request):
     })
 
 
-def article_data(article, detail=True):
+def article_data(article, detail=True, *, editor=False):
     result = {field: getattr(article, field) for field in
-              ('id', 'slug', 'title', 'kind', 'format', 'summary', 'author', 'tags', 'published', 'is_public', 'pdf_only', 'status', 'url', 'download_file')}
+              ('id', 'slug', 'title', 'kind', 'format', 'summary', 'author', 'tags', 'published', 'is_public', 'access',
+               'pdf_only', 'status', 'url', 'download_file')}
+    if editor:  # Usernames only for keys that can change articles.
+        result['allowed_users'] = sorted(user.username for user in article.allowed_users.all())
     result.update(date=article.date.isoformat(), updated_at=article.updated_at.isoformat(),
                   route=article.get_absolute_url(), pdf=f'/api/v1/articles/{article.slug}/pdf/' if article.pdf_name else None)
     if detail:
@@ -125,7 +128,7 @@ def article_data(article, detail=True):
 
 def article_form(data, instance=None, files=None, *, actor=None):
     fields = ArticleForm.Meta.fields
-    unknown = set(data) - set(fields)
+    unknown = set(data) - set(fields) - {'is_public'}
     if unknown:
         raise ValidationError('Unknown fields: ' + ', '.join(sorted(unknown)))
     for field in ('published', 'is_public', 'pdf_only'):
@@ -135,8 +138,28 @@ def article_form(data, instance=None, files=None, *, actor=None):
         raise ValidationError('tags must be a list of strings without commas.')
     if any(not isinstance(value, (str, list, bool)) for value in data.values()):
         raise ValidationError('Invalid field value type.')
+    if 'allowed_users' in data and (not isinstance(data['allowed_users'], list)
+                                    or any(not isinstance(name, str) for name in data['allowed_users'])):
+        raise ValidationError({'allowed_users': ['allowed_users must be a list of usernames.']})
     obj = instance or Article()
+    data = dict(data)
+    access = data.get('access', obj.access)
+    if 'is_public' in data:  # The 1.6 field still switches between public and account.
+        public = data.pop('is_public')
+        if public and access == 'restricted' or 'access' in data and public != (access == 'public'):
+            raise ValidationError({'is_public': ['A restricted article cannot be public; is_public must match access.']})
+        access = 'public' if public else 'account' if access == 'public' else access
+    data['access'] = access
     values = model_to_dict(obj, fields=fields)
+    values['allowed_users'] = [user.pk for user in values.get('allowed_users', [])]
+    if 'allowed_users' in data:
+        names = set(data.pop('allowed_users'))
+        if names and access != 'restricted':
+            raise ValidationError({'allowed_users': ['allowed_users needs access "restricted".']})
+        users = dict(User.objects.filter(username__in=names).values_list('username', 'pk'))
+        if names - users.keys():
+            raise ValidationError({'allowed_users': ['Unknown usernames: ' + ', '.join(sorted(names - users.keys()))]})
+        values['allowed_users'] = list(users.values())
     values.update(data)
     values['tags'] = ', '.join(values.get('tags') or [])
     form = ArticleForm(values, files=files, instance=obj, actor=actor)
@@ -150,10 +173,11 @@ def articles(request, slug=None):
     if request.method not in ('GET', 'POST', 'PATCH', 'DELETE'):
         return method_not_allowed('GET, POST, PATCH, DELETE')
     if request.method == 'GET':
-        query = visible_articles(request.user, include_drafts=can_edit(request, 'change')).defer('pdf')
+        editor = can_edit(request, 'change')
+        query = visible_articles(request.user, include_drafts=editor).defer('pdf').prefetch_related('allowed_users')
         if slug:
             article = get_object_or_404(query, slug=slug)
-            return JsonResponse(article_data(article), headers={'ETag': f'"{article.updated_at.isoformat()}"'})
+            return JsonResponse(article_data(article, editor=editor), headers={'ETag': f'"{article.updated_at.isoformat()}"'})
         if request.GET.get('q'):
             from django.db.models import Q
             q = request.GET['q']
@@ -163,14 +187,15 @@ def articles(request, slug=None):
         offset = max(0, int(request.GET.get('offset', 0)))
         limit = max(1, min(100, int(request.GET.get('limit', 50))))
         return JsonResponse({'count': query.count(), 'offset': offset, 'limit': limit,
-                             'results': [article_data(a, False) for a in query[offset:offset + limit]]})
+                             'results': [article_data(a, False, editor=editor) for a in query[offset:offset + limit]]})
     action = {'POST': 'add', 'PATCH': 'change', 'DELETE': 'delete'}[request.method]
     if not can_edit(request, action):
         return denied()
     if request.method == 'POST' and slug or request.method != 'POST' and not slug:
         return method_not_allowed('GET, PATCH, DELETE' if slug else 'GET, POST')
     with transaction.atomic():
-        article = get_object_or_404(Article, slug=slug) if slug else None
+        # A restricted article the key owner may not read does not exist for this key.
+        article = get_object_or_404(readable_articles(request.user), slug=slug) if slug else None
         if article and request.headers.get('If-Match') != f'"{article.updated_at.isoformat()}"':
             return JsonResponse({'error': 'Read the article and send its ETag in If-Match before changing it.'}, status=412)
         if request.method == 'DELETE':
@@ -180,13 +205,13 @@ def articles(request, slug=None):
         if article and 'slug' in data and data['slug'] != article.slug:
             raise ValidationError('Article slugs cannot be changed.')
         article = article_form(data, article, actor=request.user).save()
-        return JsonResponse(article_data(article), status=201 if request.method == 'POST' else 200,
+        return JsonResponse(article_data(article, editor=True), status=201 if request.method == 'POST' else 200,
                             headers={'ETag': f'"{article.updated_at.isoformat()}"'})
 
 
 @api
 def article_upload(request, slug, kind):
-    article = get_object_or_404(Article, slug=slug)
+    article = get_object_or_404(readable_articles(request.user), slug=slug)
     if request.method == 'GET' and kind == 'pdf':
         if not visible_articles(request.user, include_drafts=can_edit(request, 'change')).filter(pk=article.pk).exists():
             return denied()
@@ -205,7 +230,7 @@ def article_upload(request, slug, kind):
         if request.headers.get('If-Match') != f'"{article.updated_at.isoformat()}"':
             return JsonResponse({'error': 'Send the current article ETag in If-Match.'}, status=412)
         article = article_form({}, article, {f'{kind}_file': request.FILES['file']}, actor=request.user).save()
-        return JsonResponse(article_data(article), headers={'ETag': f'"{article.updated_at.isoformat()}"'})
+        return JsonResponse(article_data(article, editor=True), headers={'ETag': f'"{article.updated_at.isoformat()}"'})
 
 
 @api

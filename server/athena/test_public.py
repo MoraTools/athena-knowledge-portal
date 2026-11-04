@@ -117,17 +117,17 @@ class PublicArticleTests(TestCase):
         article = self.articles[True, False]
         url = f'/admin/athena/article/{article.pk}/change/'
         self.client.force_login(self.other_admin)
-        self.assertNotContains(self.client.get(url), 'name="is_public"')
-        self.assertEqual(self.client.post(url, {'is_public': 'True'}).status_code, 403)
+        self.assertNotContains(self.client.get(url), 'name="access"')
+        self.assertEqual(self.client.post(url, {'access': 'public'}).status_code, 403)
         self.client.force_login(self.editor)
-        self.assertContains(self.client.get(url), 'name="is_public"')
+        self.assertContains(self.client.get(url), 'name="access"')
         self.assertContains(self.client.get(url), 'Con cuenta')
         self.assertContains(self.client.get(url), 'Público')
         self.assertContains(self.client.get('/admin/athena/article/'), 'Acceso')
-        for value, expected in [('True', True), ('False', False)]:
+        for value, expected in [('public', True), ('account', False)]:
             form = ArticleForm({'title': article.title, 'slug': article.slug, 'kind': article.kind,
                                 'summary': article.summary, 'author': article.author, 'date': article.date,
-                                'body': article.body, 'published': 'on', 'is_public': value}, instance=article)
+                                'body': article.body, 'published': 'on', 'access': value}, instance=article)
             self.assertTrue(form.is_valid(), form.errors)
             self.assertEqual(form.save().is_public, expected)
 

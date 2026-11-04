@@ -1154,7 +1154,7 @@ document.addEventListener('click', async (event) => {
     const source = document.querySelector('.markdown-section .html-article-frame')?.dataset.source;
     const response = await fetch(source || (route.endsWith('.md') ? route : route + '.md'));
     if (!response.ok) throw new Error('Article request failed: ' + response.status);
-    const text = source ? await response.text() : (await response.text()).replace(/\n*<div class="article-tools">.*<\/div>\n?$/, '\n').replace(/\n*<span class="article-context"[^>]*><\/span>\n?/, '\n');
+    const text = source ? await response.text() : (await response.text()).replace(/\n*<div class="article-tools">.*<\/div>\n?$/, '\n').replace(/\n*<span class="article-context"[^>]*><\/span>\n?/, '\n').replace(/\n*<p class="article-access">[^<]*<\/p>\n?/, '\n');
     await navigator.clipboard.writeText(text);
     copyButton.classList.add('copied');
     label.textContent = t('Copiado');

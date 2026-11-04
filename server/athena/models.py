@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.storage import FileSystemStorage
 from django.db import models, transaction
+from django.db.models import Q
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.text import slugify
@@ -40,6 +41,10 @@ class Article(models.Model):
     published = models.BooleanField('publicado', default=False)
     is_public = models.BooleanField('acceso público', default=False,
                                     help_text='Si está publicado, cualquier persona puede leer el artículo, sus imágenes y sus PDF sin una cuenta. Los borradores siguen restringidos.')
+    is_restricted = models.BooleanField('acceso restringido', default=False,
+                                        help_text='Solo los usuarios seleccionados y los superusuarios pueden ver el artículo, sus imágenes y sus PDF.')
+    allowed_users = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='restricted_articles',
+                                           verbose_name='usuarios')
     pdf = models.BinaryField(blank=True, default=bytes)
     pdf_name = models.CharField(max_length=240, blank=True, editable=False)
     pdf_only = models.BooleanField('solo PDF', default=False,
@@ -72,8 +77,14 @@ class Article(models.Model):
             errors['status'] = 'Solo las herramientas tienen este estado.'
         if self.url and not self.url.startswith('https://'):
             errors['url'] = 'Use una dirección HTTPS.'
+        if self.is_restricted and self.is_public:
+            errors['is_public'] = 'Un artículo restringido no puede ser público.'
         if errors:
             raise ValidationError(errors)
+
+    @property
+    def access(self):
+        return 'restricted' if self.is_restricted else 'public' if self.is_public else 'account'
 
     def get_absolute_url(self):
         return '/#/content/' + self.slug
@@ -113,9 +124,20 @@ class ManagedImage(models.Model):
         return f'/article-images/{self.pk}/'
 
 
+def readable_articles(user, articles=None):
+    """The selected-users rule: a restricted article exists only for active superusers and its listed users."""
+    articles = Article.objects.all() if articles is None else articles
+    if not user.is_authenticated or not user.is_active:
+        return articles.filter(is_restricted=False)
+    if user.is_superuser:
+        return articles
+    listed = Article.allowed_users.through.objects.filter(user_id=user.pk).values('article_id')
+    return articles.filter(Q(is_restricted=False) | Q(pk__in=listed))
+
+
 def visible_articles(user, *, include_drafts=False):
     """One reader policy; API callers must also restrict draft access by key scope."""
-    articles = Article.objects.all()
+    articles = readable_articles(user)
     if not user.is_authenticated or not user.is_active:
         return articles.filter(published=True, is_public=True)
     if include_drafts and user.has_perm('athena.change_article'):

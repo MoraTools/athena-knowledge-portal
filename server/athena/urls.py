@@ -8,6 +8,7 @@ from . import api, views
 urlpatterns = [
     path('healthz', views.health),
     path('robots.txt', views.robots),
+    path('admin/r/<int:content_type_id>/<path:object_id>/', views.admin_view_on_site),
     path('admin/', admin.site.urls),
     path('accounts/login/', auth.LoginView.as_view()),
     path('accounts/logout/', auth.LogoutView.as_view()),

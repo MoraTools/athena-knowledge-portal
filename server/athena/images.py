@@ -22,7 +22,7 @@ from django.utils import timezone
 from markdown_it import MarkdownIt
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from .models import Article, ManagedImage, visible_articles
+from .models import Article, ManagedImage, readable_articles, visible_articles
 
 
 MAX_BYTES = 10 * 1024 * 1024
@@ -103,11 +103,15 @@ def attached_image_ids(articles):
 
 
 def usable_image_ids(ids, actor):
-    """The ids an editor may show: own uploads, or images already in an article the editor can read."""
-    foreign = set(ManagedImage.objects.filter(pk__in=ids).exclude(uploader_id=actor.pk).values_list('pk', flat=True))
-    if foreign:
-        foreign -= attached_image_ids(visible_articles(actor, include_drafts=True))
-    return set(ids) - foreign
+    """The ids an editor may show: images in an article the editor can read, or own uploads that no
+    restricted article hidden from the editor uses."""
+    ids = set(ids)
+    if not ids:
+        return ids
+    seen = attached_image_ids(visible_articles(actor, include_drafts=True))
+    own = set(ManagedImage.objects.filter(pk__in=ids, uploader_id=actor.pk).values_list('pk', flat=True))
+    hidden = attached_image_ids(Article.objects.exclude(pk__in=readable_articles(actor).values('pk')))
+    return {image_id for image_id in ids if image_id in seen or image_id in own and image_id not in hidden}
 
 
 def signed_image_url(image_id):

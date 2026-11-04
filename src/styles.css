@@ -69,6 +69,7 @@ body .markdown-section h1{font:600 40px/46px var(--font-display);text-wrap:balan
 body .markdown-section h2{font:600 30px/36px var(--font-display);text-wrap:balance}
 /* Heading margins keep the plain .markdown-section weight so card and timeline headings can set their own. */
 .markdown-section h1{margin:0 0 var(--space-2)}.markdown-section h2{margin:var(--space-4) 0 var(--space-2)}.markdown-section h3{margin:var(--space-4) 0 var(--space-1)}
+.markdown-section .article-access{margin:calc(-1 * var(--space-1)) 0 var(--space-3);color:var(--muted);font:400 14px/1.5 var(--font-ui)}
 body .markdown-section h3{font:650 18px/24px var(--font-ui);color:var(--text)}
 .markdown-section code,.markdown-section pre{font-family:var(--font-mono)}
 .markdown-section code{background:var(--surface-2);color:var(--code)}

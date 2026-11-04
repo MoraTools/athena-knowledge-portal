@@ -50,7 +50,7 @@ A scope never grants more authority than its owner has. A key owned by an ordina
 | GET | `/me/` | The key's owner, scope, expiry, and `can` map of allowed operations |
 | GET | `/articles/?q=recorder&kind=guide&offset=0&limit=50` | Search/list articles; maximum page size 100 |
 | POST | `/articles/` | Create an article, draft by default |
-| GET | `/articles/{slug}/` | Read article, `format`, body, metadata, and version `ETag` |
+| GET | `/articles/{slug}/` | Read article, `format`, `access`, body, metadata, and version `ETag` |
 | PATCH | `/articles/{slug}/` | Edit fields or change `published`; requires `If-Match` |
 | DELETE | `/articles/{slug}/` | Remove article and PDF; requires `If-Match` |
 | POST | `/articles/{slug}/markdown/` | Replace body from multipart field `file`; requires `If-Match` |
@@ -167,9 +167,27 @@ Errors are JSON under `error`: 400 invalid input, 401 invalid key, 403 insuffici
 503 image conversion busy (retry after the number of seconds in `Retry-After`, currently 2).
 A stale ETag means another edit was saved. Read the latest article before retrying; do not overwrite blindly.
 
+## Restricted articles
+
+API version 1.8.0 adds `access` to article create, read, and update: `public` (anyone, when published),
+`account` (any signed-in user; the default), or `restricted` (only the listed users and active superusers).
+Keys that can edit articles also read and write `allowed_users`, a list of usernames; it replaces the stored list.
+
+```json
+{"access": "restricted", "allowed_users": ["ana", "luis", "marta"]}
+```
+
+- An unknown username answers `400` on `allowed_users`. A non-empty list needs `access: "restricted"`.
+- A restricted article is never public: `is_public: true` on it, or `is_public` that contradicts `access`, answers `400`.
+- Changing `access` to `public` or `account` clears `allowed_users`.
+- A key acts as its owner. If the owner is not listed and is not a superuser, the article does not exist for the
+  key: list, read, PATCH, DELETE, `markdown/`, `pdf/`, and its images answer `404`, also for editors.
+- Images used only by restricted articles follow the same rule. An image that a public article also uses stays public.
+- Drafts stay drafts: a listed user without edit rights sees the article only when it is published.
+
 ## Public article access
 
-Article responses include `is_public`. New articles default to `false`; PATCH accepts only a JSON boolean.
+Article responses include `is_public` and `access`. New articles default to `false` (`account`); PATCH accepts only a JSON boolean for `is_public`.
 Set `published: true` and `is_public: true` to permit anonymous reading through the existing reader URL, image URLs, and PDF routes.
 Setting only `is_public` does not publish a draft. `is_public: false` requires a user account again.
 All `/api/v1/articles/` operations still require a bearer key. Existing scopes, user edit permissions, and ETags still apply.

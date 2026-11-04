@@ -2,6 +2,7 @@ from django import template
 from django.utils import timezone
 
 from ..admin import since as _since
+from ..models import Article, readable_articles
 from ..views import sidebar_links
 
 register = template.Library()
@@ -25,3 +26,15 @@ def portal_sidebar(context):
         if group == 'Administración':
             links += sections
     return {'groups': groups}
+
+
+@register.filter
+def readable_log(entries, user):
+    """Última actividad without entries of restricted articles the user may not read."""
+    from django.contrib.contenttypes.models import ContentType
+    entries = list(entries)
+    kind = ContentType.objects.get_for_model(Article).pk
+    ids = {entry.object_id for entry in entries if entry.content_type_id == kind}
+    existing = Article.objects.filter(pk__in=ids)
+    hidden = {str(pk) for pk in existing.exclude(pk__in=readable_articles(user, existing).values('pk')).values_list('pk', flat=True)}
+    return [entry for entry in entries if entry.content_type_id != kind or entry.object_id not in hidden]

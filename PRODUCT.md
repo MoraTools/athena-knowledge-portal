@@ -49,7 +49,10 @@ Existing article routes must remain stable.
 
 ## Public articles
 
-Publication and access are separate: `published` controls release, and `is_public` controls anonymous reading.
+Publication and access are separate: `published` controls release, and access has three levels:
+public (anonymous reading, `is_public`), account (any signed-in user, the default), and restricted
+(only the selected users and active superusers, `is_restricted` with `allowed_users`). A restricted article is never public.
+Editors who are not on the list cannot see a restricted article anywhere, including the admin.
 Existing and new articles default to access with an account. Drafts stay restricted.
 Public articles include metadata, referenced images, attached PDFs, and generated PDF exports.
 The existing reader, library, search, URLs, and article-edit permissions are reused.

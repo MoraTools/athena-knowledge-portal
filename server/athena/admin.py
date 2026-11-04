@@ -19,7 +19,7 @@ from django.utils.safestring import mark_safe
 
 from .forms import (AdminArticleForm, ApiKeyForm, DirectoryUserCreationForm, DirectoryUserForm,
                     SafeUserChangeForm, may_manage_user, permissions, user_permission_names)
-from .models import ApiKey, Article, Download
+from .models import ApiKey, Article, Download, readable_articles
 
 admin.site.site_header = 'Athena · Administración'
 admin.site.site_title = 'Athena'
@@ -218,16 +218,17 @@ class ArticleAdmin(RowControlsAdmin):
     form = AdminArticleForm
     change_form_template = 'admin/athena/article/change_form.html'
     list_display = ['title', 'kind', 'state', 'access', 'author', 'date', 'last_updated', 'controls']
-    list_filter = ['published', 'is_public', 'kind']
+    list_filter = ['published', 'is_public', 'is_restricted', 'kind']
     search_fields = ['title', 'summary', 'author', 'body']
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ['last_updated', 'current_pdf']
     fieldsets = [
         ('Información', {'fields': ['title', 'format', 'body', 'summary', 'author', 'kind', 'tags', 'slug',
                                      'status', 'url', 'download_file']}),
-        ('Publicación', {'fields': ['published', 'is_public', 'date', 'last_updated']}),
+        ('Publicación', {'fields': ['published', 'access', 'allowed_users', 'date', 'last_updated']}),
         ('Archivos', {'fields': ['markdown_file', 'pdf_file', 'current_pdf', 'remove_pdf', 'pdf_only']}),
     ]
+    filter_horizontal = ['allowed_users']
     save_on_top = True
 
     class Media:
@@ -253,7 +254,28 @@ class ArticleAdmin(RowControlsAdmin):
 
     @admin.display(description='Acceso', ordering='is_public')
     def access(self, obj):
+        if obj.is_restricted:
+            return format_html('<span class="pill">Restringido ({})</span>', obj.allowed_users.count())
         return flag(obj.is_public, 'Público', 'Con cuenta')
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        field = super().formfield_for_manytomany(db_field, request, **kwargs)
+        field.help_text = self.form.base_fields[db_field.name].help_text  # Without Django's Ctrl-click hint; the picker has buttons.
+        return field
+
+    def get_queryset(self, request):
+        # List, change, history, delete and bulk delete all read through here; editors are no exception.
+        return readable_articles(request.user, super().get_queryset(request))
+
+    def log_deletions(self, request, queryset):
+        from django.contrib.admin.models import LogEntry
+        from django.contrib.contenttypes.models import ContentType
+        entries = super().log_deletions(request, queryset)
+        hidden = [str(article.pk) for article in queryset if article.is_restricted]
+        # Última actividad lists every editor's deletions; a restricted title must not outlive the article there.
+        LogEntry.objects.filter(content_type=ContentType.objects.get_for_model(Article),
+                                object_id__in=hidden).update(object_repr='Artículo restringido')
+        return entries
 
     def controls(self, request, obj):
         return row_controls(self, request, obj, ('Ver', 'view', obj.get_absolute_url()))

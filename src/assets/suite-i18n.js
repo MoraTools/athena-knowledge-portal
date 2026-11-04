@@ -107,6 +107,10 @@
     'Cerrar conserva los cambios pendientes.': 'Closing keeps pending changes.', 'Resumen': 'Summary', 'Etiquetas': 'Tags', 'Dirección': 'Address',
     'Separe las etiquetas con comas.': 'Separate tags with commas.', 'Se conserva después de crear el artículo para mantener sus enlaces.': 'Kept after the article is created, so its links keep working.',
     'Campos de herramienta': 'Tool fields', 'Estado de herramienta': 'Tool status', 'Acceso público': 'Public access',
+    'Usuarios seleccionados': 'Selected users', 'Usuarios con acceso': 'Users with access', 'Restringido': 'Restricted', 'Artículo restringido': 'Restricted article',
+    'Solo se usa con «Usuarios seleccionados».': 'Used only with “Selected users”.',
+    'Un artículo restringido no puede ser público.': 'A restricted article cannot be public.',
+    'Público: si está publicado, cualquier persona lo lee sin una cuenta. Con cuenta: cualquier usuario que ingresa. Usuarios seleccionados: solo los usuarios de la lista y los superusuarios. Las imágenes y los PDF siguen este acceso.': 'Public: when published, anyone can read it without an account. Account only: any signed-in user. Selected users: only the listed users and superusers. Images and PDF files follow this access.',
     'Si está publicado, cualquier persona puede leer el artículo, sus imágenes y sus PDF sin una cuenta. Los borradores siguen restringidos.': 'When published, anyone can read the article, its images and its PDF files without an account. Drafts stay restricted.',
     'Subir Markdown': 'Upload Markdown', 'Opcional. Reemplaza el contenido. Máximo 1 MiB.': 'Optional. Replaces the content. Up to 1 MiB.', 'Adjuntar PDF': 'Attach PDF',
     'Opcional. Máximo 25 MiB.': 'Optional. Up to 25 MiB.', 'PDF actual': 'Current PDF', 'Sin PDF adjunto.': 'No PDF attached.', 'Quitar PDF actual': 'Remove current PDF', 'Solo PDF': 'PDF only',
@@ -132,7 +136,7 @@
   const sourceText = new WeakMap();
   const sourceAttributes = new WeakMap();
   const content = '[data-article-title],.guide-title,.guide-summary,.guide-author,.guide-topic-meta>span,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div,.image-viewer__caption';
-  const articleUI = '.article-actions,.article-tools,.pdf-viewer__actions,.page-tree summary,.pagination-item,.unavailable-page';
+  const articleUI = '.article-actions,.article-tools,.article-access,.pdf-viewer__actions,.page-tree summary,.pagination-item,.unavailable-page';
   // Admin user content: titles, names, authors, usernames, the Markdown source and the raw key.
   const adminContent = '#result_list tbody :is(.field-title,.field-name,.field-author,.field-user),.actionlist a,.actionlist strong,.directory-table tbody th,.directory-panel header h2,.desk-user,.key-created code,textarea,.readonly a';
   const drafts = new WeakSet();
@@ -153,7 +157,8 @@
   const nouns = { 'artículo': 'article', 'clave de API': 'API key', 'claves de API': 'API key', 'descarga': 'download', 'usuario': 'user', 'archivo': 'file', 'palabra': 'word', 'imagen': 'image', 'imágenes': 'image' };
   const patterns = [[/^Mostrar (\d+) archivos?$/, (n) => `Show ${plural(n, 'file')}`], [/^(\d+) resultados?$/, (n) => plural(n, 'result')],
     [/^(\d+) (artículos?|claves? de API|descargas?|usuarios?|palabras?)$/, (n, noun) => plural(n, nouns[noun.replace(/s$/, '')] || nouns[noun])],
-    [/^(\d+) seleccionados?$/, (n) => `${n} selected`], [/^hace (\d+) (min|h)$/, (n, unit) => `${n} ${unit} ago`], [/^hace (\d+) días$/, (n) => `${n} days ago`],
+    [/^(\d+) seleccionados?$/, (n) => `${n} selected`], [/^Restringido \((\d+)\)$/, (n) => `Restricted (${n})`],
+    [/^Acceso restringido: (\d+) usuarios?\.$/, (n) => `Restricted access: ${plural(n, 'user')}.`], [/^hace (\d+) (min|h)$/, (n, unit) => `${n} ${unit} ago`], [/^hace (\d+) días$/, (n) => `${n} days ago`],
     [/^(Ver|Editar|Eliminar|Descargar): (.+)$/s, (verb, name) => `${english(verb)}: ${name}`],
     [/^(creó|editó|eliminó) (.+?) · (.+)$/, (verb, noun, when) => `${english(verb)} ${english(noun)} · ${english(when)}`],
     [/^Ordenar (.+) en orden (ascendente|descendente)$/, (label, order) => `Sort ${english(label)} in ${english(order)}`],

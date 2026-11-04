@@ -72,6 +72,7 @@
     let submitting = false;
     let importing = false;
     let timer;
+    const ACCESS_LABELS = { public: 'Público', account: 'Con cuenta', restricted: 'Restringido' };
     const value = (name, fallback = '') => form.elements.namedItem(name)?.value ?? fallback;
     const checked = (name, fallback = false) => form.elements.namedItem(name)?.checked ?? fallback;
     const detailTabs = [...dialog.querySelectorAll('[data-detail-tab]')];
@@ -222,8 +223,11 @@
 
     function updatePreview() {
       const published = checked('published', form.dataset.published === 'true');
-      const access = value('is_public', form.dataset.public === 'true' ? 'True' : 'False') === 'True';
-      const state = `${published ? 'Publicado' : 'Borrador'} · ${access ? 'Público' : 'Con cuenta'}`;
+      const access = value('access', form.dataset.access || 'account');
+      const state = `${published ? 'Publicado' : 'Borrador'} · ${ACCESS_LABELS[access] || 'Con cuenta'}`;
+      // The user list matters only for "Usuarios seleccionados"; without JavaScript it stays visible.
+      const picker = document.querySelector('.form-row.field-allowed_users');
+      if (picker) picker.hidden = access !== 'restricted' && !picker.classList.contains('errors');
       document.getElementById('desk-state').textContent = state;
       document.getElementById('desk-details-state').textContent = state;
       document.getElementById('desk-count').textContent = `${words().split(/\s+/).filter(Boolean).length} palabras`;

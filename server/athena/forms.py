@@ -29,22 +29,29 @@ def read_upload(upload, extension, limit):
     return data
 
 
+ACCESS_CHOICES = [('public', 'Público'), ('account', 'Con cuenta'), ('restricted', 'Usuarios seleccionados')]
+
+
 class ArticleForm(forms.ModelForm):
     markdown_file = forms.FileField(label='Subir Markdown', required=False,
                                     help_text='Opcional. Reemplaza el contenido. Máximo 1 MiB.')
     pdf_file = forms.FileField(label='Adjuntar PDF', required=False, help_text='Opcional. Máximo 25 MiB.')
     remove_pdf = forms.BooleanField(label='Quitar PDF actual', required=False)
     tags = forms.CharField(label='Etiquetas', required=False, help_text='Separe las etiquetas con comas.')
+    access = forms.ChoiceField(label='Acceso', required=False, choices=ACCESS_CHOICES, help_text=(
+        'Público: si está publicado, cualquier persona lo lee sin una cuenta. Con cuenta: cualquier usuario que ingresa. '
+        'Usuarios seleccionados: solo los usuarios de la lista y los superusuarios. Las imágenes y los PDF siguen este acceso.'))
 
     class Meta:
         model = Article
         fields = ['title', 'slug', 'kind', 'summary', 'author', 'date', 'tags', 'format', 'body',
-                  'status', 'url', 'download_file', 'published', 'is_public', 'pdf_only']
+                  'status', 'url', 'download_file', 'published', 'access', 'allowed_users', 'pdf_only']
         widgets = {'body': forms.Textarea(attrs={'rows': 24, 'cols': 90}),
                    'summary': forms.Textarea(attrs={'rows': 3, 'cols': 80}),
                    'date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
-                   'is_public': forms.Select(choices=[(False, 'Con cuenta'), (True, 'Público')]),
                    'format': forms.RadioSelect}
+        labels = {'allowed_users': 'Usuarios con acceso'}
+        help_texts = {'allowed_users': 'Solo se usa con «Usuarios seleccionados».'}
 
     def __init__(self, *args, actor=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -52,6 +59,8 @@ class ArticleForm(forms.ModelForm):
         self.instance._image_actor = self.actor
         if 'format' in self.fields:  # Older clients that omit the format keep the article's current one.
             self.fields['format'].required = False
+        if 'access' in self.fields:
+            self.initial.setdefault('access', self.instance.access)
         if self.instance.pk and 'slug' in self.fields:  # A view-only change form has no fields.
             self.fields['slug'].disabled = True
             self.initial['tags'] = ', '.join(self.instance.tags)
@@ -83,6 +92,11 @@ class ArticleForm(forms.ModelForm):
                 self.instance.pdf, self.instance.pdf_name = content, pdf.name
             except ValidationError as error:
                 self.add_error('pdf_file', error)
+        # is_public and is_restricted follow the one access choice, so an article is never public and restricted.
+        access = data.get('access') or self.instance.access
+        self.instance.is_public, self.instance.is_restricted = access == 'public', access == 'restricted'
+        if access != 'restricted' and 'allowed_users' in self.fields:
+            data['allowed_users'] = User.objects.none()
         html = (data.get('format') or self.instance.format) == 'html'
         # An HTML article runs its own scripts in the reader's sandbox, so it needs the full article editor right.
         if html and self.actor and not self.actor.has_perm('athena.change_article'):

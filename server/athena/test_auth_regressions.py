@@ -54,7 +54,7 @@ class AdminAuthRegressionTests(TestCase):
     def article_data(self, **changes):
         data = {'title': self.article.title, 'slug': self.article.slug, 'kind': 'guide',
                 'summary': self.article.summary, 'author': self.article.author, 'date': self.article.date.isoformat(),
-                'tags': '', 'body': self.article.body, 'published': 'on', 'is_public': 'True',
+                'tags': '', 'body': self.article.body, 'published': 'on', 'access': 'public',
                 'loaded_revision': self.article.updated_at.isoformat(), '_continue': '1'}
         data.update(changes)
         return data
@@ -348,7 +348,7 @@ class AdminAuthRegressionTests(TestCase):
         path = f'/admin/athena/article/{self.article.pk}/change/'
         revision = self.client.get(path).context['adminform'].form['loaded_revision'].value()
         stale = self.article_data(loaded_revision=revision, title='Old title edit', body='# Unsaved body\nKeep this text')
-        response = self.client.post(path, self.article_data(body='# Reviewed body', published='', is_public='False'))
+        response = self.client.post(path, self.article_data(body='# Reviewed body', published='', access='account'))
         self.assertEqual(response.status_code, 302)
         response = self.client.post(path, stale)
         self.assertContains(response, 'El artículo cambió desde que abrió esta página.')

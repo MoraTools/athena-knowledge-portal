@@ -4,7 +4,7 @@
 <div id="content-related">
   <div class="module" id="recent-actions-module">
     <h2>Última actividad</h2>
-    {% get_admin_log 15 as admin_log %}
+    {% get_admin_log 15 as all_log %}{% with admin_log=all_log|readable_log:user %}
     {% if not admin_log %}
     <p>Todavía no hay actividad.</p>
     {% else %}
@@ -17,7 +17,7 @@
       </li>
     {% endfor %}
     </ul>
-    {% endif %}
+    {% endif %}{% endwith %}
   </div>
 </div>
 {% endblock %}

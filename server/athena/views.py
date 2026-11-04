@@ -16,7 +16,7 @@ from django.utils.html import escape, strip_tags
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from markdown_it import MarkdownIt
 
-from .models import ApiKey, Article, Download, ManagedImage, visible_articles
+from .models import ApiKey, Article, Download, ManagedImage, readable_articles, visible_articles
 
 
 def article_image_upload(request):
@@ -30,7 +30,7 @@ def article_image_upload(request):
         return JsonResponse({'error': 'Su cuenta no tiene permiso para insertar imágenes en este artículo.'}, status=403)
     if article_id:
         try:
-            if not Article.objects.filter(pk=int(article_id)).exists():
+            if not visible_articles(user, include_drafts=True).filter(pk=int(article_id)).exists():
                 raise Http404
         except (ValueError, OverflowError):
             return JsonResponse({'error': 'El artículo no es válido.'}, status=400)
@@ -58,6 +58,17 @@ def send_article_image(request, image_id, *, include_drafts=True, allow_preview=
         except (OSError, ValidationError):
             raise Http404
         return FileResponse(file, content_type=image.content_type)
+
+
+def admin_view_on_site(request, content_type_id, object_id):
+    """The admin "Ver en el sitio" redirect, which would otherwise reveal any article's address by its id."""
+    from django.contrib import admin
+    from django.contrib.contenttypes.models import ContentType
+    from django.contrib.contenttypes.views import shortcut
+    if content_type_id == ContentType.objects.get_for_model(Article).pk and not (
+            object_id.isdigit() and readable_articles(request.user).filter(pk=int(object_id)).exists()):
+        raise Http404
+    return admin.site.admin_view(shortcut)(request, content_type_id, object_id)
 
 
 def article_image(request, image_id):
@@ -171,6 +182,11 @@ EXPORT_ICON = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11m-5-
 def article_markdown(request, slug):
     article = get_object_or_404(visible_articles(request.user, include_drafts=True).defer('pdf'), slug=slug)
     body = article_body(article)
+    if article.is_restricted:
+        # Only people who can read the article get here; the count names nobody.
+        count = article.allowed_users.count()
+        notice = f'<p class="article-access">Acceso restringido: {count} usuario{"" if count == 1 else "s"}.</p>'
+        body = re.sub(r'^[ \t]*#[ \t]+[^\n]*', lambda title: f'{title[0]}\n\n{notice}', body, count=1, flags=re.M)
     body += f'\n\n<span class="article-context" data-article-kind="{escape(article.kind)}" hidden></span>\n'
     tools = []
     if request.user.has_perm('athena.change_article'):

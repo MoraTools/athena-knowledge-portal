@@ -2,7 +2,7 @@
 
 Athena runs on a DigitalOcean VPS with Django, SQLite, Gunicorn, and Caddy.
 The Spanish reader keeps its existing Docsify routes. Published articles can be public or require an account. Existing articles remain private by default.
-The current portal version is `1.14.0`; the REST API is `1.7.0`.
+The current portal version is `1.15.0`; the REST API is `1.8.0`.
 
 ## Production
 
@@ -33,7 +33,7 @@ Sign in and change the initial password. Credentials are not written to deployme
 2. Enter the title. The title creates the address automatically. Open **Detalles** to enter the summary, author, and optional comma-separated tags.
 3. Write Markdown in the editor or choose **Importar Markdown** from **Más opciones**. Use a UTF-8 `.md` file (up to 1 MiB). No metadata header is required.
 4. In **Detalles**, optionally attach a PDF (up to 25 MiB). PDF-only articles are also supported.
-5. Save as a draft for review. Set **Acceso público** to **Público** only when the article, its images, and its attached PDFs are suitable for anyone to read. **Con cuenta** is the default.
+5. Save as a draft for review. Set **Acceso** to **Público** only when the article, its images, and its attached PDFs are suitable for anyone to read. **Con cuenta** is the default. **Usuarios seleccionados** limits the article to the users chosen in the list below it (and superusers).
 6. Enable **Publicado** when ready. Drafts stay restricted for both access settings.
 
 On desktop, the editor shows Markdown and a live reader preview side by side. On mobile, use the **Markdown** and **Vista previa** tabs.
@@ -61,10 +61,12 @@ Visitors can use the home page, Guías, Herramientas, Actualizaciones, and searc
 These pages include only published public articles. Titles, tags, excerpts, and counts for private articles and download records are excluded.
 Signed-in readers see all published articles; existing article editors can preview drafts and set article access.
 Guías uses **Por temas** to group guides by their existing tags. Each guide shows its title, summary, tags, author, date, status, and permitted links. A guide with several tags can appear in several groups. Guides without tags appear under **Sin etiqueta**. Search matches title, author, summary, and tags, ignoring case and accents. The tag selector matches a whole tag. The result count includes each matching guide once. Search and tag values reset on route entry.
-The REST API still requires a bearer key. Use the boolean `is_public` field to change article access with the existing edit permission and ETag checks.
+The REST API still requires a bearer key. Use `access` (`public`, `account`, `restricted`) with `allowed_users`, or the boolean `is_public`, to change article access with the existing edit permission and ETag checks.
 
 Images, attached PDFs, and generated PDF exports follow the article access setting. Returning an article to **Con cuenta**, unpublishing it, or deleting it blocks subsequent anonymous requests, including cached PDF exports. A shared image stays public while another public published article uses it.
 Previously downloaded copies cannot be recalled.
+
+A restricted article (**Usuarios seleccionados**) is visible only to active superusers and the listed users: not to visitors, other readers, or editors who are not listed. This covers the reader, lists, search, images, the attached PDF, PDF exports, the HTML frame, the admin (list, change, history, delete, recent activity), and the REST API. Listed readers see the notice "Acceso restringido: N usuarios." under the title; names are not shown. Drafts stay drafts for listed readers. An image that a public article also uses stays public. Approved downloads (`/downloads/...`) are separate records: a restricted article's **Descarga aprobada** link still opens Descargas for any signed-in user.
 Search-engine indexing stays disabled through `robots.txt` and `X-Robots-Tag`; this is separate from public access.
 The existing reader URLs remain valid. Sign-in returns to the selected article; account changes refresh open portal tabs.
 

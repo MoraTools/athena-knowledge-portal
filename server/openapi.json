@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Athena management API",
-    "version": "1.7.0",
+    "version": "1.8.0",
     "description": "Private knowledge base. Create a scoped key in /admin/athena/apikey/. Keys expire after 90 days by default and are revoked when the owning user is disabled, removed, or has their password reset. Browser cookies are not accepted by the API. Guide for agents: GET /api/docs/. Check a key with GET /me/."
   },
   "servers": [
@@ -154,7 +154,7 @@
         "summary": "Get article",
         "responses": {
           "200": {
-            "description": "Success. JSON article with metadata, format (markdown or html), body, and route.",
+            "description": "Success. JSON article with metadata, format (markdown or html), access (public, account, or restricted), body, and route. Keys that can edit articles also get allowed_users (usernames). A restricted article that the key owner may not read answers 404.",
             "headers": {
               "ETag": {
                 "description": "Version for If-Match on updates and deletes.",
@@ -1035,7 +1035,24 @@
           "is_public": {
             "type": "boolean",
             "default": false,
-            "description": "Allow anonymous reading of the published article, its images, attached PDFs, and generated PDF exports. Drafts stay restricted. Existing API authentication and edit permissions still apply."
+            "description": "Allow anonymous reading of the published article, its images, attached PDFs, and generated PDF exports. Drafts stay restricted. Existing API authentication and edit permissions still apply. true is the same as access public; false turns a public article into account and leaves a restricted article restricted. true on a restricted article, or a value that contradicts access in the same request, answers 400."
+          },
+          "access": {
+            "type": "string",
+            "enum": [
+              "public",
+              "account",
+              "restricted"
+            ],
+            "default": "account",
+            "description": "public: anyone, when published. account: any signed-in user. restricted: only the users in allowed_users and active superusers, on every route (reader, lists, search, images, PDFs, admin, API). Editors who are not listed cannot read or change a restricted article. A restricted article is never public."
+          },
+          "allowed_users": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Usernames that can read a restricted article. Replaces the list. Unknown usernames, or a non-empty list without access restricted, answer 400. Changing access away from restricted clears the list."
           }
         }
       },
