@@ -160,6 +160,18 @@ class HtmlArticleTests(TestCase):
         self.assertIn("type === 'athena:images-closed'", bridge)
         self.assertIn("new CustomEvent('athena:images-closed'", bridge)
 
+    def test_bridge_reports_the_outline_for_the_page_tree(self):
+        self.client.force_login(self.reader)
+        html = self.client.get('/article-html/demos/').content.decode()
+        bridge = html[html.rindex('<script>'):]
+        self.assertIn("post({ type: 'athena:outline', items })", bridge)
+        self.assertIn("document.querySelectorAll('h2[id], h3[id]')", bridge)
+        self.assertIn('meta[name="athena-outline"]', bridge)
+        self.assertIn('new MutationObserver(queueOutline)', bridge)
+        self.assertIn('requestAnimationFrame(outline)', bridge)
+        self.assertIn("type === 'athena:focus'", bridge)
+        self.assertIn('focus({ preventScroll: true })', bridge)
+
     def test_reader_markdown_marker_tools_and_pdf_export(self):
         self.article.pdf, self.article.pdf_name = b'%PDF-1.7\nattached', 'attached.pdf'
         self.article.save()

@@ -106,7 +106,16 @@ the message only from the article frame and only same-origin `/article-images/{i
 rejects the call if any `src` is different or there are more than 50 items, cuts caption and alt text to 500 characters
 and shows them as text, and clamps `index`. On close, the article receives the document event `athena:images-closed`
 with `detail.index`, the last image shown.
-`html` articles have no PDF export (`/content/{slug}.pdf` answers `404`) and no page outline; an attached PDF still works.
+Page tree: the reader draws its own "En esta página" tree beside the frame, like the tree of a Markdown article, from
+the document's `h2` and `h3` elements that have an `id`. The bridge posts `{type: 'athena:outline', items: [{id, text,
+level, top}]}` (level 1 = `h2`, 2 = `h3`; `top` relative to the document) when the article is ready and after each
+change to the headings or their positions, at most once per animation frame. The reader accepts at most 100 items, ids
+that match `^[A-Za-z][\w:.-]{0,127}$`, text only (cut to 200 characters), level 1 or 2, and a finite `top` of 0 or
+more; it drops other items. An empty list shows no tree. To turn the tree off, add
+`<meta name="athena-outline" content="off">`. A click in the tree scrolls the reader to the heading and sends
+`{type: 'athena:focus', value: id}`; the bridge focuses that heading (with `tabindex="-1"` if it has none). Change the
+heading text (for example for the language switch) and the tree follows. Do not draw an own page tree in the document.
+`html` articles have no PDF export (`/content/{slug}.pdf` answers `404`); an attached PDF still works.
 Search indexes the visible text and headings of the document, without scripts, styles, and templates.
 
 ## Examples

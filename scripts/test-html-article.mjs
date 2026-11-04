@@ -28,6 +28,8 @@ function fakeElement(tag) {
     addEventListener(type, handler) { (this.listeners[type] ||= []).push(handler); },
     dispatch(type, event = {}) { for (const handler of this.listeners[type] || []) handler({ target: this, preventDefault() { this.prevented = true; }, ...event }); },
     append(...nodes) { this.children.push(...nodes); },
+    querySelector(selector) { for (const child of this.children) { if (child.tagName === selector) return child; const found = child.querySelector?.(selector); if (found) return found; } return null; },
+    remove() { if (queries['.page-tree'] === this) delete queries['.page-tree']; },
     focus() { activeElement = this; },
     showModal() { this.open = true; },
     close() { if (!this.open) return; this.open = false; this.dispatch('close'); },
@@ -240,6 +242,94 @@ dialog.dispatch('click', { target: stage });
 assert.equal(dialog.open, false);
 assert.equal(frame.contentWindow.messages.at(-1).index, 0);
 
+// Page tree ("En esta página") from the frame's athena:outline: same component as Markdown, validated items only.
+const title = { id: 'demos-en-vivo', textContent: ' Demos en vivo ', rect: { top: -400 }, attributes: {},
+  getBoundingClientRect() { return this.rect; }, hasAttribute(name) { return name in this.attributes; },
+  setAttribute(name, value) { this.attributes[name] = value; }, focus() { activeElement = this; } };
+const article = {
+  querySelector: selector => selector === '.unavailable-page' ? null : selector === '.html-article, .html-article-frame' ? frame : selector === 'h1[id]' ? title : null,
+  before(node) { node.isConnected = true; queries['.page-tree'] = node; }
+};
+queries['.markdown-section'] = article;
+const tree = () => queries['.page-tree'];
+const links = () => tree().querySelector('ol').children.map(li => ({ level: li.className, text: li.children[0].textContent, href: li.children[0].href, current: li.children[0].attributes['aria-current'] ?? null }));
+const outline = items => message({ source: frame.contentWindow, data: { type: 'athena:outline', items } });
+const heading = (id, text, level, top) => ({ id, text, level, top });
+frame.rect = { top: -300, height: 4000 };
+message({ source: other, data: { type: 'athena:outline', items: [heading('uno', 'Uno', 1, 0)] } });
+assert.equal(tree(), undefined, 'Another window cannot draw the tree.');
+outline([
+  heading('uno', '  Uno  ', 1, 0), heading('dos', 'Dos', 2, 400), heading('tres', 'Tres '.repeat(80), 1, 900),
+  heading('1bad', 'Id starts with a digit', 1, 10), heading('a b', 'Space in id', 1, 10), heading('x'.repeat(129), 'Long id', 1, 10),
+  heading('nivel', 'Level 3', 3, 10), heading('nivel0', 'Level 0', 0, 10), heading('arriba', 'Negative top', 1, -1),
+  heading('inf', 'Infinite top', 1, Infinity), heading('texto', 5, 1, 10), heading('vacio', '   ', 1, 10), null, 'x',
+  { id: 'html', text: '<img src=x onerror=alert(1)>', level: 1, top: 1000 }
+]);
+assert.equal(tree().className, 'page-tree');
+assert.equal(tree().attributes['aria-label'], 'En esta página');
+assert.equal(tree().children[0].tagName, 'details');
+assert.equal(tree().children[0].children[0].tagName, 'summary');
+assert.equal(tree().children[0].children[0].textContent, 'En esta página');
+assert.equal(tree().dataset.layout, 'inline', 'Below 900px the tree is the closed box above the article.');
+assert.deepEqual(links().map(({ level, text }) => [level, text]), [
+  ['page-tree__level-1', 'Demos en vivo'], ['page-tree__level-2', 'Uno'], ['page-tree__level-3', 'Dos'],
+  ['page-tree__level-2', ('Tres '.repeat(80)).trim().slice(0, 200)], ['page-tree__level-2', '<img src=x onerror=alert(1)>']
+]);
+assert.equal(links()[1].href, '#/content/demos?id=uno');
+assert.ok(tree().querySelector('ol').children.every(li => li.children[0].innerHTML === ''), 'Tree text is textContent only.');
+
+// Current link: frame top plus item top, the Markdown rule (the last heading at or above 120px).
+assert.equal(links().find(link => link.current)?.text, 'Dos', '-300 + 400 = 100');
+frame.rect = { top: -790, height: 4000 };
+context.updatePageTreeCurrent();
+assert.equal(links().find(link => link.current)?.text.slice(0, 4), 'Tres', '-790 + 900 = 110, no frame round trip');
+frame.rect = { top: 100, height: 4000 };
+context.updatePageTreeCurrent();
+assert.equal(links().find(link => link.current)?.text, 'Uno', 'The title is above, Uno at 100.');
+// New tops alone keep the tree and move the current link.
+const firstTree = tree();
+outline([heading('uno', 'Uno', 1, 0), heading('dos', 'Dos', 2, 10), heading('tres', 'Tres '.repeat(80), 1, 900), { id: 'html', text: '<img src=x onerror=alert(1)>', level: 1, top: 1000 }]);
+assert.equal(tree(), firstTree);
+assert.equal(links().find(link => link.current)?.text, 'Dos', '100 + 10 = 110');
+
+// Click: scroll the reader to the heading below the command bar, then focus it in the frame; the route stays.
+const clickLink = (index, extra = {}) => {
+  const link = tree().querySelector('ol').children[index].children[0];
+  link.closest = selector => selector === '.page-tree' ? tree() : tree().children[0];
+  const event = { target: { closest: selector => selector === '.page-tree a' ? link : null }, button: 0, preventDefault() { this.prevented = true; }, ...extra };
+  documentHandlers.click(event);
+  return event;
+};
+scrolls.length = 0;
+frame.contentWindow.messages.length = 0;
+tree().children[0].open = true;
+const hash = context.location.hash;
+assert.equal(clickLink(3).prevented, true);
+assert.equal(JSON.stringify(scrolls), JSON.stringify([{ top: 500 + 100 + 900 - 72 }]));
+assert.equal(JSON.stringify(frame.contentWindow.messages), JSON.stringify([{ type: 'athena:focus', value: 'tres', target: '*' }]));
+assert.equal(context.location.hash, hash);
+assert.equal(tree().children[0].open, false, 'The inline box closes after a choice.');
+assert.equal(clickLink(0).prevented, true, 'The title link scrolls to the reader title.');
+assert.equal(scrolls.at(-1).top, 500 - 400 - 72);
+assert.equal(activeElement, title);
+assert.equal(title.attributes.tabindex, '-1');
+assert.equal(clickLink(2, { ctrlKey: true }).prevented, undefined, 'A modified click keeps the browser behavior.');
+
+// Mutation in the frame (for example the language switch) sends new text: the tree is rebuilt with it.
+outline([heading('uno', 'One', 1, 0), heading('dos', 'Two', 2, 10)]);
+assert.notEqual(tree(), firstTree);
+assert.deepEqual(links().map(({ text }) => text), ['Demos en vivo', 'One', 'Two']);
+// At most 100 items.
+outline(Array.from({ length: 150 }, (_, n) => heading('h' + n, 'H ' + n, 1, n * 10)));
+assert.equal(links().length, 101);
+assert.equal(links().at(-1).text, 'H 99');
+// Empty list (or the opt-out meta): no tree, no empty column.
+outline([]);
+assert.equal(tree(), undefined);
+outline('nope');
+assert.equal(tree(), undefined);
+delete queries['.markdown-section'];
+
 // A removed frame accepts nothing; a marker for another route is ignored.
 frame.isConnected = false;
 message({ source: frame.contentWindow, data: { type: 'athena:height', value: 10 } });
@@ -249,4 +339,79 @@ queries['.markdown-section .html-article[data-src]'] = { ...marker, dataset: { s
 context.buildHtmlArticle();
 assert.equal(frame, previous);
 
-console.log('HTML article frame sandbox, URL, height source checks, theme/lang/viewport messages, Ctrl K, in-page scroll and image viewer passed.');
+// The bridge in the frame: athena:outline from h2[id] and h3[id], one message per animation frame, opt-out meta, focus.
+{
+  const posted = [];
+  const frames = [];
+  const listeners = {};
+  let mutation;
+  let meta = null;
+  let focused = null;
+  const head = (tagName, id, text, top) => ({
+    tagName, id, textContent: text, attributes: {}, top,
+    getBoundingClientRect() { return { top: this.top - bridgeWindow.scrollY }; },
+    matches(selector) { return selector === 'h2, h3' && /^H[23]$/.test(this.tagName); },
+    hasAttribute(name) { return name in this.attributes; }, setAttribute(name, value) { this.attributes[name] = value; },
+    focus(options) { focused = { id: this.id, options }; }
+  });
+  let headings = [head('H2', 'resumen', ' Resumen\n  general ', 300), head('H3', 'detalle', 'Detalle', 900.4)];
+  const paragraph = { ...head('P', 'nota', 'Nota', 50), matches: () => false };
+  const bridgeWindow = {
+    scrollY: 0, location: { search: '?theme=dark&lang=es' }, URLSearchParams, CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init?.detail; } },
+    parent: { postMessage(data) { posted.push(JSON.parse(JSON.stringify(data))); } },
+    requestAnimationFrame(callback) { frames.push(callback); },
+    ResizeObserver: class { constructor(callback) { this.callback = callback; } observe() {} },
+    MutationObserver: class { constructor(callback) { mutation = callback; } observe(node, options) { this.options = options; } },
+    addEventListener(type, handler) { listeners[type] = handler; },
+    document: {
+      documentElement: { dataset: {}, getBoundingClientRect: () => ({ height: 1000 }) },
+      querySelector: selector => selector === 'meta[name="athena-outline"]' ? meta : null,
+      querySelectorAll: selector => selector === 'h2[id], h3[id]' ? headings : [],
+      getElementById: id => [...headings, paragraph].find(node => node.id === id) || null,
+      addEventListener() {}, dispatchEvent() {}
+    }
+  };
+  bridgeWindow.window = bridgeWindow;
+  vm.runInNewContext(readFileSync(new URL('../server/athena/static/athena/article-bridge.js', import.meta.url), 'utf8'), bridgeWindow);
+  const outlines = () => posted.filter(data => data.type === 'athena:outline');
+  const flush = () => { while (frames.length) frames.shift()(); };
+  assert.equal(outlines().length, 0, 'The outline waits for the animation frame.');
+  flush();
+  assert.deepEqual(outlines(), [{ type: 'athena:outline', items: [
+    { id: 'resumen', text: 'Resumen general', level: 1, top: 300 }, { id: 'detalle', text: 'Detalle', level: 2, top: 900 }
+  ] }]);
+  assert.deepEqual(new Set(posted.map(data => data.type)), new Set(['athena:ready', 'athena:outline']));
+  // Many mutations in one frame: one message; nothing changed: no message.
+  mutation(); mutation(); mutation();
+  assert.equal(frames.length, 1);
+  flush();
+  assert.equal(outlines().length, 1, 'An unchanged outline is not sent again.');
+  headings[0].textContent = 'Summary';
+  mutation(); mutation();
+  flush();
+  assert.equal(outlines().length, 2);
+  assert.equal(outlines().at(-1).items[0].text, 'Summary');
+  // Positions are relative to the frame document, not to its scroll.
+  bridgeWindow.scrollY = 200;
+  headings = [...headings, head('H2', 'nuevo', 'Nuevo', 1500)];
+  mutation(); flush();
+  assert.deepEqual(outlines().at(-1).items.map(item => [item.id, item.top]), [['resumen', 300], ['detalle', 900], ['nuevo', 1500]]);
+  // Opt-out meta: an empty list.
+  meta = { getAttribute: () => ' OFF ' };
+  mutation(); flush();
+  assert.deepEqual(outlines().at(-1).items, []);
+  // athena:focus: only from the parent, only h2/h3, tabindex -1 when missing, no scroll.
+  const send = (source, data) => listeners.message({ source, data });
+  send({}, { type: 'athena:focus', value: 'detalle' });
+  assert.equal(focused, null);
+  send(bridgeWindow.parent, { type: 'athena:focus', value: 'nota' });
+  send(bridgeWindow.parent, { type: 'athena:focus', value: 7 });
+  send(bridgeWindow.parent, { type: 'athena:focus', value: 'missing' });
+  assert.equal(focused, null);
+  send(bridgeWindow.parent, { type: 'athena:focus', value: 'detalle' });
+  assert.equal(focused.id, 'detalle');
+  assert.equal(focused.options.preventScroll, true);
+  assert.equal(headings[1].attributes.tabindex, '-1');
+}
+
+console.log('HTML article frame sandbox, URL, height source checks, theme/lang/viewport messages, Ctrl K, in-page scroll, image viewer, page tree and bridge outline passed.');

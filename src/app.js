@@ -50,7 +50,7 @@ function replaceSearchUrl(query, type) {
 
 function updatePageTreeCurrent() {
   if (!pageTreeItems.length) return;
-  const current = [...pageTreeItems].reverse().find(({ heading }) => heading.getBoundingClientRect().top <= 120) || pageTreeItems[0];
+  const current = [...pageTreeItems].reverse().find(({ top }) => top() <= 120) || pageTreeItems[0];
   pageTreeItems.forEach(({ link }) => link.removeAttribute('aria-current'));
   current.link.setAttribute('aria-current', 'location');
 }
@@ -71,11 +71,27 @@ function buildPageTree() {
 
   const route = getRouteState().path;
   const article = document.querySelector('.markdown-section');
-  // An HTML article's headings are inside its sandboxed frame.
-  if (!route.startsWith('/content/') || !article || article.querySelector('.unavailable-page, .html-article, .html-article-frame')) return;
+  if (!route.startsWith('/content/') || !article || article.querySelector('.unavailable-page')) return;
 
-  const headings = [...article.querySelectorAll('h1[id],h2[id],h3[id]')];
-  if (!headings.length) return;
+  // Markdown headings are in the page. An HTML article's headings are inside its sandboxed frame: its bridge reports
+  // them (athena:outline), and the reader adds its own title as Markdown does. No outline, no tree.
+  const rect = (heading) => () => heading.getBoundingClientRect().top;
+  let entries;
+  if (article.querySelector('.html-article, .html-article-frame')) {
+    if (!htmlFrame?.isConnected || !htmlOutline.length) return;
+    const title = article.querySelector('h1[id]');
+    entries = htmlOutline.map((item, index) => ({
+      level: item.level + 1, text: item.text, href: '#' + route + '?id=' + encodeURIComponent(item.id), outline: item.id,
+      top: () => htmlFrame.getBoundingClientRect().top + htmlOutline[index].top
+    }));
+    if (title) entries.unshift({ level: 1, text: title.textContent.trim(), href: '#' + route, heading: title, top: rect(title) });
+  } else {
+    entries = [...article.querySelectorAll('h1[id],h2[id],h3[id]')].map((heading) => ({
+      level: Number(heading.tagName.slice(1)), text: heading.textContent.trim(),
+      href: heading.querySelector('a.anchor')?.getAttribute('href') || '#' + heading.id, top: rect(heading)
+    }));
+  }
+  if (!entries.length) return;
 
   const nav = document.createElement('nav');
   nav.className = 'page-tree';
@@ -86,15 +102,15 @@ function buildPageTree() {
   summary.textContent = t('En esta página');
   const list = document.createElement('ol');
 
-  headings.forEach((heading) => {
+  entries.forEach((entry) => {
     const item = document.createElement('li');
-    item.className = 'page-tree__level-' + heading.tagName.slice(1);
+    item.className = 'page-tree__level-' + entry.level;
     const link = document.createElement('a');
-    link.href = heading.querySelector('a.anchor')?.getAttribute('href') || '#' + heading.id;
-    link.textContent = heading.textContent.trim();
+    link.href = entry.href;
+    link.textContent = entry.text;
     item.append(link);
     list.append(item);
-    pageTreeItems.push({ heading, link });
+    pageTreeItems.push({ ...entry, link });
   });
 
   details.append(summary, list);
@@ -703,6 +719,36 @@ function buildPdfViewer() {
 // Only that frame's window may send athena:* messages; the frame never gets same-origin access.
 let htmlFrame = null;
 let htmlViewportPending = false;
+let htmlOutline = [];
+
+// The frame's headings for the page tree, from athena:outline. Text only; invalid items are dropped.
+const OUTLINE_ID = /^[A-Za-z][\w:.-]{0,127}$/;
+const OUTLINE_MAX_ITEMS = 100;
+const OUTLINE_MAX_TEXT = 200;
+
+function outlineItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items.slice(0, OUTLINE_MAX_ITEMS).filter((item) => typeof item?.id === 'string' && OUTLINE_ID.test(item.id)
+    && typeof item.text === 'string' && item.text.trim() && (item.level === 1 || item.level === 2)
+    && Number.isFinite(item.top) && item.top >= 0)
+    .map(({ id, text, level, top }) => ({ id, text: text.trim().slice(0, OUTLINE_MAX_TEXT), level, top }));
+}
+
+function updateHtmlOutline(items) {
+  const next = outlineItems(items);
+  const sameTree = next.length === htmlOutline.length && next.every((item, index) => item.id === htmlOutline[index].id
+    && item.text === htmlOutline[index].text && item.level === htmlOutline[index].level);
+  htmlOutline = next;
+  // New tops alone move only the current link; new headings or text rebuild the tree.
+  if (sameTree && (!next.length || document.querySelector('.page-tree'))) updatePageTreeCurrent();
+  else buildPageTree();
+}
+
+// Puts a point given relative to the viewport just below the command bar, as in-page links do.
+function scrollReaderTo(top) {
+  const offset = (document.querySelector('.reader-command')?.offsetHeight || 0) + 16;
+  window.scrollTo({ top: Math.max(0, window.scrollY + top - offset) });
+}
 
 function sendHtmlFrame(type, value) {
   htmlFrame?.contentWindow?.postMessage({ type, value }, '*');
@@ -745,6 +791,7 @@ function buildHtmlArticle() {
   frame.addEventListener('load', () => frame.classList.add('is-ready'));
   marker.replaceWith(frame);
   htmlFrame = frame;
+  htmlOutline = [];
 }
 
 function focusSearch() {
@@ -987,8 +1034,9 @@ function handleHtmlFrameMessage(event) {
     const items = viewerItems(event.data.items);
     if (items) openViewer(frame, items, event.data.index);
   } else if (type === 'athena:scroll' && Number.isFinite(value)) {
-    const offset = (document.querySelector('.reader-command')?.offsetHeight || 0) + 16;
-    window.scrollTo({ top: Math.max(0, window.scrollY + frame.getBoundingClientRect().top + value - offset) });
+    scrollReaderTo(frame.getBoundingClientRect().top + value);
+  } else if (type === 'athena:outline') {
+    updateHtmlOutline(event.data.items);
   }
 }
 
@@ -1143,6 +1191,17 @@ document.addEventListener('click', async (event) => {
   if (pageTreeLink) {
     updatePageTreeLayout();
     if (pageTreeLink.closest('.page-tree').dataset.layout === 'inline') pageTreeLink.closest('details').open = false;
+    // HTML article tree: scroll the reader and focus the heading; the Docsify route (location.hash) stays as it is.
+    const entry = pageTreeItems.find(({ link }) => link === pageTreeLink);
+    if ((entry?.outline || entry?.heading) && !event.button && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+      event.preventDefault();
+      scrollReaderTo(entry.top());
+      if (entry.outline) sendHtmlFrame('athena:focus', entry.outline);
+      else {
+        if (!entry.heading.hasAttribute('tabindex')) entry.heading.setAttribute('tabindex', '-1');
+        entry.heading.focus({ preventScroll: true });
+      }
+    }
   }
 
   const copyButton = event.target.closest('button.copy-page');

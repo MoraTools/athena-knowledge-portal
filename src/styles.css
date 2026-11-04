@@ -281,6 +281,7 @@ html:has(.image-viewer[open]){overflow:hidden}
 .reader-command .suite-toggles{margin-left:0}.reader-command .article-actions{margin:0}
 body.article-view .markdown-section{max-width:calc(70ch + 48px);font-size:17px;line-height:1.65}
 body.article-view.has-page-tree .markdown-section{max-width:70ch}
+body.article-view.has-page-tree .markdown-section:has(.html-article,.html-article-frame){max-width:var(--content-max)}
 .page-tree{border:1px solid var(--border);border-radius:var(--radius)}
 .page-tree summary,.download-archive summary{color:var(--text-muted);font:600 11px/1.3 var(--font-mono);letter-spacing:.06em}
 .page-tree a{font:400 12px/1.4 var(--font-ui);padding-block:4px}
