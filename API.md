@@ -50,7 +50,7 @@ A scope never grants more authority than its owner has. A key owned by an ordina
 | GET | `/me/` | The key's owner, scope, expiry, and `can` map of allowed operations |
 | GET | `/articles/?q=recorder&kind=guide&offset=0&limit=50` | Search/list articles; maximum page size 100 |
 | POST | `/articles/` | Create an article, draft by default |
-| GET | `/articles/{slug}/` | Read article, body, metadata, and version `ETag` |
+| GET | `/articles/{slug}/` | Read article, `format`, body, metadata, and version `ETag` |
 | PATCH | `/articles/{slug}/` | Edit fields or change `published`; requires `If-Match` |
 | DELETE | `/articles/{slug}/` | Remove article and PDF; requires `If-Match` |
 | POST | `/articles/{slug}/markdown/` | Replace body from multipart field `file`; requires `If-Match` |
@@ -84,6 +84,24 @@ Other authors can reuse an image only after an article they can read uses it. A 
 Unused images have a 24-hour grace period before cleanup. If an image is no longer available, upload it again before saving.
 Download sections: `framework`, `packages`, `exercises`, `previous`. Uploads are published at once and keep the original file name.
 The proxy accepts up to 512 MB on `/api/`. Each result has `size`, `sha256`, and `url`; the `url` works only in a signed-in browser session.
+
+## HTML articles
+
+API version 1.7.0 adds `format` to article create, read, and update. Values: `markdown` (default; existing articles
+are unchanged) or `html`. Omit `format` on PATCH to keep the current value.
+An `html` body is a full HTML document, at most 1 MiB, with its own inline CSS and inline JavaScript.
+Only a key whose owner can change articles (`articles` or `admin` scope and `change_article`) can create or edit an
+`html` article; other writes answer `400` on the `format` field.
+The reader shows the document in an iframe with `sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"`,
+served from `/article-html/{slug}/` with the article's access rules. The document has no same-origin access, no
+network requests (no `fetch`, forms, or external scripts), and no cookies. It may load Athena's fonts, the token
+stylesheet `/assets/suite-tokens.css`, and the article's own images: each `/article-images/{id}/` URL in the body is
+served as a signed URL that is valid for one hour.
+Athena adds its bridge script before `</body>`. The bridge sets `data-theme` (`dark` or `light`) on the root element,
+sends `athena:lang` (`es` or `en`) and `athena:viewport` (`{top, height}` of the visible part, for dialogs) as
+document events, reports the content height, and forwards Ctrl K or ⌘ K to the Athena search.
+`html` articles have no PDF export (`/content/{slug}.pdf` answers `404`) and no page outline; an attached PDF still works.
+Search indexes the visible text and headings of the document, without scripts, styles, and templates.
 
 ## Examples
 

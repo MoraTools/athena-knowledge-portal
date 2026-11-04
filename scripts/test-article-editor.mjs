@@ -87,12 +87,12 @@ assert.equal(options.ALLOW_DATA_ATTR, false);
 console.log('Article preview Markdown, title, image paths, draft/PDF parity, and sanitizer boundary checks passed.');
 
 // The editor uses native form controls. This DOM stub checks behavior without a new test dependency.
-function editor({ readOnly = false, serverError = null } = {}) {
-  const handlers = {}, nodes = new Map(), closeEvents = [];
+function editor({ readOnly = false, serverError = null, format = null, previewUrl = '' } = {}) {
+  const handlers = {}, nodes = new Map(), closeEvents = [], posts = [];
   let focused = null, firstInvalid = null;
   function element(id = '', parent = null) {
     const node = { id, parent, dataset: {}, attributes: {}, listeners: {}, value: '',
-      open: false, hidden: false, readOnly, files: [],
+      open: false, hidden: false, readOnly, files: [], style: {}, classList: { add() {}, remove() {} },
       addEventListener(type, callback) { (this.listeners[type] ||= []).push(callback); },
       async fire(type, extra = {}) {
         const event = { type, target: this, defaultPrevented: false,
@@ -128,20 +128,29 @@ function editor({ readOnly = false, serverError = null } = {}) {
   const tool = element('desk-tool-fields', panels[0]);
   const title = element('id_title', form), body = element('id_body', form);
   title.value = 'Title'; body.value = 'Unsaved Markdown';
+  if (previewUrl) body.dataset.htmlPreviewUrl = previewUrl;
   const fields = { title, body };
+  if (format) fields.format = { value: format };
+  Object.assign(form.dataset, { format: format || 'markdown', articleSlug: 'guide' });
   for (const [name, parent] of [['summary', panels[0]], ['kind', panels[0]], ['url', tool],
     ['date', panels[1]], ['is_public', panels[1]], ['pdf_file', panels[2]], ['markdown_file', panels[2]]]) {
     fields[name] = Object.assign(element(`id_${name}`, parent), { name });
   }
   fields.kind.value = 'guide';
   element('id_markdown_file_helptext');
-  for (const id of ['desk-preview-content', 'desk-image-footer', 'desk-state', 'desk-details-state', 'desk-count']) element(id);
+  for (const id of ['desk-preview-content', 'desk-image-footer', 'desk-state', 'desk-details-state', 'desk-count',
+    'desk-source-heading', 'desk-preview-status']) element(id);
+  const preview = nodes.get('desk-preview-content');
+  preview.replaceChildren = (...children) => { preview.children = children; children.forEach(child => { child.isConnected = true; }); };
+  preview.getBoundingClientRect = () => ({ top: 100, bottom: 700 });
+  form.querySelector = () => ({ value: 'csrf-token' });
   const overflow = element('overflow'), mainOpener = element('opener'), importOpener = element('import', overflow);
   importOpener.dataset.detailFocus = 'id_markdown_file';
   const close = element('close', dialog), workspace = element('workspace');
   const paneTabs = ['source', 'preview'].map(pane => { const tab = element(pane); tab.dataset.pane = pane; return tab; });
   form.elements = { namedItem: name => readOnly ? null : fields[name] ?? null };
-  form.querySelector = () => firstInvalid;
+  const csrf = form.querySelector;
+  form.querySelector = selector => selector === 'input[name="csrfmiddlewaretoken"]' ? csrf() : firstInvalid;
   form.checkValidity = () => {
     if (firstInvalid) form.dispatchEvent({ type: 'invalid', target: firstInvalid, preventDefault() {} });
     return !firstInvalid;
@@ -153,16 +162,29 @@ function editor({ readOnly = false, serverError = null } = {}) {
     '[data-close-details]': close, '.desk-workspace': workspace };
   vm.runInNewContext(readFileSync(new URL('../server/athena/static/athena/article-editor.js', import.meta.url), 'utf8'), {
     window: { addEventListener(type, callback) { handlers[type] = callback; } },
-    document: { documentElement: { dataset: {} },
+    document: { documentElement: { dataset: { theme: 'dark' }, lang: 'es' },
+      body: { append(node) { node.isConnected = true; } },
+      createElement(tag) {
+        const node = element('');
+        Object.assign(node, { tagName: tag, elements: {}, contentWindow: { messages: [], postMessage(message) { this.messages.push(message); } },
+          append(...children) { for (const child of children) if (child.name) this.elements[child.name] = child; },
+          submit() { posts.push({ action: this.action, target: this.target, method: this.method, body: this.elements.body.value,
+            csrf: this.elements.csrfmiddlewaretoken.value }); },
+          getBoundingClientRect: () => ({ top: 150, height: 3000 }) });
+        return node;
+      },
       getElementById: id => nodes.get(id) ?? null,
       querySelector: selector => queries[selector] ?? null,
       querySelectorAll: selector => selector === '[data-pane]' ? paneTabs : [mainOpener, importOpener],
       addEventListener(type, callback) { handlers[type] = callback; } },
     matchMedia: () => ({ matches: false, addEventListener() {} }),
-    setTimeout() {}, clearTimeout() {}, TextDecoder, Event
+    setTimeout() {}, clearTimeout() {}, TextDecoder, Event, URLSearchParams, innerHeight: 800,
+    DOMParser: class { parseFromString(text) { return { querySelectorAll: () => [], body: { textContent: text.replace(/<[^>]*>/g, ' ') } }; } },
+    requestAnimationFrame(callback) { callback(); },
+    addEventListener(type, callback) { handlers['global:' + type] = callback; }
   });
   handlers.DOMContentLoaded();
-  return { form, dialog, panels, detailTabs, fields, tool, close, mainOpener, importOpener, handlers,
+  return { form, dialog, panels, detailTabs, fields, tool, close, mainOpener, importOpener, handlers, preview, posts, nodes,
     focused: () => focused, invalidate(field) { firstInvalid = fields[field]; },
     flushClose() { for (const callback of closeEvents.splice(0)) callback(); } };
 }
@@ -278,4 +300,33 @@ for (const file of [
   assert.equal(state.fields.markdown_file.value, file.name);
   assert.equal(state.fields.body.readOnly, false);
 }
+// HTML: the unsaved source is posted into the sandboxed preview frame, never put into srcdoc.
+{
+  const state = editor({ format: 'html', previewUrl: '/article-html-preview/' });
+  const frame = state.preview.children[0];
+  assert.equal(frame.tagName, 'iframe');
+  assert.equal(frame.attributes.sandbox, 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
+  assert.equal(frame.srcdoc, undefined);
+  assert.equal(state.nodes.get('desk-source-heading').textContent, 'HTML');
+  assert.equal(state.nodes.get('desk-count').textContent, '2 palabras');
+  assert.equal(JSON.stringify(state.posts), JSON.stringify([{ action: '/article-html-preview/?theme=dark&lang=es', target: frame.name, method: 'post',
+    body: 'Unsaved Markdown', csrf: 'csrf-token' }]));
+  const message = state.handlers['global:message'];
+  message({ source: {}, data: { type: 'athena:height', value: 900 } });
+  assert.equal(frame.style.height, undefined, 'Another window cannot resize the preview.');
+  message({ source: frame.contentWindow, data: { type: 'athena:height', value: 1234.2 } });
+  assert.equal(frame.style.height, '1235px');
+  message({ source: frame.contentWindow, data: { type: 'athena:ready' } });
+  assert.equal(JSON.stringify(frame.contentWindow.messages.slice(-3)), JSON.stringify([
+    { type: 'athena:theme', value: 'dark' }, { type: 'athena:lang', value: 'es' }, { type: 'athena:viewport', value: { top: 0, height: 550 } }]));
+  state.fields.format.value = 'markdown';
+  await state.form.fire('change', { target: state.fields.format });
+  assert.equal(state.nodes.get('desk-source-heading').textContent, 'Markdown');
+}
+{
+  const state = editor({ format: 'html', readOnly: true });
+  assert.equal(state.posts.length, 0, 'A view-only page has no preview endpoint.');
+  assert.equal(state.preview.children[0].src, '/article-html/guide/?theme=dark&lang=es');
+}
+console.log('HTML preview frame, sandbox, POST source, message source checks, theme and viewport messages passed.');
 console.log('Article detail tabs, read-only controls, keyboard focus, error routing, close retention and native save checks passed.');

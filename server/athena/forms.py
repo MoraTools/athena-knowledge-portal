@@ -38,20 +38,26 @@ class ArticleForm(forms.ModelForm):
 
     class Meta:
         model = Article
-        fields = ['title', 'slug', 'kind', 'summary', 'author', 'date', 'tags', 'body',
+        fields = ['title', 'slug', 'kind', 'summary', 'author', 'date', 'tags', 'format', 'body',
                   'status', 'url', 'download_file', 'published', 'is_public', 'pdf_only']
         widgets = {'body': forms.Textarea(attrs={'rows': 24, 'cols': 90}),
                    'summary': forms.Textarea(attrs={'rows': 3, 'cols': 80}),
                    'date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
-                   'is_public': forms.Select(choices=[(False, 'Con cuenta'), (True, 'Público')])}
+                   'is_public': forms.Select(choices=[(False, 'Con cuenta'), (True, 'Público')]),
+                   'format': forms.RadioSelect}
 
     def __init__(self, *args, actor=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.actor = actor or getattr(type(self), 'actor', None)
         self.instance._image_actor = self.actor
+        if 'format' in self.fields:  # Older clients that omit the format keep the article's current one.
+            self.fields['format'].required = False
         if self.instance.pk and 'slug' in self.fields:  # A view-only change form has no fields.
             self.fields['slug'].disabled = True
             self.initial['tags'] = ', '.join(self.instance.tags)
+
+    def clean_format(self):
+        return self.cleaned_data.get('format') or self.instance.format or 'markdown'
 
     def clean_tags(self):
         return [tag.strip() for tag in self.cleaned_data['tags'].split(',') if tag.strip()]
@@ -77,10 +83,14 @@ class ArticleForm(forms.ModelForm):
                 self.instance.pdf, self.instance.pdf_name = content, pdf.name
             except ValidationError as error:
                 self.add_error('pdf_file', error)
+        html = (data.get('format') or self.instance.format) == 'html'
+        # An HTML article runs its own scripts in the reader's sandbox, so it needs the full article editor right.
+        if html and self.actor and not self.actor.has_perm('athena.change_article'):
+            self.add_error('format', 'Solo quien puede modificar artículos puede crear o editar artículos HTML.')
         if 'body' in data:
             from .images import check_references
             try:
-                check_references(data['body'], actor=self.actor)
+                check_references(data['body'], actor=self.actor, html=html)
             except ValidationError as error:
                 self.add_error('body', error.message_dict['body'] if hasattr(error, 'message_dict') else error.messages)
         return data

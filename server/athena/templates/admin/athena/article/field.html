@@ -5,7 +5,7 @@
     {% else %}
       {{ field.label_tag }}
       {% if field.is_readonly %}
-        {% if field.field.name == 'body' %}<textarea id="id_body" readonly aria-label="Contenido Markdown">{{ original.body }}</textarea>
+        {% if field.field.name == 'body' %}<textarea id="id_body" readonly aria-label="Contenido">{{ original.body }}</textarea>
         {% elif field.field.name == 'title' %}<input id="id_title" readonly aria-label="Título" value="{{ original.title }}">
         {% else %}<div class="readonly">{{ field.contents }}</div>{% endif %}
       {% else %}{{ field.field }}{% endif %}

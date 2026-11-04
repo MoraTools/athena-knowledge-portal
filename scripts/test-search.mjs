@@ -86,7 +86,7 @@ from athena.models import Article
 entries = []
 for body in json.load(sys.stdin):
     article = SimpleNamespace(title='Guide', slug='guide', kind='guide', summary='Summary', author='Author',
-                              date=date(2026, 10, 9), tags=[], body=body, pdf_name='', published=True)
+                              date=date(2026, 10, 9), tags=[], body=body, pdf_name='', published=True, format='markdown')
     entries.append(search_entry(article) | {'markdown': article_body(article)})
 pages = []
 sample = Article(title='Guide', slug='guide', kind='guide', summary='Summary', author='Author',

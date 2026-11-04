@@ -10,7 +10,7 @@
 {% endblock %}
 {% block content %}
 <div id="content-main">
-  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="article_form" novalidate data-article-slug="{{ original.slug|default:'' }}" data-article-kind="{{ original.kind|default:'guide' }}" data-pdf-name="{{ original.pdf_name|default:'' }}" data-published="{{ original.published|yesno:'true,false' }}" data-public="{{ original.is_public|yesno:'true,false' }}" data-pdf-only="{{ original.pdf_only|yesno:'true,false' }}">
+  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="article_form" novalidate data-article-slug="{{ original.slug|default:'' }}" data-article-kind="{{ original.kind|default:'guide' }}" data-pdf-name="{{ original.pdf_name|default:'' }}" data-published="{{ original.published|yesno:'true,false' }}" data-public="{{ original.is_public|yesno:'true,false' }}" data-pdf-only="{{ original.pdf_only|yesno:'true,false' }}" data-format="{{ original.format|default:'markdown' }}">
     {% csrf_token %}
     {{ adminform.form.loaded_revision }}
     {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
@@ -47,18 +47,23 @@
       {% for fieldset in adminform %}{% for line in fieldset %}{% for field in line %}{% if field.field.name == 'title' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}{% endfor %}
     </div>
     <div class="desk-mobile-tabs" role="tablist" aria-label="Contenido del artículo">
-      <button class="button" type="button" role="tab" id="desk-source-tab" aria-controls="desk-source" aria-selected="true" data-pane="source">Markdown</button>
+      <button class="button" type="button" role="tab" id="desk-source-tab" aria-controls="desk-source" aria-selected="true" data-pane="source">{% if original.format == 'html' %}HTML{% else %}Markdown{% endif %}</button>
       <button class="button" type="button" role="tab" id="desk-preview-tab" aria-controls="desk-preview" aria-selected="false" tabindex="-1" data-pane="preview">Vista previa</button>
     </div>
     <div class="desk-workspace" data-active-pane="source">
       <section class="desk-pane desk-source" id="desk-source" aria-labelledby="desk-source-heading">
-        <div class="desk-pane-header"><h2 id="desk-source-heading">Markdown</h2><span id="desk-count"></span></div>
+        <div class="desk-pane-header"><h2 id="desk-source-heading">{% if original.format == 'html' %}HTML{% else %}Markdown{% endif %}</h2>
+          {% for fieldset in adminform %}{% for line in fieldset %}{% for field in line %}{% if field.field.name == 'format' %}
+            {% if field.is_readonly %}<span class="desk-format-readonly">{{ field.contents }}</span>
+            {% else %}<fieldset class="desk-format"><legend>Formato</legend>{% for radio in field.field %}<label class="desk-format-option">{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}</fieldset>{% if field.errors %}<div class="desk-format-errors">{{ field.errors }}</div>{% endif %}{% endif %}
+          {% endif %}{% endfor %}{% endfor %}{% endfor %}
+          <span id="desk-count"></span></div>
         <div class="desk-source-field">
           {% for fieldset in adminform %}{% for line in fieldset %}{% for field in line %}{% if field.field.name == 'body' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}{% endfor %}
         </div>
       </section>
       <section class="desk-pane desk-preview" id="desk-preview" aria-labelledby="desk-preview-heading">
-        <div class="desk-pane-header"><h2 id="desk-preview-heading">Vista previa · en vivo</h2></div>
+        <div class="desk-pane-header"><h2 id="desk-preview-heading">Vista previa · en vivo</h2><span id="desk-preview-status" class="desk-preview-status" role="status" aria-live="polite"></span></div>
         <div id="desk-preview-content" class="desk-preview-content" tabindex="0"><p class="desk-empty">La vista previa aparece al escribir Markdown.</p></div>
       </section>
     </div>
@@ -74,7 +79,7 @@
           <section class="desk-detail-panel" id="desk-detail-panel-{{ forloop.counter }}" role="tabpanel" aria-labelledby="desk-detail-tab-{{ forloop.counter }}">
             <h3 class="desk-detail-fallback-heading">{{ fieldset.name }}</h3>
             <fieldset class="module aligned desk-detail-fields">
-              {% for line in fieldset %}{% for field in line %}{% if field.field.name != 'title' and field.field.name != 'body' and field.field.name != 'status' and field.field.name != 'url' and field.field.name != 'download_file' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}
+              {% for line in fieldset %}{% for field in line %}{% if field.field.name != 'title' and field.field.name != 'body' and field.field.name != 'format' and field.field.name != 'status' and field.field.name != 'url' and field.field.name != 'download_file' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}
             </fieldset>
             {% if forloop.first %}
               <details id="desk-tool-fields" class="desk-tool-fields">

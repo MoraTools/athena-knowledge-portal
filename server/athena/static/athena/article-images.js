@@ -1,4 +1,4 @@
-/* Native Markdown textarea: each pending image has its own replaceable marker. */
+/* Native Markdown or HTML textarea: each pending image has its own replaceable marker. */
 (function () {
   function attachArticleImages(textarea) {
     const form = textarea.form;
@@ -99,7 +99,9 @@
         if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'No se pudo subir la imagen. Intente de nuevo.');
         if (!/^\/article-images\/[0-9a-f-]{36}\/$/.test(result.url || '')) throw new Error('La dirección de la imagen no es válida. Intente de nuevo.');
         const position = textarea.value.indexOf(marker);
-        if (position >= 0) replace(position, position + marker.length, `![Imagen](${result.url})`);
+        // An HTML article gets an <img> tag; the format switch is read when the upload finishes.
+        const html = form.elements.namedItem('format')?.value === 'html';
+        if (position >= 0) replace(position, position + marker.length, html ? `<img src="${result.url}" alt="Imagen">` : `![Imagen](${result.url})`);
       } catch (error) {
         const position = textarea.value.indexOf(marker);
         if (position >= 0) replace(position, position + marker.length, '');

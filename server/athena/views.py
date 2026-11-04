@@ -1,6 +1,7 @@
 import mimetypes
 import re
 from html import unescape
+from html.parser import HTMLParser
 from pathlib import Path
 
 from django.conf import settings
@@ -43,14 +44,13 @@ def article_image_upload(request):
         return JsonResponse({'error': ' '.join(error.messages)}, status=400)
 
 
-def send_article_image(request, image_id, *, include_drafts=True, allow_preview=True):
-    from .images import can_upload, image_path, referenced_image_ids
+def send_article_image(request, image_id, *, include_drafts=True, allow_preview=True, signed=False):
+    from .images import attached_image_ids, can_upload, image_path
     with transaction.atomic():
         image = get_object_or_404(ManagedImage, pk=image_id)
-        readable = any(image.pk in referenced_image_ids(body) for body in
-                       visible_articles(request.user, include_drafts=include_drafts).values_list('body', flat=True))
-        if not readable:
-            attached = any(image.pk in referenced_image_ids(body) for body in Article.objects.values_list('body', flat=True))
+        # A valid signature was issued by a page that could read the image (HTML articles, editor preview).
+        if not signed and image.pk not in attached_image_ids(visible_articles(request.user, include_drafts=include_drafts)):
+            attached = image.pk in attached_image_ids(Article.objects.all())
             if attached or not allow_preview or image.uploader_id != request.user.pk or not can_upload(request.user):
                 raise Http404
         try:
@@ -61,9 +61,43 @@ def send_article_image(request, image_id, *, include_drafts=True, allow_preview=
 
 
 def article_image(request, image_id):
+    from .images import valid_image_signature
     if request.method not in ('GET', 'HEAD'):
         return HttpResponse(status=405, headers={'Allow': 'GET, HEAD'})
-    return send_article_image(request, image_id)
+    return send_article_image(request, image_id, signed=valid_image_signature(image_id, request.GET.get('sig', '')))
+
+
+class HtmlText(HTMLParser):
+    """Readable text of an HTML article: headings and prose, without scripts, styles, or templates."""
+    SKIP = {'script', 'style', 'template', 'noscript', 'title', 'svg'}
+    INLINE = {'a', 'abbr', 'b', 'code', 'em', 'i', 'kbd', 'mark', 's', 'small', 'span', 'strong', 'sub', 'sup', 'u'}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts, self.skipping = [], 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.SKIP:
+            self.skipping += 1
+        elif tag not in self.INLINE:
+            self.parts.append(' ')
+
+    def handle_endtag(self, tag):
+        if tag in self.SKIP:
+            self.skipping = max(0, self.skipping - 1)
+        elif tag not in self.INLINE:
+            self.parts.append(' ')
+
+    def handle_data(self, data):
+        if not self.skipping:
+            self.parts.append(data)
+
+
+def html_text(body):
+    parser = HtmlText()
+    parser.feed(body)
+    parser.close()
+    return re.sub(r'\s+', ' ', ''.join(parser.parts)).strip()
 
 
 def search_text(body):
@@ -73,6 +107,12 @@ def search_text(body):
 
 
 def search_entry(article):
+    if article.format == 'html':
+        # Headings live inside the sandboxed frame; results link to the article itself.
+        return {'title': article.title, 'kind': article.kind, 'summary': article.summary, 'author': article.author,
+                'date': article.date.isoformat(), 'tags': article.tags, 'route': '#/content/' + article.slug,
+                'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '', 'text': html_text(article.body),
+                'headings': []}
     body = article_body(article)
     lines = body.splitlines(keepends=True)
     tokens = MARKDOWN.parse(body)
@@ -110,6 +150,10 @@ def search_index(request):
 def article_body(article):
     """The article Markdown the reader and the PDF export share: title heading, draft notice, original PDF link."""
     body = article.body
+    if article.format == 'html':
+        # src/app.js replaces this marker with the sandboxed frame; DOMPurify drops a literal iframe.
+        body = (f'<div class="html-article" data-src="/article-html/{article.slug}/" '
+                f'data-source="/article-html/{article.slug}/source" data-title="{escape(article.title)}"></div>')
     if not re.match(r'^\s*#\s+', body):
         body = f'# {escape(article.title)}\n\n' + body
     if not article.published:
@@ -132,7 +176,7 @@ def article_markdown(request, slug):
     if request.user.has_perm('athena.change_article'):
         edit = reverse('admin:athena_article_change', args=[article.pk])
         tools.append(f'<a class="copy-page copy-page--ghost" href="{edit}">{EDIT_ICON}<span>Editar artículo</span></a>')
-    if not article.pdf_only:
+    if not article.pdf_only and article.format != 'html':
         tools.append(f'<a class="copy-page copy-page--ghost" href="/content/{article.slug}.pdf" download>'
                      f'{EXPORT_ICON}<span>Exportar PDF</span></a>')
     if tools:
@@ -209,7 +253,8 @@ def pdf_fetcher(image_versions=None):
 
 def article_export(request, slug):
     from .pdf_export import cached_export, ExportBusy
-    article = get_object_or_404(visible_articles(request.user, include_drafts=True).defer('pdf'), slug=slug)
+    # HTML articles have no PDF export; an attached PDF still opens through /pdf/<slug>.pdf.
+    article = get_object_or_404(visible_articles(request.user, include_drafts=True).defer('pdf'), slug=slug, format='markdown')
     try:
         file = cached_export(article)
     except ExportBusy:
@@ -219,6 +264,57 @@ def article_export(request, slug):
         file.close()
         raise Http404
     return FileResponse(file, as_attachment=True, filename=f'{article.slug}.pdf', content_type='application/pdf')
+
+
+ARTICLE_BRIDGE = (Path(__file__).parent / 'static/athena/article-bridge.js').read_text(encoding='utf-8')
+HTML_SANDBOX = 'allow-scripts allow-popups allow-popups-to-escape-sandbox'
+
+
+def html_article_response(request, body, image_ids):
+    """An author's HTML document for the reader's sandboxed frame, with signed images and the Athena bridge."""
+    from .images import sign_image_urls
+    body = sign_image_urls(body, image_ids)
+    script = f'<script>{ARTICLE_BRIDGE}</script>'
+    end = body.lower().rfind('</body>')
+    body = body[:end] + script + body[end:] if end >= 0 else body + script
+    # Opaque-origin documents do not match 'self' in every browser, so the origin is listed too.
+    own = f"'self' {request.scheme}://{request.get_host()}"
+    return HttpResponse(body, content_type='text/html; charset=utf-8', headers={'Content-Security-Policy': (
+        f"sandbox {HTML_SANDBOX}; default-src 'none'; script-src 'unsafe-inline'; style-src {own} 'unsafe-inline'; "
+        f"img-src {own} data: blob:; font-src {own} data:; media-src {own} data: blob:; connect-src 'none'; "
+        "form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; frame-ancestors 'self'"
+    )})
+
+
+@xframe_options_sameorigin
+def article_html_document(request, slug):
+    from .images import referenced_image_ids
+    if request.method not in ('GET', 'HEAD'):
+        return HttpResponse(status=405, headers={'Allow': 'GET, HEAD'})
+    article = get_object_or_404(visible_articles(request.user, include_drafts=True).defer('pdf'), slug=slug, format='html')
+    return html_article_response(request, article.body, referenced_image_ids(article.body, html=True))
+
+
+def article_html_source(request, slug):
+    """The saved HTML for "Copiar página", with the same access as the article."""
+    article = get_object_or_404(visible_articles(request.user, include_drafts=True).defer('pdf'), slug=slug, format='html')
+    return HttpResponse(article.body, content_type='text/plain; charset=utf-8',
+                        headers={'Content-Security-Policy': "sandbox; default-src 'none'"})
+
+
+@xframe_options_sameorigin
+def article_html_preview(request):
+    """The editor's live preview: unsaved HTML in the same sandboxed frame as the reader."""
+    from .images import referenced_image_ids, usable_image_ids
+    if request.method != 'POST':
+        return HttpResponse(status=405, headers={'Allow': 'POST'})
+    user = request.user
+    if not user.is_authenticated or not user.is_active or not user.has_perm('athena.change_article'):
+        return HttpResponse('Su cuenta no puede editar artículos HTML.', status=403, content_type='text/plain; charset=utf-8')
+    body = request.POST.get('body', '')
+    if len(body.encode('utf-8')) > 1024 * 1024:
+        return HttpResponse('El contenido no puede superar 1 MiB.', status=400, content_type='text/plain; charset=utf-8')
+    return html_article_response(request, body, usable_image_ids(referenced_image_ids(body, html=True), user))
 
 
 @xframe_options_sameorigin  # The reader embeds the PDF in an iframe.
@@ -390,4 +486,8 @@ def static_portal(request, path='index.html'):
         return HttpResponse(sidebar_markdown(request.user), content_type='text/markdown; charset=utf-8')
     if path == 'api.md':
         return api_docs(request)
-    return FileResponse(file.open('rb'), content_type=mimetypes.guess_type(file)[0] or 'application/octet-stream')
+    response = FileResponse(file.open('rb'), content_type=mimetypes.guess_type(file)[0] or 'application/octet-stream')
+    if path.startswith('fonts/'):
+        # HTML articles run in an opaque-origin frame; their font requests use CORS with Origin: null.
+        response['Access-Control-Allow-Origin'] = '*'
+    return response

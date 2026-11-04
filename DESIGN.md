@@ -47,7 +47,7 @@ Fonts are local woff2 files with their OFL 1.1 notices in `src/fonts/LICENSE.md`
 | Display | Cormorant 4.000 | The wordmark (22px, uppercase by style), the home heading, page and article h1 (40px/46px) and h2 (30px/36px), the command-bar title (26px). Never below 22px. |
 | Mono | `Consolas, "Cascadia Mono", ui-monospace, "SF Mono", Menlo, "DejaVu Sans Mono", monospace` | Code, labels (11px uppercase 0.06em 600), chips and tags (10px uppercase 0.04em) |
 
-Article prose is 17px/1.65 with a 70ch measure. Buttons are Inter 13px 600 in sentence case.
+Article prose is 17px/1.65 with a 70ch measure. An HTML article's frame fills the content width up to `--content-max`, without a border, under the article h1; the article sets its own measure. Buttons are Inter 13px 600 in sentence case.
 
 Admin body text is Inter 14px/1.5, inputs and table cells 13px; help text is 12px in subtle text. Admin page titles (the Django `h1`, Usuarios, the directory inspector heading, the editor's details dialog) use Cormorant 26px/32px; the editor's title field and preview headings use the reader sizes. The admin sign-in header shows ATHENA in the wordmark voice and "Administración" in the label voice.
 Admin labels, fieldset and table headers, breadcrumbs and panel heads use the label voice (mono 11px uppercase 0.06em 600); pills are the kit chip (mono 10px uppercase 0.04em); dates and counts use mono 13px with tabular figures.
@@ -80,7 +80,7 @@ Admin forms retain Django's responsive layout. Flex rows wrap and child containe
 At 767px and below, `body .aligned .form-row > div` uses `width: 100%; max-width: 100%`.
 Preserve this override; Django's default viewport-based width can extend beyond the available space when scrollbars are present.
 Admin form controls are 32px high (44px at 760px and below and for a coarse pointer).
-The article editor shows Markdown and its preview side by side above an available 900px width. At 900px and below, its existing Markdown and preview tabs select the pane. Toolbar, pane, and dialog headers wrap; read-only values, errors, and filenames wrap within the form.
+The article editor shows Markdown and its preview side by side above an available 900px width. At 900px and below, its existing Markdown and preview tabs select the pane. A **Markdown | HTML** segmented switch (native radios, accent fill on the selected format) sits in the source pane header; for HTML the pane title and tab read HTML, and the preview is the reader's sandboxed frame, loaded by a POST to `/article-html-preview/`, inside the existing preview padding. Toolbar, pane, and dialog headers wrap; read-only values, errors, and filenames wrap within the form.
 API key creation fills the content width and its actions wrap. Standalone sign-in aligns the wordmark and form within the same 650px column.
 The directory keeps the 1320px cap and full 256px rail. Its wide grid divides the roster and inspector 1.55:1, with a 360px minimum inspector width. At a content-container width of 1140px and below, the two sections stack.
 The roster table has a 620px minimum width and scrolls inside its own container. A scroll cue appears only when the roster interior is below 620px wide.
@@ -116,7 +116,7 @@ The language toggle uses the Lucide languages icon; the theme toggle shows a sun
 ## Controls and states
 
 Use native inputs, selects, date and calendar controls, file uploads, and Django validation messages.
-The article Markdown textarea supports pasted PNG/JPEG/WebP images and a secondary **Insertar imagen** button below the field.
+The article Markdown textarea supports pasted PNG/JPEG/WebP images and a secondary **Insertar imagen** button below the field. In an HTML article it inserts an `<img>` tag.
 Keep its native text behavior. Image insertion preserves selected text; progress and upload errors appear beside the button with a live status.
 Save controls stay disabled during upload. The helper wraps below the textarea on narrow screens and uses the existing control and spacing tokens.
 Keep visible labels, skip links, focus outlines, and reduced-motion support.

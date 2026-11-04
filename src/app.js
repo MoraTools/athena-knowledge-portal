@@ -71,7 +71,8 @@ function buildPageTree() {
 
   const route = getRouteState().path;
   const article = document.querySelector('.markdown-section');
-  if (!route.startsWith('/content/') || !article || article.querySelector('.unavailable-page')) return;
+  // An HTML article's headings are inside its sandboxed frame.
+  if (!route.startsWith('/content/') || !article || article.querySelector('.unavailable-page, .html-article, .html-article-frame')) return;
 
   const headings = [...article.querySelectorAll('h1[id],h2[id],h3[id]')];
   if (!headings.length) return;
@@ -698,6 +699,80 @@ function buildPdfViewer() {
   (link.closest('.article-pdf') || link).replaceWith(viewer);
 }
 
+// HTML articles: the server leaves a .html-article marker; the document runs in a sandboxed, opaque-origin frame.
+// Only that frame's window may send athena:* messages; the frame never gets same-origin access.
+let htmlFrame = null;
+let htmlViewportPending = false;
+
+function sendHtmlFrame(type, value) {
+  htmlFrame?.contentWindow?.postMessage({ type, value }, '*');
+}
+
+function htmlFrameViewport() {
+  if (!htmlFrame?.isConnected) return;
+  const rect = htmlFrame.getBoundingClientRect();
+  const top = Math.max(0, -rect.top);
+  const bottom = Math.min(rect.height, window.innerHeight - rect.top);
+  sendHtmlFrame('athena:viewport', { top, height: Math.max(0, bottom - top) || window.innerHeight });
+}
+
+function queueHtmlViewport() {
+  if (htmlViewportPending || !htmlFrame?.isConnected) return;
+  htmlViewportPending = true;
+  requestAnimationFrame(() => {
+    htmlViewportPending = false;
+    htmlFrameViewport();
+  });
+}
+
+function syncHtmlFrame() {
+  sendHtmlFrame('athena:theme', document.documentElement.dataset.theme);
+  sendHtmlFrame('athena:lang', currentLang());
+  htmlFrameViewport();
+}
+
+function buildHtmlArticle() {
+  const marker = document.querySelector('.markdown-section .html-article[data-src]');
+  if (!marker || !marker.dataset.src.startsWith('/article-html/')) return;
+  const frame = document.createElement('iframe');
+  frame.className = 'html-article-frame';
+  frame.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
+  frame.title = marker.dataset.title || document.querySelector('.markdown-section h1')?.textContent.trim() || 'Athena';
+  frame.dataset.source = marker.dataset.source || '';
+  const params = new URLSearchParams({ theme: document.documentElement.dataset.theme || 'light', lang: currentLang() });
+  frame.src = marker.dataset.src + '?' + params;
+  // Shown on the first height report, or on load if the document never reports.
+  frame.addEventListener('load', () => frame.classList.add('is-ready'));
+  marker.replaceWith(frame);
+  htmlFrame = frame;
+}
+
+function focusSearch() {
+  const input = document.querySelector('#athena-search-input');
+  if (!input) return;
+  window.athenaRail?.closeDrawer();
+  input.focus();
+  input.select();
+}
+
+function handleHtmlFrameMessage(event) {
+  const frame = htmlFrame;
+  if (!frame?.isConnected || event.source !== frame.contentWindow || !event.data || typeof event.data !== 'object') return;
+  const { type, value } = event.data;
+  if (type === 'athena:height' && Number.isFinite(value) && value >= 0) {
+    frame.style.height = Math.min(Math.ceil(value), 100000) + 'px';
+    frame.classList.add('is-ready');
+    queueHtmlViewport();
+  } else if (type === 'athena:ready' || type === 'athena:viewport-request') {
+    syncHtmlFrame();
+  } else if (type === 'athena:search') {
+    focusSearch();
+  } else if (type === 'athena:scroll' && Number.isFinite(value)) {
+    const offset = (document.querySelector('.reader-command')?.offsetHeight || 0) + 16;
+    window.scrollTo({ top: Math.max(0, window.scrollY + frame.getBoundingClientRect().top + value - offset) });
+  }
+}
+
 // The server ends an article with one .article-tools marker (Editar artículo, Exportar PDF);
 // its links belong beside "Copiar página". The marker is removed, so a later sync does nothing.
 function placeArticleTools() {
@@ -720,6 +795,7 @@ function syncView() {
   filterDownloads();
   buildPageTree();
   buildPdfViewer();
+  buildHtmlArticle();
   placeArticleTools();
   buildTableSorting();
   updateSignInLinks();
@@ -853,9 +929,11 @@ document.addEventListener('click', async (event) => {
   const label = copyButton.querySelector('span');
   try {
     const route = getRouteState().path;
-    const response = await fetch(route.endsWith('.md') ? route : route + '.md');
+    // An HTML article copies its saved HTML source, not the reader's marker.
+    const source = document.querySelector('.markdown-section .html-article-frame')?.dataset.source;
+    const response = await fetch(source || (route.endsWith('.md') ? route : route + '.md'));
     if (!response.ok) throw new Error('Article request failed: ' + response.status);
-    const text = (await response.text()).replace(/\n*<div class="article-tools">.*<\/div>\n?$/, '\n').replace(/\n*<span class="article-context"[^>]*><\/span>\n?/, '\n');
+    const text = source ? await response.text() : (await response.text()).replace(/\n*<div class="article-tools">.*<\/div>\n?$/, '\n').replace(/\n*<span class="article-context"[^>]*><\/span>\n?/, '\n');
     await navigator.clipboard.writeText(text);
     copyButton.classList.add('copied');
     label.textContent = t('Copiado');
@@ -910,9 +988,7 @@ document.addEventListener('keydown', (event) => {
   if (!input) return;
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
-    window.athenaRail?.closeDrawer();
-    input.focus();
-    input.select();
+    focusSearch();
   } else if (event.key === 'Escape') {
     document.querySelectorAll('.crumb-collapse[open]').forEach((menu) => { menu.open = false; });
     if (event.target !== input) return;
@@ -926,7 +1002,9 @@ document.addEventListener('keydown', (event) => {
 
 window.athenaSyncView = syncView;
 syncView();
+document.addEventListener('suite:theme', () => sendHtmlFrame('athena:theme', document.documentElement.dataset.theme));
 document.addEventListener('suite:lang', () => {
+  sendHtmlFrame('athena:lang', currentLang());
   syncView();
   document.querySelectorAll('.table-sort').forEach((button) => {
     button.setAttribute('aria-label', sortLabel(button.textContent.trim(), button.closest('th').getAttribute('aria-sort') === 'ascending'));
@@ -935,6 +1013,9 @@ document.addEventListener('suite:lang', () => {
 window.addEventListener('load', syncView);
 window.addEventListener('hashchange', syncView);
 window.addEventListener('scroll', updatePageTreeCurrent, { passive: true });
+window.addEventListener('scroll', queueHtmlViewport, { passive: true });
+window.addEventListener('resize', queueHtmlViewport);
+window.addEventListener('message', handleHtmlFrameMessage);
 const reader = document.querySelector('div#main');
 if (reader) new ResizeObserver(updatePageTreeLayout).observe(reader);
 

@@ -2,7 +2,7 @@
 
 Athena runs on a DigitalOcean VPS with Django, SQLite, Gunicorn, and Caddy.
 The Spanish reader keeps its existing Docsify routes. Published articles can be public or require an account. Existing articles remain private by default.
-The current portal version is `1.11.0`; the REST API remains `1.6.0`.
+The current portal version is `1.12.0`; the REST API is `1.7.0`.
 
 ## Production
 
@@ -39,6 +39,15 @@ Sign in and change the initial password. Credentials are not written to deployme
 On desktop, the editor shows Markdown and a live reader preview side by side. On mobile, use the **Markdown** and **Vista previa** tabs.
 The **Detalles** dialog has **Información**, **Publicación**, and **Archivos** tabs. **Cerrar** or Escape keeps pending edits in the editor. Select **Guardar cambios** in the dialog, or **Guardar** in the editor, to save the whole article, including Markdown and attachments.
 A Markdown import replaces the editor text. After the import, you can edit the text before saving; saving keeps those edits. Wait until the import or image upload finishes before saving.
+
+### HTML articles
+
+An article has a format: **Markdown** (the default; existing articles keep it) or **HTML**. Select it with the **Markdown | HTML** switch above the editor text.
+An HTML article is a full HTML document with its own inline CSS and JavaScript, up to 1 MiB. Only accounts that can change articles (the existing editor and administrator permission, or an `articles` or `admin` API key of such an account) can create or edit HTML articles.
+The reader shows the document under the article title, in an iframe with `sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"` (never `allow-same-origin`). The document comes from `/article-html/<slug>/` with the article's access rules and its own Content Security Policy: inline CSS and scripts only, no `fetch`, forms, or external scripts, and the same sandbox if the route is opened directly.
+Athena adds a bridge script before `</body>`. It sets `data-theme` on the root element, sends the language (`athena:lang`) and the visible part of the frame (`athena:viewport`, for dialogs) as document events, reports the height, scrolls the reader for in-page `#` links, and forwards Ctrl K to the Athena search. Link `/assets/suite-tokens.css` to use the Athena fonts and theme tokens; Django sends the font files with `Access-Control-Allow-Origin: *`, so they load inside the frame.
+Reference images by their `/article-images/<id>/` URL, in `<img>`, CSS `url()`, or script strings. **Insertar imagen** inserts an `<img>` tag. The frame cannot send the session cookie, so the server replaces each reference with a signed URL that is valid for one hour.
+Search indexes the visible text and headings of the document (not scripts, styles, or templates) and links to the article. HTML articles have no **Exportar PDF** and no page outline; an attached PDF still opens. **Copiar página** copies the saved HTML. The editor preview shows the unsaved HTML in the same sandboxed frame.
 
 Changes appear in the library and search on the next page load; no build or redeploy is required.
 Open an article to edit, replace or remove its PDF, unpublish it, or delete it.
@@ -93,7 +102,7 @@ This applies to `/accounts/login/` and `/admin/login/`. An administrator cannot 
 
 ## Article images
 
-In an article's Markdown field, paste a clipboard image or select **Insertar imagen**. This works before the first save.
+In an article's Markdown or HTML field, paste a clipboard image or select **Insertar imagen**. This works before the first save.
 The image is inserted before any selected text. You can continue to write during upload. Save controls wait until the upload finishes.
 If an upload fails, the editor retains your text and shows an error. Normal text paste keeps its native behavior.
 Use PNG, JPEG, WebP, or GIF, up to 10 MiB and 20 million pixels. GIF can be static or animated.
@@ -108,7 +117,7 @@ Shared images follow any readable article that uses them. Removing the uploader 
 The reader plays animated GIFs. PDF exports use the first GIF frame. The bounded PDF worker receives only this article's image IDs and content hashes.
 
 The daily `athena-image-gc.timer` removes unused managed images after a 24-hour grace period.
-Cleanup checks all saved bodies, including drafts, shared images, inline/reference Markdown, HTML image sources, and local absolute URLs.
+Cleanup checks all saved bodies, including drafts, shared images, inline/reference Markdown, HTML image sources, HTML article bodies, and local absolute URLs.
 After the last reference is removed, a new 24-hour grace period starts. Backups, downloads, and PDF attachments are outside cleanup's scope.
 An interrupted upload can leave an orphan file; cleanup removes only generated orphan names in the managed-image directory after 24 hours.
 

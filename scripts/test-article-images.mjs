@@ -24,13 +24,14 @@ class Element {
   click() { this.dispatchEvent({ type: 'click' }); }
 }
 
-function setup({ disabled = false } = {}) {
+function setup({ disabled = false, format = 'markdown' } = {}) {
   const requests = [];
   const submits = [new Element('input'), new Element('input')];
   submits[1].disabled = true;
   const form = new Element('form');
   form.querySelectorAll = () => submits;
   form.querySelector = () => ({ value: 'csrf-token' });
+  form.elements = { namedItem: name => (name === 'format' ? { value: format } : null) };
   const textarea = new Element('textarea');
   Object.assign(textarea, {
     form, disabled, dataset: { imageUploadUrl: '/article-images/upload/', imageArticleId: '12' },
@@ -116,6 +117,14 @@ async function failure(request, error = 'La imagen no es válida.') {
   assert.equal(state.submits[0].disabled, false);
   assert.equal(state.submits[1].disabled, true);
   assert.equal(submit(state.form), false);
+}
+
+// An HTML article gets an <img> tag at the same place.
+{
+  const state = setup({ format: 'html' });
+  paste(state.textarea, [file()]);
+  await success(state.requests[0], 1);
+  assert.equal(state.textarea.value, `Before <img src="${url(1)}" alt="Imagen">SELECTED After`);
 }
 
 // Serial uploads keep paste order, and a later selection stays over its original text.

@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Athena management API",
-    "version": "1.6.0",
+    "version": "1.7.0",
     "description": "Private knowledge base. Create a scoped key in /admin/athena/apikey/. Keys expire after 90 days by default and are revoked when the owning user is disabled, removed, or has their password reset. Browser cookies are not accepted by the API. Guide for agents: GET /api/docs/. Check a key with GET /me/."
   },
   "servers": [
@@ -154,7 +154,7 @@
         "summary": "Get article",
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Success. JSON article with metadata, format (markdown or html), body, and route.",
             "headers": {
               "ETag": {
                 "description": "Version for If-Match on updates and deletes.",
@@ -975,9 +975,18 @@
           "author": {
             "type": "string"
           },
+          "format": {
+            "type": "string",
+            "enum": [
+              "markdown",
+              "html"
+            ],
+            "default": "markdown",
+            "description": "markdown (default) or html. An html body is a full HTML document with its own inline CSS and JavaScript; the reader shows it in a sandboxed iframe served from /article-html/{slug}/ (no same-origin access, no network requests except Athena's signed images, fonts, and stylesheets). Only keys whose user can change articles (articles or admin scope and change_article) can create or edit html articles. html articles have no PDF export and no page outline; search indexes their visible text. Omit on PATCH to keep the current format."
+          },
           "body": {
             "type": "string",
-            "description": "Markdown, at most 1 MiB. Required unless the article already has a PDF."
+            "description": "Markdown or a full HTML document (see format), at most 1 MiB. Required unless the article already has a PDF. Reference managed images by their /article-images/{id}/ URL in both formats."
           },
           "status": {
             "type": "string",

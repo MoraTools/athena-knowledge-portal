@@ -118,15 +118,128 @@
     document.addEventListener('keydown', event => { if (event.key === 'Escape') overflow.open = false; });
     document.addEventListener('click', event => { if (!overflow.contains(event.target)) overflow.open = false; });
 
+    // HTML articles: the server renders unsaved source into the reader's sandboxed frame. A srcdoc or blob
+    // frame would inherit the admin CSP and block the article's own scripts.
+    const htmlPreviewUrl = source.dataset.htmlPreviewUrl;
+    const previewStatus = document.getElementById('desk-preview-status');
+    const sourceHeading = document.getElementById('desk-source-heading');
+    const sourceTab = document.querySelector('[data-pane="source"]');
+    const format = () => value('format', form.dataset.format || 'markdown');
+    let htmlFrame = null;
+    let htmlForm = null;
+    let htmlTimer;
+    let heightTimer;
+    let viewportPending = false;
+    const sendFrame = (type, data) => htmlFrame?.contentWindow?.postMessage({ type, value: data }, '*');
+    function frameViewport() {
+      if (!htmlFrame?.isConnected) return;
+      const frame = htmlFrame.getBoundingClientRect();
+      const pane = preview.getBoundingClientRect();
+      const top = Math.max(0, Math.max(pane.top, 0) - frame.top);
+      const bottom = Math.min(frame.height, Math.min(pane.bottom, innerHeight) - frame.top);
+      sendFrame('athena:viewport', { top, height: Math.max(0, bottom - top) || innerHeight });
+    }
+    function queueViewport() {
+      if (viewportPending) return;
+      viewportPending = true;
+      requestAnimationFrame(() => { viewportPending = false; frameViewport(); });
+    }
+    function syncFrame() {
+      sendFrame('athena:theme', document.documentElement.dataset.theme);
+      sendFrame('athena:lang', document.documentElement.lang);
+      frameViewport();
+    }
+    const frameQuery = () => new URLSearchParams({ theme: document.documentElement.dataset.theme || 'light', lang: document.documentElement.lang || 'es' });
+    function loadHtmlPreview() {
+      clearTimeout(heightTimer);
+      heightTimer = setTimeout(() => { previewStatus.textContent = 'La vista previa no respondió. Revise el HTML y vuelva a escribir.'; }, 4000);
+      if (!htmlPreviewUrl) {  // A view-only page shows the saved article.
+        htmlFrame.src = `/article-html/${encodeURIComponent(form.dataset.articleSlug)}/?${frameQuery()}`;
+        return;
+      }
+      if (!htmlForm) {
+        htmlForm = document.createElement('form');
+        htmlForm.method = 'post';
+        htmlForm.target = htmlFrame.name;
+        htmlForm.hidden = true;
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = form.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+        const body = document.createElement('textarea');
+        body.name = 'body';
+        htmlForm.append(csrf, body);
+        document.body.append(htmlForm);
+      }
+      htmlForm.action = `${htmlPreviewUrl}?${frameQuery()}`;
+      htmlForm.elements.body.value = source.value;
+      htmlForm.submit();
+    }
+    function showHtmlPreview() {
+      if (!htmlFrame) {
+        htmlFrame = document.createElement('iframe');
+        htmlFrame.name = 'desk-html-preview';
+        htmlFrame.className = 'desk-html-frame';
+        htmlFrame.title = 'Vista previa del artículo HTML';
+        htmlFrame.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
+        addEventListener('message', event => {
+          if (!htmlFrame.isConnected || event.source !== htmlFrame.contentWindow || !event.data || typeof event.data !== 'object') return;
+          const { type, value: data } = event.data;
+          if (type === 'athena:height' && Number.isFinite(data) && data >= 0) {
+            clearTimeout(heightTimer);
+            previewStatus.textContent = '';
+            htmlFrame.style.height = `${Math.min(Math.ceil(data), 100000)}px`;
+            queueViewport();
+          } else if (type === 'athena:ready' || type === 'athena:viewport-request') {
+            syncFrame();
+          } else if (type === 'athena:scroll' && Number.isFinite(data)) {
+            preview.scrollTop += htmlFrame.getBoundingClientRect().top - preview.getBoundingClientRect().top + data;
+          }
+        });
+        preview.addEventListener('scroll', queueViewport, { passive: true });
+        addEventListener('resize', queueViewport);
+        document.addEventListener('suite:theme', () => sendFrame('athena:theme', document.documentElement.dataset.theme));
+        document.addEventListener('suite:lang', () => sendFrame('athena:lang', document.documentElement.lang));
+      }
+      const fresh = !htmlFrame.isConnected;
+      if (fresh) {
+        preview.classList.add('desk-preview-content--html');
+        preview.replaceChildren(htmlFrame);
+      }
+      clearTimeout(htmlTimer);
+      // Typing waits for a pause; a switch to HTML or a view-only page loads at once.
+      if (fresh || !htmlPreviewUrl) loadHtmlPreview();
+      else htmlTimer = setTimeout(loadHtmlPreview, 300);
+    }
+
+    // HTML counts the readable text, as search does; DOMParser documents run no scripts and load nothing.
+    function words() {
+      if (format() !== 'html') return source.value.trim();
+      const doc = new DOMParser().parseFromString(source.value, 'text/html');
+      doc.querySelectorAll('script, style, template, noscript').forEach(node => node.remove());
+      return (doc.body?.textContent || '').trim();
+    }
+
     function updatePreview() {
       const published = checked('published', form.dataset.published === 'true');
       const access = value('is_public', form.dataset.public === 'true' ? 'True' : 'False') === 'True';
       const state = `${published ? 'Publicado' : 'Borrador'} · ${access ? 'Público' : 'Con cuenta'}`;
       document.getElementById('desk-state').textContent = state;
       document.getElementById('desk-details-state').textContent = state;
-      document.getElementById('desk-count').textContent = `${source.value.trim().split(/\s+/).filter(Boolean).length} palabras`;
+      document.getElementById('desk-count').textContent = `${words().split(/\s+/).filter(Boolean).length} palabras`;
       const pdf = form.elements.namedItem('pdf_file')?.files?.[0];
       const pdfName = pdf?.name || (checked('remove_pdf') ? '' : form.dataset.pdfName);
+      const label = format() === 'html' ? 'HTML' : 'Markdown';
+      sourceHeading.textContent = label;
+      if (sourceTab) sourceTab.textContent = label;
+      if (format() === 'html') {
+        showHtmlPreview();
+        return;
+      }
+      clearTimeout(htmlTimer);
+      clearTimeout(heightTimer);
+      previewStatus.textContent = '';
+      preview.classList.remove('desk-preview-content--html');
       if (!window.marked || !window.DOMPurify) {
         preview.textContent = 'No se pudo cargar la vista previa. Puede editar y guardar Markdown.';
         return;

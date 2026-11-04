@@ -115,7 +115,7 @@ def me(request):
 
 def article_data(article, detail=True):
     result = {field: getattr(article, field) for field in
-              ('id', 'slug', 'title', 'kind', 'summary', 'author', 'tags', 'published', 'is_public', 'pdf_only', 'status', 'url', 'download_file')}
+              ('id', 'slug', 'title', 'kind', 'format', 'summary', 'author', 'tags', 'published', 'is_public', 'pdf_only', 'status', 'url', 'download_file')}
     result.update(date=article.date.isoformat(), updated_at=article.updated_at.isoformat(),
                   route=article.get_absolute_url(), pdf=f'/api/v1/articles/{article.slug}/pdf/' if article.pdf_name else None)
     if detail:

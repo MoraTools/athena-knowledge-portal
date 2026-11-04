@@ -23,6 +23,7 @@ function setup() {
   const form = new Element();
   form.querySelectorAll = () => [submit];
   form.querySelector = () => ({ value: 'csrf-token' });
+  form.elements = { namedItem: () => null };
   const textarea = new Element();
   Object.assign(textarea, { form, dataset: { imageUploadUrl: '/article-images/upload/' },
     value: 'Before SELECTED After', selectionStart: 7, selectionEnd: 15,

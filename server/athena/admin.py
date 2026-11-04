@@ -223,7 +223,7 @@ class ArticleAdmin(RowControlsAdmin):
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ['last_updated', 'current_pdf']
     fieldsets = [
-        ('Información', {'fields': ['title', 'body', 'summary', 'author', 'kind', 'tags', 'slug',
+        ('Información', {'fields': ['title', 'format', 'body', 'summary', 'author', 'kind', 'tags', 'slug',
                                      'status', 'url', 'download_file']}),
         ('Publicación', {'fields': ['published', 'is_public', 'date', 'last_updated']}),
         ('Archivos', {'fields': ['markdown_file', 'pdf_file', 'current_pdf', 'remove_pdf', 'pdf_only']}),
@@ -240,6 +240,10 @@ class ArticleAdmin(RowControlsAdmin):
             field = form.base_fields['body']
             field.widget.attrs['data-image-upload-url'] = reverse('article_image_upload')
             field.widget.attrs['data-image-article-id'] = str(obj.pk) if obj else ''
+            if request.user.has_perm('athena.change_article'):
+                field.widget.attrs['data-html-preview-url'] = reverse('article_html_preview')
+            elif 'format' in form.base_fields:  # HTML articles need the article change right (forms.ArticleForm).
+                form.base_fields['format'].choices = [('markdown', 'Markdown')]
             field.help_text = 'Pegue una imagen o use Insertar imagen. PNG, JPEG, WebP o GIF, hasta 10 MiB y 20 millones de píxeles. Se conserva el texto seleccionado.'
         return form
 

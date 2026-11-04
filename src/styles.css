@@ -102,6 +102,10 @@ body .markdown-section p.tip:before{color:var(--on-accent)}
 .source-note{display:block;margin:0 0 var(--space-3);color:var(--muted);font-size:.85rem}
 .source-note code{background:transparent}
 .pdf-link{display:inline-flex;align-items:center;min-height:32px;background:var(--accent);color:var(--on-accent)!important;padding:.55rem .8rem;font-weight:700;text-decoration:none}
+/* HTML articles: the sandboxed frame grows to the height its bridge reports; hidden until then to avoid a flash. */
+.markdown-section .html-article-frame{display:block;width:100%;height:240px;margin:var(--space-2) 0 0;border:0;background:var(--bg);visibility:hidden}
+.markdown-section .html-article-frame.is-ready{visibility:visible}
+body.article-view .markdown-section:has(.html-article,.html-article-frame){max-width:var(--content-max)}
 .pdf-viewer{margin:var(--space-3) 0}
 .pdf-viewer__actions{display:flex;flex-wrap:wrap;gap:var(--space-1);margin:0 0 var(--space-2)}
 .pdf-viewer__actions .pdf-link+.pdf-link{background:var(--surface);color:var(--text)!important}

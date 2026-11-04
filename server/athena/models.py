@@ -29,7 +29,10 @@ class Article(models.Model):
     author = models.CharField('autor', max_length=240)
     date = models.DateField('fecha', default=timezone.localdate)
     tags = models.JSONField('etiquetas', default=list, blank=True)
-    body = models.TextField('contenido Markdown', blank=True)
+    FORMATS = [('markdown', 'Markdown'), ('html', 'HTML')]
+    format = models.CharField('formato', max_length=10, choices=FORMATS, default='markdown',
+                              help_text='HTML se muestra aislado en el lector, con su propio CSS y JavaScript.')
+    body = models.TextField('contenido', blank=True)
     status = models.CharField('estado de herramienta', max_length=20, blank=True,
                               choices=[('stable', 'Estable'), ('alpha', 'Alfa'), ('coming-soon', 'Próximamente')])
     url = models.URLField('sitio oficial', blank=True)
@@ -79,10 +82,10 @@ class Article(models.Model):
         from .images import check_references, sync_image_usage
         # SQLite IMMEDIATE serializes this check with image cleanup, including admin/API outer transactions.
         with transaction.atomic():
-            body = self.body
+            body, format = self.body, self.format
             if self.pk and kwargs.get('update_fields') is not None and 'body' not in kwargs['update_fields']:
-                body = Article.objects.values_list('body', flat=True).get(pk=self.pk)
-            check_references(body, actor=getattr(self, '_image_actor', None))
+                body, format = Article.objects.values_list('body', 'format').get(pk=self.pk)
+            check_references(body, actor=getattr(self, '_image_actor', None), html=format == 'html')
             super().save(*args, **kwargs)
             sync_image_usage()
 

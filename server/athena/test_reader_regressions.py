@@ -9,7 +9,7 @@ from .views import article_body, search_entry
 class ReaderRegressionTests(SimpleTestCase):
     def article(self, body, **changes):
         fields = dict(title='Guide', slug='guide', kind='guide', summary='Summary', author='Author',
-                      date=date(2026, 10, 9), tags=['RPA'], body=body, pdf_name='', published=True)
+                      date=date(2026, 10, 9), tags=['RPA'], body=body, pdf_name='', published=True, format='markdown')
         return SimpleNamespace(**(fields | changes))
 
     def test_search_uses_actual_h1_and_ignores_fenced_headings(self):

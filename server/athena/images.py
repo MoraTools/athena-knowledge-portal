@@ -15,6 +15,7 @@ from uuid import UUID
 import warnings
 
 from django.conf import settings
+from django.core import signing
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -32,6 +33,11 @@ GRACE = timedelta(hours=24)
 IMAGE_PATH = re.compile(r'/article-images/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/?')
 GENERATED_FILE = re.compile(r'[0-9a-f]{32}\.(?:png|jpg|webp|gif)')
 MARKDOWN = MarkdownIt('commonmark', {'html': True}).enable(['table', 'strikethrough'])
+# Any managed-image URL in an HTML body (attributes, CSS url(), script strings), not inside another URL path.
+HTML_IMAGE_URL = re.compile(r'(?<![\w/.%:-])(?:https?://[^/\s"\'<>()]+)?/article-images/'
+                            r'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/?(?:\?sig=[\w:-]*)?')
+IMAGE_SIGNER = signing.TimestampSigner(salt='athena.article-image')
+SIGNED_IMAGE_AGE = 60 * 60
 
 
 class ImageUploadBusy(ValidationError):
@@ -64,10 +70,17 @@ class ImageSources(HTMLParser):
             self.urls.extend(value for name, value in attrs if name == 'src' and value)
 
 
-def referenced_image_ids(body, *, conservative=False):
-    parser = ImageSources()
-    parser.feed(MARKDOWN.render(body))
-    ids = {image_id for url in parser.urls if (image_id := image_id_from_url(url))}
+def html_image_ids(body):
+    return {image_id for match in HTML_IMAGE_URL.finditer(body) if (image_id := image_id_from_url(match[0].split('?')[0]))}
+
+
+def referenced_image_ids(body, *, conservative=False, html=False):
+    if html:
+        ids = html_image_ids(body)
+    else:
+        parser = ImageSources()
+        parser.feed(MARKDOWN.render(body))
+        ids = {image_id for url in parser.urls if (image_id := image_id_from_url(url))}
     if conservative:
         # Protect code examples, unused reference definitions and unusual Markdown too. False positives retain files.
         ids.update(UUID(match[1]) for match in IMAGE_PATH.finditer(unquote(unescape(body))))
@@ -77,9 +90,44 @@ def referenced_image_ids(body, *, conservative=False):
 def all_references():
     # ponytail: full scan of this small KB; add a reference index if article volume makes scans expensive.
     ids = set()
-    for body in Article.objects.values_list('body', flat=True):
-        ids.update(referenced_image_ids(body, conservative=True))
+    for body, format in Article.objects.values_list('body', 'format'):
+        ids.update(referenced_image_ids(body, conservative=True, html=format == 'html'))
     return ids
+
+
+def attached_image_ids(articles):
+    ids = set()
+    for body, format in articles.values_list('body', 'format'):
+        ids.update(referenced_image_ids(body, html=format == 'html'))
+    return ids
+
+
+def usable_image_ids(ids, actor):
+    """The ids an editor may show: own uploads, or images already in an article the editor can read."""
+    foreign = set(ManagedImage.objects.filter(pk__in=ids).exclude(uploader_id=actor.pk).values_list('pk', flat=True))
+    if foreign:
+        foreign -= attached_image_ids(visible_articles(actor, include_drafts=True))
+    return set(ids) - foreign
+
+
+def signed_image_url(image_id):
+    # Bound to the image id; the opaque-origin HTML frame cannot send the session cookie.
+    return f'/article-images/{image_id}/?sig={IMAGE_SIGNER.sign(str(image_id)).split(":", 1)[1]}'
+
+
+def valid_image_signature(image_id, signature):
+    try:
+        IMAGE_SIGNER.unsign(f'{image_id}:{signature}', max_age=SIGNED_IMAGE_AGE)
+        return bool(signature)
+    except signing.BadSignature:
+        return False
+
+
+def sign_image_urls(body, allowed):
+    def sign(match):
+        image_id = image_id_from_url(match[0].split('?')[0])
+        return signed_image_url(image_id) if image_id in allowed else match[0]
+    return HTML_IMAGE_URL.sub(sign, body)
 
 
 def image_path(image):
@@ -93,18 +141,13 @@ def image_path(image):
     return path
 
 
-def check_references(body, *, actor=None):
-    ids = referenced_image_ids(body)
+def check_references(body, *, actor=None, html=False):
+    ids = referenced_image_ids(body, html=html)
     images = {image.pk: image for image in ManagedImage.objects.filter(pk__in=ids)}
     if ids != images.keys() or any(not image_path(image).is_file() for image in images.values()):
         raise ValidationError({'body': 'Una imagen del artículo ya no está disponible. Vuelva a insertarla antes de guardar.'})
     if actor:
-        foreign = {image.pk for image in images.values() if image.uploader_id != actor.pk}
-        attached = set()
-        if foreign:
-            for saved_body in visible_articles(actor, include_drafts=True).values_list('body', flat=True):
-                attached.update(referenced_image_ids(saved_body))
-        if foreign - attached:
+        if usable_image_ids(ids, actor) != ids:
             raise ValidationError({'body': 'Solo puede insertar sus imágenes sin guardar. Vuelva a subir la imagen con su cuenta.'})
 
 
