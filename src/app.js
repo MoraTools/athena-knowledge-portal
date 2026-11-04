@@ -755,6 +755,222 @@ function focusSearch() {
   input.select();
 }
 
+// Image viewer for HTML articles: the article calls window.athena.openImages (article-bridge.js) and Athena shows
+// the images in a modal dialog over the whole window. The items come from an untrusted frame: every src must be one
+// of Athena's managed images on this origin, and captions are text only.
+const VIEWER_SRC = /^\/article-images\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/$/i;
+const VIEWER_QUERY = /^(?:\?sig=[\w:-]+)?$/;
+const VIEWER_MAX_ITEMS = 50;
+const VIEWER_MAX_TEXT = 500;
+let viewer = null;
+
+function viewerItems(items) {
+  if (!Array.isArray(items) || !items.length || items.length > VIEWER_MAX_ITEMS) return null;
+  const text = (value) => typeof value === 'string' ? value.slice(0, VIEWER_MAX_TEXT) : '';
+  const clean = [];
+  for (const item of items) {
+    if (typeof item?.src !== 'string') return null;
+    let url;
+    try { url = new URL(item.src, location.origin); } catch { return null; }
+    if (url.origin !== location.origin || !VIEWER_SRC.test(url.pathname) || !VIEWER_QUERY.test(url.search) || url.hash) return null;
+    clean.push({ src: url.pathname + url.search, caption: text(item.caption), alt: text(item.alt) });
+  }
+  return clean;
+}
+
+function buildViewer() {
+  const node = (tag, className, text) => {
+    const element = document.createElement(tag);
+    element.className = className;
+    if (text) element.textContent = text;
+    return element;
+  };
+  const icon = (path) => '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="' + path + '"/></svg>';
+  const button = (className, label, path, text) => {
+    const element = node('button', className);
+    element.type = 'button';
+    if (label) element.setAttribute('aria-label', label);
+    element.innerHTML = icon(path) + (text ? '<span class="image-viewer__label">' + text + '</span>' : '');
+    return element;
+  };
+  // Spanish source strings; AthenaI18n translates them with the rest of the interface.
+  const v = {
+    dialog: node('dialog', 'image-viewer'),
+    counter: node('span', 'image-viewer__counter'),
+    size: button('image-viewer__action image-viewer__size', '', 'M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7', 'Tamaño real'),
+    original: node('a', 'image-viewer__action image-viewer__original'),
+    close: button('image-viewer__close', 'Cerrar', 'M18 6 6 18M6 6l12 12'),
+    stage: node('div', 'image-viewer__stage'),
+    image: node('img', 'image-viewer__image'),
+    error: node('p', 'image-viewer__error', 'No se pudo cargar la imagen. Use Abrir imagen original.'),
+    prev: button('image-viewer__step image-viewer__prev', 'Imagen anterior', 'm15 18-6-6 6-6'),
+    next: button('image-viewer__step image-viewer__next', 'Imagen siguiente', 'm9 18 6-6-6-6'),
+    caption: node('p', 'image-viewer__caption'),
+    items: [], index: 0, frame: null, real: false, drag: null, swipe: null, tap: 0, touchToggle: 0
+  };
+  v.dialog.setAttribute('aria-label', 'Visor de imágenes');
+  v.size.setAttribute('aria-pressed', 'false');
+  v.original.target = '_blank';
+  v.original.rel = 'noopener noreferrer';
+  v.original.innerHTML = icon('M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6') + '<span class="image-viewer__label">Abrir imagen original</span>';
+  v.image.draggable = false;
+  v.image.decoding = 'async';
+  v.error.hidden = true;
+  v.caption.setAttribute('aria-live', 'polite');
+  v.bar = node('div', 'image-viewer__bar');
+  v.bar.append(v.counter, v.size, v.original, v.close);
+  v.stage.append(v.image, v.error);
+  v.foot = node('div', 'image-viewer__foot');
+  v.foot.append(v.prev, v.caption, v.next);
+  v.dialog.append(v.bar, v.stage, v.foot);
+  // The scrim and the image area are always dark; the bar and the foot follow the Athena theme.
+  v.dialog.dataset.theme = 'dark';
+  document.body.append(v.dialog);
+
+  v.prev.addEventListener('click', () => stepViewer(-1));
+  v.next.addEventListener('click', () => stepViewer(1));
+  v.close.addEventListener('click', () => v.dialog.close());
+  v.size.addEventListener('click', () => setViewerReal(!v.real));
+  v.image.addEventListener('load', () => { v.stage.classList.remove('is-loading'); });
+  v.image.addEventListener('error', () => { v.stage.classList.remove('is-loading'); v.error.hidden = false; });
+  v.dialog.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    stepViewer(event.key === 'ArrowLeft' ? -1 : 1);
+  });
+  // The dialog fills the window, so a click outside the image lands on the dialog or the stage: the scrim.
+  v.dialog.addEventListener('click', (event) => {
+    if (v.drag?.moved) return;
+    if (event.target === v.dialog || event.target === v.stage) v.dialog.close();
+  });
+  v.dialog.addEventListener('dblclick', (event) => {
+    if (event.target !== v.image || Date.now() - v.touchToggle < 600) return;
+    setViewerReal(!v.real, event);
+  });
+  // Mouse and pen drag pan the real-size image; touch scrolls natively there, and swipes and double-taps in fit mode.
+  v.stage.addEventListener('pointerdown', (event) => {
+    if (event.pointerType === 'touch') {
+      v.swipe = { x: event.clientX, y: event.clientY };
+    } else if (v.real && event.button === 0) {
+      v.drag = { x: event.clientX, y: event.clientY, left: v.stage.scrollLeft, top: v.stage.scrollTop, moved: false };
+      v.stage.setPointerCapture?.(event.pointerId);
+      v.stage.classList.add('is-dragging');
+    }
+  });
+  v.stage.addEventListener('pointermove', (event) => {
+    if (!v.drag) return;
+    const dx = event.clientX - v.drag.x;
+    const dy = event.clientY - v.drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) v.drag.moved = true;
+    v.stage.scrollLeft = v.drag.left - dx;
+    v.stage.scrollTop = v.drag.top - dy;
+  });
+  const endDrag = () => {
+    v.stage.classList.remove('is-dragging');
+    // The click that ends a drag must not close the viewer; it runs right after pointerup.
+    const drag = v.drag;
+    setTimeout(() => { if (v.drag === drag) v.drag = null; }, 0);
+  };
+  v.stage.addEventListener('pointerup', (event) => {
+    if (v.drag) return endDrag();
+    if (event.pointerType !== 'touch' || !v.swipe) return;
+    const dx = event.clientX - v.swipe.x;
+    const dy = event.clientY - v.swipe.y;
+    v.swipe = null;
+    if (!v.real && Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      stepViewer(dx < 0 ? 1 : -1);
+    } else if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && event.target === v.image) {
+      const now = Date.now();
+      if (now - v.tap < 320) {
+        v.tap = 0;
+        v.touchToggle = now;
+        setViewerReal(!v.real, event);
+      } else v.tap = now;
+    }
+  });
+  v.stage.addEventListener('pointercancel', () => { v.swipe = null; if (v.drag) endDrag(); });
+  v.dialog.addEventListener('close', () => {
+    const { frame, index } = v;
+    setViewerReal(false);
+    v.image.removeAttribute('src');
+    v.frame = null;
+    if (!frame?.isConnected) return;
+    frame.focus();
+    frame.contentWindow?.postMessage({ type: 'athena:images-closed', index }, '*');
+  });
+  window.AthenaI18n?.translate();
+  return v;
+}
+
+function syncViewerTheme() {
+  if (!viewer) return;
+  const theme = document.documentElement.dataset.theme;
+  for (const part of [viewer.bar, viewer.foot]) {
+    if (theme) part.dataset.theme = theme;
+    else delete part.dataset.theme;
+  }
+}
+
+function renderViewer() {
+  const v = viewer;
+  const item = v.items[v.index];
+  const many = v.items.length > 1;
+  v.stage.classList.add('is-loading');
+  v.error.hidden = true;
+  v.image.src = item.src;
+  v.image.alt = item.alt || item.caption;
+  v.original.href = item.src;
+  v.caption.textContent = item.caption;
+  v.caption.hidden = !item.caption;
+  v.counter.textContent = (v.index + 1) + ' / ' + v.items.length;
+  v.counter.hidden = v.prev.hidden = v.next.hidden = !many;
+  v.foot.hidden = !many && !item.caption;
+  v.prev.disabled = v.index === 0;
+  v.next.disabled = v.index === v.items.length - 1;
+  // A step button that just became disabled would drop focus to the page under the dialog.
+  if (document.activeElement?.disabled) (v.prev.disabled ? v.next : v.prev).focus();
+  v.stage.scrollLeft = v.stage.scrollTop = 0;
+  for (const near of [v.items[v.index - 1], v.items[v.index + 1]]) {
+    if (near) document.createElement('img').src = near.src;
+  }
+}
+
+function stepViewer(delta) {
+  const index = Math.min(Math.max(viewer.index + delta, 0), viewer.items.length - 1);
+  if (index === viewer.index) return;
+  viewer.index = index;
+  setViewerReal(false);
+  renderViewer();
+}
+
+// Real size shows the image at 100% in a scrolling stage; the point under the pointer stays in place.
+function setViewerReal(real, point) {
+  const v = viewer;
+  const rect = point && v.image.getBoundingClientRect?.();
+  const ratio = rect?.width ? { x: (point.clientX - rect.left) / rect.width, y: (point.clientY - rect.top) / rect.height } : { x: 0.5, y: 0.5 };
+  v.real = real;
+  v.dialog.classList.toggle('is-real', real);
+  v.size.setAttribute('aria-pressed', String(real));
+  if (!real) return;
+  const stage = v.stage.getBoundingClientRect?.();
+  if (!stage) return;
+  const at = point || { clientX: stage.left + stage.width / 2, clientY: stage.top + stage.height / 2 };
+  v.stage.scrollLeft = ratio.x * v.image.naturalWidth - (at.clientX - stage.left);
+  v.stage.scrollTop = ratio.y * v.image.naturalHeight - (at.clientY - stage.top);
+}
+
+function openViewer(frame, items, index) {
+  viewer ||= buildViewer();
+  viewer.frame = frame;
+  viewer.items = items;
+  viewer.index = Math.min(Math.max(Math.trunc(Number(index)) || 0, 0), items.length - 1);
+  setViewerReal(false);
+  syncViewerTheme();
+  renderViewer();
+  if (!viewer.dialog.open) viewer.dialog.showModal();
+  viewer.close.focus();
+}
+
 function handleHtmlFrameMessage(event) {
   const frame = htmlFrame;
   if (!frame?.isConnected || event.source !== frame.contentWindow || !event.data || typeof event.data !== 'object') return;
@@ -767,6 +983,9 @@ function handleHtmlFrameMessage(event) {
     syncHtmlFrame();
   } else if (type === 'athena:search') {
     focusSearch();
+  } else if (type === 'athena:images') {
+    const items = viewerItems(event.data.items);
+    if (items) openViewer(frame, items, event.data.index);
   } else if (type === 'athena:scroll' && Number.isFinite(value)) {
     const offset = (document.querySelector('.reader-command')?.offsetHeight || 0) + 16;
     window.scrollTo({ top: Math.max(0, window.scrollY + frame.getBoundingClientRect().top + value - offset) });
@@ -796,6 +1015,8 @@ function syncView() {
   buildPageTree();
   buildPdfViewer();
   buildHtmlArticle();
+  // The viewer belongs to the article frame that opened it.
+  if (viewer?.dialog.open && !viewer.frame?.isConnected) viewer.dialog.close();
   placeArticleTools();
   buildTableSorting();
   updateSignInLinks();
@@ -1002,7 +1223,10 @@ document.addEventListener('keydown', (event) => {
 
 window.athenaSyncView = syncView;
 syncView();
-document.addEventListener('suite:theme', () => sendHtmlFrame('athena:theme', document.documentElement.dataset.theme));
+document.addEventListener('suite:theme', () => {
+  sendHtmlFrame('athena:theme', document.documentElement.dataset.theme);
+  syncViewerTheme();
+});
 document.addEventListener('suite:lang', () => {
   sendHtmlFrame('athena:lang', currentLang());
   syncView();

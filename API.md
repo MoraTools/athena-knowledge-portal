@@ -100,6 +100,12 @@ served as a signed URL that is valid for one hour.
 Athena adds its bridge script before `</body>`. The bridge sets `data-theme` (`dark` or `light`) on the root element,
 sends `athena:lang` (`es` or `en`) and `athena:viewport` (`{top, height}` of the visible part, for dialogs) as
 document events, reports the content height, and forwards Ctrl K or ⌘ K to the Athena search.
+The bridge also defines `window.athena.openImages(items, index)`. `items` is `[{src, caption, alt}]`; it posts
+`{type: 'athena:images', items, index}` to the reader, which opens its full-window image viewer. The reader accepts
+the message only from the article frame and only same-origin `/article-images/{id}/` URLs (an optional `?sig=`); it
+rejects the call if any `src` is different or there are more than 50 items, cuts caption and alt text to 500 characters
+and shows them as text, and clamps `index`. On close, the article receives the document event `athena:images-closed`
+with `detail.index`, the last image shown.
 `html` articles have no PDF export (`/content/{slug}.pdf` answers `404`) and no page outline; an attached PDF still works.
 Search indexes the visible text and headings of the document, without scripts, styles, and templates.
 

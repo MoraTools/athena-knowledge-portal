@@ -2,7 +2,7 @@
 
 Athena runs on a DigitalOcean VPS with Django, SQLite, Gunicorn, and Caddy.
 The Spanish reader keeps its existing Docsify routes. Published articles can be public or require an account. Existing articles remain private by default.
-The current portal version is `1.12.0`; the REST API is `1.7.0`.
+The current portal version is `1.13.0`; the REST API is `1.7.0`.
 
 ## Production
 
@@ -45,7 +45,7 @@ A Markdown import replaces the editor text. After the import, you can edit the t
 An article has a format: **Markdown** (the default; existing articles keep it) or **HTML**. Select it with the **Markdown | HTML** switch above the editor text.
 An HTML article is a full HTML document with its own inline CSS and JavaScript, up to 1 MiB. Only accounts that can change articles (the existing editor and administrator permission, or an `articles` or `admin` API key of such an account) can create or edit HTML articles.
 The reader shows the document under the article title, in an iframe with `sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"` (never `allow-same-origin`). The document comes from `/article-html/<slug>/` with the article's access rules and its own Content Security Policy: inline CSS and scripts only, no `fetch`, forms, or external scripts, and the same sandbox if the route is opened directly.
-Athena adds a bridge script before `</body>`. It sets `data-theme` on the root element, sends the language (`athena:lang`) and the visible part of the frame (`athena:viewport`, for dialogs) as document events, reports the height, scrolls the reader for in-page `#` links, and forwards Ctrl K to the Athena search. Link `/assets/suite-tokens.css` to use the Athena fonts and theme tokens; Django sends the font files with `Access-Control-Allow-Origin: *`, so they load inside the frame.
+Athena adds a bridge script before `</body>`. It sets `data-theme` on the root element, sends the language (`athena:lang`) and the visible part of the frame (`athena:viewport`, for dialogs) as document events, reports the height, scrolls the reader for in-page `#` links, and forwards Ctrl K to the Athena search. It also exposes `window.athena.openImages(items, index)` with `items` as `[{src, caption, alt}]`: Athena opens its image viewer over the whole window (rail and command bar included), with previous and next, the arrow keys and swipe, **Tamaño real** (100% with drag panning, also by double-click or double-tap), and **Abrir imagen original**. Athena accepts only `/article-images/<id>/` URLs of this site (an optional `?sig=`), at most 50 items, and captions and alt text up to 500 characters (shown as text). On close, the article receives the document event `athena:images-closed` with `detail.index`. Link `/assets/suite-tokens.css` to use the Athena fonts and theme tokens; Django sends the font files with `Access-Control-Allow-Origin: *`, so they load inside the frame.
 Reference images by their `/article-images/<id>/` URL, in `<img>`, CSS `url()`, or script strings. **Insertar imagen** inserts an `<img>` tag. The frame cannot send the session cookie, so the server replaces each reference with a signed URL that is valid for one hour.
 Search indexes the visible text and headings of the document (not scripts, styles, or templates) and links to the article. HTML articles have no **Exportar PDF** and no page outline; an attached PDF still opens. **Copiar página** copies the saved HTML. The editor preview shows the unsaved HTML in the same sandboxed frame.
 

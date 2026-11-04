@@ -99,6 +99,8 @@
     'La vista previa no respondió. Revise el HTML y vuelva a escribir.': 'The preview did not respond. Check the HTML and type again.',
     'HTML se muestra aislado en el lector, con su propio CSS y JavaScript.': 'HTML is shown isolated in the reader, with its own CSS and JavaScript.',
     'Solo quien puede modificar artículos puede crear o editar artículos HTML.': 'Only people who can change articles can create or edit HTML articles.',
+    'Visor de imágenes': 'Image viewer', 'Imagen anterior': 'Previous image', 'Imagen siguiente': 'Next image', 'Tamaño real': 'Actual size',
+    'Abrir imagen original': 'Open original image', 'No se pudo cargar la imagen. Use Abrir imagen original.': 'The image could not be loaded. Use Open original image.',
     'Vista previa': 'Preview', 'en vivo': 'live', 'La vista previa aparece al escribir Markdown.': 'The preview appears as you write Markdown.',
     'Pegue una imagen o use Insertar imagen. PNG, JPEG, WebP o GIF, hasta 10 MiB y 20 millones de píxeles. Se conserva el texto seleccionado.': 'Paste an image or use Insert image. PNG, JPEG, WebP or GIF, up to 10 MiB and 20 million pixels. Selected text is kept.',
     'Detalles del artículo': 'Article details', 'Información': 'Information', 'Publicación': 'Publishing', 'Archivos': 'Files',
@@ -129,7 +131,7 @@
   };
   const sourceText = new WeakMap();
   const sourceAttributes = new WeakMap();
-  const content = '[data-article-title],.guide-title,.guide-summary,.guide-author,.guide-topic-meta>span,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div';
+  const content = '[data-article-title],.guide-title,.guide-summary,.guide-author,.guide-topic-meta>span,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div,.image-viewer__caption';
   const articleUI = '.article-actions,.article-tools,.pdf-viewer__actions,.page-tree summary,.pagination-item,.unavailable-page';
   // Admin user content: titles, names, authors, usernames, the Markdown source and the raw key.
   const adminContent = '#result_list tbody :is(.field-title,.field-name,.field-author,.field-user),.actionlist a,.actionlist strong,.directory-table tbody th,.directory-panel header h2,.desk-user,.key-created code,textarea,.readonly a';

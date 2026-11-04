@@ -19,6 +19,17 @@
     if (type === 'athena:viewport' && Number.isFinite(value?.top) && Number.isFinite(value?.height)) {
       document.dispatchEvent(new CustomEvent('athena:viewport', { detail: { top: value.top, height: value.height } }));
     }
+    if (type === 'athena:images-closed' && Number.isInteger(event.data.index)) {
+      document.dispatchEvent(new CustomEvent('athena:images-closed', { detail: { index: event.data.index } }));
+    }
+  });
+  // The Athena image viewer covers the whole window, outside the frame. Items: [{src, caption, alt}]; Athena accepts
+  // only this article's /article-images/<id>/ URLs, at most 50, and sends athena:images-closed with the last index.
+  const text = value => typeof value === 'string' ? value : '';
+  window.athena = Object.freeze({
+    openImages(items, index = 0) {
+      post({ type: 'athena:images', items: Array.from(items || [], item => ({ src: text(item?.src), caption: text(item?.caption), alt: text(item?.alt) })), index: Number(index) || 0 });
+    }
   });
   let height = -1;
   function report() {

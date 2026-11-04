@@ -150,6 +150,16 @@ class HtmlArticleTests(TestCase):
         self.assertIn("script-src 'self';", reader)
         self.assertIn("frame-ancestors 'none'", reader)
 
+    def test_bridge_exposes_the_image_viewer_call(self):
+        self.client.force_login(self.reader)
+        html = self.client.get('/article-html/demos/').content.decode()
+        bridge = html[html.rindex('<script>'):]
+        self.assertIn('window.athena = Object.freeze({', bridge)
+        self.assertIn('openImages(items, index = 0)', bridge)
+        self.assertIn("post({ type: 'athena:images', items:", bridge)
+        self.assertIn("type === 'athena:images-closed'", bridge)
+        self.assertIn("new CustomEvent('athena:images-closed'", bridge)
+
     def test_reader_markdown_marker_tools_and_pdf_export(self):
         self.article.pdf, self.article.pdf_name = b'%PDF-1.7\nattached', 'attached.pdf'
         self.article.save()
