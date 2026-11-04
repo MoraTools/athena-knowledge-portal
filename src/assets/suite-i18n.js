@@ -11,7 +11,7 @@
     'Buscar en todo Athena': 'Search all of Athena',
     'API para agentes': 'API for agents', 'Buscar': 'Search', 'Buscar en Athena': 'Search Athena',
     'Mostrar la navegación': 'Show navigation', 'Contraer': 'Collapse', 'Expandir': 'Expand', 'Cerrar': 'Close',
-    'Contraer la navegación': 'Collapse navigation', 'Expandir la navegación': 'Expand navigation', 'Cerrar la navegación': 'Close navigation',
+    'Contraer la navegación': 'Collapse navigation', 'Expandir la navegación': 'Expand navigation', 'Cerrar la navegación': 'Close navigation', 'Ajustar el ancho de la navegación': 'Resize navigation',
     'Cargando Athena…': 'Loading Athena…', 'Acceso con cuenta': 'Signed in', 'Biblioteca pública': 'Public library',
     'Centro de conocimiento, herramientas y feed de actualizaciones para desarrolladores.': 'Knowledge, tools and an update feed for developers.',
     'Guías, herramientas y conocimiento compartido por el equipo.': 'Guides, tools and knowledge shared by the team.',

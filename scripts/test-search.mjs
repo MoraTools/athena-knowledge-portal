@@ -734,22 +734,43 @@ assert.equal(context.prepareGuideLibrary(guides.grid).groups, null, 'Legacy card
 context.document.querySelector = () => null;
 context.document.querySelectorAll = () => [];
 
-function railViewport(width, preference) {
+function railViewport(width, preference, storedWidth = null) {
   const events = {};
-  const root = { dataset: {} };
+  const windowEvents = {};
+  const style = new Map();
+  const root = { dataset: {}, style: { setProperty: (name, value) => style.set(name, value) }, classList: new Set() };
+  root.classList.remove = root.classList.delete;
   const media = { addEventListener(_name, handler) { this.change = handler; } };
   const writes = [];
-  vm.runInNewContext(readFileSync(new URL('../src/assets/rail.js', import.meta.url), 'utf8'), {
-    matchMedia(query) { media.matches = width <= Number(query.match(/max-width: (\d+)px/)[1]); return media; },
-    localStorage: { getItem: () => preference, setItem(key, value) { writes.push([key, value]); } },
+  const fake = () => {
+    const attributes = new Map();
+    const listeners = {};
+    return {
+      attributes, listeners, classList: { remove() {} },
+      setAttribute: (name, value) => attributes.set(name, String(value)), getAttribute: (name) => attributes.get(name) ?? null,
+      addEventListener: (name, handler) => { listeners[name] = handler; },
+      setPointerCapture() { this.captured = true; }, hasPointerCapture() { return this.captured; }
+    };
+  };
+  const created = [];
+  const railElement = { after(node) { this.next = node; }, contains: () => false };
+  const context = {
+    innerWidth: width,
+    matchMedia(query) { media.matches = context.innerWidth <= Number(query.match(/max-width: (\d+)px/)[1]); return media; },
+    localStorage: { getItem: (key) => key === 'athena.rail' ? preference : storedWidth, setItem(key, value) { writes.push([key, value]); } },
     document: {
-      documentElement: root, createElement: () => ({ setAttribute() {}, classList: { remove() {} } }),
-      querySelector: () => null, addEventListener(name, handler) { events[name] = handler; }
+      documentElement: root, body: { append() {} }, createElement: () => { const element = fake(); created.push(element); return element; },
+      querySelector: (selector) => selector === '.rail' ? railElement : null, querySelectorAll: () => [], addEventListener(name, handler) { events[name] = handler; }
     },
+    addEventListener(name, handler) { windowEvents[name] = handler; },
     window: {}
-  });
+  };
+  vm.runInNewContext(readFileSync(new URL('../src/assets/rail.js', import.meta.url), 'utf8'), context);
+  const handle = created.find((element) => element.className === 'rail-resize');
   const click = (selector) => events.click({ target: { closest: () => ({ matches: (candidate) => candidate === selector }) } });
-  return { root, media, writes, click };
+  const key = (name, shiftKey = false) => handle.listeners.keydown({ key: name, shiftKey, preventDefault() {} });
+  const resize = (next) => { context.innerWidth = next; windowEvents.resize(); };
+  return { root, media, writes, click, handle, key, resize, events, railElement, width: () => style.get('--rail-drag') };
 }
 for (const width of [320, 768, 1024]) {
   const drawer = railViewport(width, 'compact');
@@ -770,4 +791,57 @@ assert.equal(desktopRail.root.dataset.rail, 'expanded');
 assert.deepEqual(desktopRail.writes, [['athena.rail', 'expanded']]);
 assert.equal(railViewport(1366, 'hidden').root.dataset.rail, 'hidden');
 assert.equal(railViewport(1366, 'invalid').root.dataset.rail, 'expanded');
+// Draggable width: restored before the first paint, clamped to 200-420px and 40% of the window, saved on its own key.
+assert.equal(railViewport(1440, 'expanded').width(), '256px', 'No stored width keeps the default.');
+assert.equal(railViewport(1440, 'expanded', '340').width(), '340px', 'The stored width applies when rail.js runs in the head.');
+assert.equal(railViewport(1440, 'expanded', '999').width(), '420px');
+assert.equal(railViewport(1440, 'expanded', '20').width(), '200px');
+assert.equal(railViewport(1440, 'expanded', 'junk').width(), '256px');
+const sized = railViewport(1025, 'expanded', '420');
+assert.equal(sized.width(), '410px', 'Never wider than 40% of the window.');
+assert.deepEqual(sized.writes, [], 'Restoring a width never rewrites it.');
+sized.resize(1440);
+assert.equal(sized.width(), '420px', 'A wider window gets the stored preference back.');
+const resizer = railViewport(1440, 'expanded');
+assert.deepEqual(['role', 'aria-orientation', 'aria-valuemin', 'aria-valuemax', 'aria-valuenow', 'aria-label'].map((name) => resizer.handle.getAttribute(name)),
+  ['separator', 'vertical', '200', '420', '256', 'Ajustar el ancho de la navegación']);
+assert.equal(resizer.handle.tabIndex, 0);
+resizer.events.DOMContentLoaded();
+assert.equal(resizer.railElement.next, resizer.handle, 'The handle follows the rail, outside its clipped box.');
+resizer.key('ArrowRight');
+assert.equal(resizer.width(), '272px');
+resizer.key('ArrowLeft', true);
+assert.equal(resizer.width(), '208px');
+resizer.key('ArrowLeft');
+assert.equal(resizer.width(), '200px', 'Keys stop at the minimum and never switch to compact.');
+assert.equal(resizer.root.dataset.rail, 'expanded');
+resizer.key('End');
+assert.equal(resizer.handle.getAttribute('aria-valuenow'), '420');
+resizer.key('Home');
+assert.equal(resizer.width(), '200px');
+resizer.key('Enter');
+assert.equal(resizer.width(), '256px', 'Enter resets the width.');
+assert.deepEqual(resizer.writes.at(-1), ['athena.rail.width', '256']);
+resizer.handle.listeners.pointerdown({ button: 0, pointerId: 1, clientX: 255, preventDefault() {} });
+assert(resizer.root.classList.has('rail-resizing'), 'Dragging turns off transitions and selection.');
+const writesBeforeDrag = resizer.writes.length;
+resizer.handle.listeners.pointermove({ pointerId: 1, clientX: 339 });
+assert.equal(resizer.width(), '340px', 'The width follows the pointer live.');
+assert.equal(resizer.writes.length, writesBeforeDrag, 'Moves are not stored one by one.');
+resizer.handle.listeners.pointermove({ pointerId: 1, clientX: 900 });
+assert.equal(resizer.width(), '420px');
+resizer.handle.listeners.pointermove({ pointerId: 1, clientX: 50 });
+assert.equal(resizer.width(), '200px');
+assert.equal(resizer.root.dataset.rail, 'expanded', 'Dragging below the minimum does not switch to compact.');
+resizer.handle.listeners.lostpointercapture();
+assert(!resizer.root.classList.has('rail-resizing'));
+assert.deepEqual(resizer.writes.at(-1), ['athena.rail.width', '200'], 'The drag end stores the width.');
+resizer.handle.listeners.dblclick();
+assert.deepEqual(resizer.writes.at(-1), ['athena.rail.width', '256'], 'Double-click resets the width.');
+// The handle shows only for the expanded rail on wide screens; the narrow drawer keeps the default width.
+const railCss = readFileSync(new URL('../src/assets/rail.css', import.meta.url), 'utf8');
+assert.match(railCss, /\.rail-resize \{[^}]*display: none/);
+assert.match(railCss, /@media \(min-width: 1025px\) \{ html\[data-rail=expanded\] \.rail-resize \{ display: block; \} \}/);
+assert.match(railCss, /@media \(max-width: 1024px\) \{\n  :root, html\[data-rail\] \{ --rail-w: 256px; --rail-current: 0px; \}/);
+assert.match(railCss, /--rail-w: var\(--rail-drag, 256px\)/);
 console.log('Search, guide topics/filters, sign-in, reader compiler/router, navigation, responsive rail/outline, PDF viewer and sorting checks passed.');

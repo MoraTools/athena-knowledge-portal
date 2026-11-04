@@ -2,7 +2,7 @@
    States live on <html data-rail>: expanded, compact or hidden; src/assets/rail.js sets them.
    Colors, fonts and spacing come from the suite tokens (src/assets/suite-tokens.css). */
 :root {
-  --rail-w: 256px; --rail-compact: 72px; --rail-current: var(--rail-w);
+  --rail-w: var(--rail-drag, 256px); --rail-compact: 72px; --rail-current: var(--rail-w);
   --rail-ease: cubic-bezier(.2, .8, .2, 1); --rail-dur: .36s;
 }
 html[data-rail=compact] { --rail-current: var(--rail-compact); }
@@ -98,15 +98,25 @@ html[data-rail=compact] .rail-toggle svg { transform: rotate(180deg); }
 html[data-rail=hidden] .rail-reveal { opacity: 1; visibility: visible; transform: none; transition: transform var(--rail-dur) var(--rail-ease), opacity .2s, visibility 0s; }
 .rail-reveal svg { width: 22px; height: 22px; stroke-width: 2; }
 
-/* Narrow screens: the rail is an overlay drawer; the page never moves. */
+/* Resize handle on the right edge of the expanded rail (wide screens only); rail.js sets --rail-drag. */
+.rail-resize { position: fixed; inset: 0 auto 0 calc(var(--rail-current) - 4px); z-index: 41; display: none; width: 8px; cursor: col-resize; touch-action: none; }
+.rail-resize::after { content: ""; position: absolute; inset: 0 3px; background: var(--accent-edge); opacity: 0; transition: opacity .15s var(--rail-ease); }
+.rail-resize:hover::after, html.rail-resizing .rail-resize::after { opacity: 1; }
+.rail-resize:focus-visible { outline: 0; }
+.rail-resize:focus-visible::after { inset: 0 2px; background: var(--focus); opacity: 1; }
+@media (min-width: 1025px) { html[data-rail=expanded] .rail-resize { display: block; } }
+/* While dragging, the layout follows the pointer at once and no text is selected. */
+html.rail-resizing, html.rail-resizing * { cursor: col-resize !important; transition: none !important; user-select: none; }
+
+/* Narrow screens: the rail is an overlay drawer at the default width; the page never moves. */
 @media (max-width: 1024px) {
-  :root, html[data-rail] { --rail-current: 0px; }
+  :root, html[data-rail] { --rail-w: 256px; --rail-current: 0px; }
   .rail { width: var(--rail-w); transform: translateX(-100%); transition: transform var(--rail-dur) var(--rail-ease), visibility var(--rail-dur); }
   html[data-rail=expanded] .rail { transform: none; box-shadow: var(--shadow-overlay); transition: transform var(--rail-dur) var(--rail-ease), visibility 0s; }
   html:not([data-rail=expanded]) .rail { visibility: hidden; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .rail, .rail *, .rail-tip, .rail-reveal { transition: none !important; }
+  .rail, .rail *, .rail-tip, .rail-reveal, .rail-resize::after { transition: none !important; }
 }
 
 .rail .rail-item[aria-current]::before{content:"";position:absolute;inset:8px auto 8px -9px;width:2px;background:var(--accent-edge)}

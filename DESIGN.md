@@ -96,13 +96,14 @@ Each item is a 20px line icon and an Inter 13px 500 label on a 40px row (44px fo
 
 | State | Rail | Behavior |
 | --- | --- | --- |
-| Expanded | 256px | Group labels, icons and labels. |
+| Expanded | 256px (200-420px) | Group labels, icons and labels. Labels ellipsize when the rail is narrow. |
 | Compact | 72px | Icons only. Group labels fade out and thin rules separate the groups. A tooltip names the item on hover or focus. The current item is a filled tile. The wordmark shrinks to its A. |
 | Hidden | 0 | The rail slides away; the menu button in the command bar brings it back (the admin keeps its floating button). |
 
 The control at the bottom of the rail switches Contraer and Expandir; its chevron turns. Keys: `]` toggles compact, `[` toggles hidden; both are ignored inside form fields.
 One 360ms `cubic-bezier(.2, .8, .2, 1)` transition moves the rail width, the page offset, the labels, and the chevron; reduced motion removes it.
 The state is kept in `localStorage` (`athena.rail`), so the choice carries between the reader and the admin.
+On wide screens the expanded rail has a resize handle on its right edge: an 8px `col-resize` hit area that shows a 2px gold line on hover and while dragging (the focus colour on keyboard focus). Dragging changes `--rail-w` live, so the page offset, the command bar and the admin layout follow; transitions and text selection are off while dragging. The width is 200px to 420px and at most 40% of the window; it is kept in `localStorage` (`athena.rail.width`) and applied in the head with the state. The handle is a focusable `separator` ("Ajustar el ancho de la navegación"): Left and Right change the width by 16px (Shift: 64px), Home and End go to the limits, Enter or a double-click resets 256px. Dragging to the minimum does not switch to compact. Compact, hidden and the narrow drawer have no handle; the drawer keeps 256px.
 At 1024px and below the rail is an overlay drawer that starts closed and is never stored: the command-bar menu button (the floating button in the admin) opens it, and Escape, a followed link, or a tap outside closes it.
 On the directory at 1024px and below, `.rail-reveal` occupies a normal-flow row above the content, so it cannot cover fields. The shared overlay opening and closing behavior stays the same.
 

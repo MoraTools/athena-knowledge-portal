@@ -1,8 +1,11 @@
 // Portal rail, shared by the reader and the admin. <html data-rail> is expanded, compact or hidden.
 // Wide screens keep the choice in localStorage; narrow screens open the rail as a drawer and never store it.
-// Load it in <head> without defer so the stored state applies before the first paint.
+// The expanded width is draggable on wide screens (athena.rail.width); it sets --rail-drag, which rail.css reads.
+// Load it in <head> without defer so the stored state and width apply before the first paint.
 (() => {
   const KEY = 'athena.rail';
+  const WIDTH_KEY = 'athena.rail.width';
+  const WIDTH = { min: 200, max: 420, reset: 256, step: 16, bigStep: 64 };
   const STATES = ['expanded', 'compact', 'hidden'];
   const root = document.documentElement;
   const narrow = matchMedia('(max-width: 1024px)');
@@ -39,6 +42,54 @@
     try { return localStorage.getItem(KEY); } catch { return null; }
   };
   const initial = () => (narrow.matches ? 'hidden' : STATES.includes(stored()) ? stored() : 'expanded');
+
+  // Width: the stored preference is clamped to the window (at most 40% of it) but kept as chosen for larger windows.
+  const maxWidth = () => Math.max(WIDTH.min, Math.min(WIDTH.max, Math.floor(innerWidth * 0.4)));
+  const clampWidth = (value) => Math.round(Math.min(maxWidth(), Math.max(WIDTH.min, value)));
+  let preferred = (() => {
+    try { return Number(localStorage.getItem(WIDTH_KEY)) || WIDTH.reset; } catch { return WIDTH.reset; }
+  })();
+  const handle = document.createElement('div');
+  handle.className = 'rail-resize';
+  handle.tabIndex = 0;
+  for (const [name, value] of Object.entries({ role: 'separator', 'aria-orientation': 'vertical', 'aria-controls': 'rail', 'aria-label': 'Ajustar el ancho de la navegación', 'aria-valuemin': WIDTH.min })) handle.setAttribute(name, value);
+
+  function setWidth(value, remember) {
+    const width = clampWidth(value);
+    if (remember) {
+      preferred = width;
+      try { localStorage.setItem(WIDTH_KEY, String(width)); } catch { /* private mode: the width lasts for this page only */ }
+    }
+    root.style.setProperty('--rail-drag', width + 'px');
+    handle.setAttribute('aria-valuemax', maxWidth());
+    handle.setAttribute('aria-valuenow', width);
+    return width;
+  }
+  const currentWidth = () => Number(handle.getAttribute('aria-valuenow'));
+
+  let dragOffset = 0;
+  handle.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    handle.setPointerCapture(event.pointerId);
+    dragOffset = currentWidth() - event.clientX;
+    root.classList.add('rail-resizing');
+  });
+  handle.addEventListener('pointermove', (event) => {
+    if (handle.hasPointerCapture(event.pointerId)) setWidth(event.clientX + dragOffset, false);
+  });
+  handle.addEventListener('lostpointercapture', () => {
+    root.classList.remove('rail-resizing');
+    setWidth(currentWidth(), true);
+  });
+  handle.addEventListener('dblclick', () => setWidth(WIDTH.reset, true));
+  handle.addEventListener('keydown', (event) => {
+    const step = event.shiftKey ? WIDTH.bigStep : WIDTH.step;
+    const next = { ArrowLeft: currentWidth() - step, ArrowRight: currentWidth() + step, Home: WIDTH.min, End: WIDTH.max, Enter: WIDTH.reset }[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    setWidth(next, true);
+  });
 
   function set(state, remember = !narrow.matches) {
     root.dataset.rail = state;
@@ -80,9 +131,11 @@
   }
 
   set(initial(), false);
+  setWidth(preferred, false);
 
   document.addEventListener('DOMContentLoaded', () => {
     decorate();
+    document.querySelector('.rail')?.after(handle); // Outside the rail: its overflow would clip the hit area.
     document.body.append(tip);
     set(root.dataset.rail, false);
   });
@@ -115,5 +168,6 @@
   });
 
   narrow.addEventListener('change', () => set(initial(), false));
+  addEventListener('resize', () => setWidth(preferred, false));
   window.athenaRail = { decorate, closeDrawer() { if (narrow.matches) set('hidden', false); } };
 })();
