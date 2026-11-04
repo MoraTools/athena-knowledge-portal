@@ -6,16 +6,16 @@
 {% if not user.is_authenticated %}<p class="visitor-note">Está viendo artículos públicos. <a href="/accounts/login/">Ingresar</a> para consultar el contenido de su equipo.</p>{% endif %}
 {% if section == 'guides' %}<p id="guide-count" class="result-count" role="status" aria-live="polite" aria-atomic="true">{{ articles|length }} resultado{{ articles|length|pluralize:'s' }}</p>
 <div class="guide-library"><div id="guide-source" hidden>
-{% for article in articles %}<article class="guide-row" data-search="{{ article.title }} {{ article.author }} {{ article.summary }} {{ article.tags|join:' ' }}"><div class="guide-detail"><a class="guide-title" href="#/content/{{ article.slug }}">{{ article.title }}</a><p class="guide-summary">{{ article.summary }}</p><div class="guide-footer"><p class="tag-list">{% for tag in article.tags %}<span>{{ tag }}</span>{% endfor %}</p>{% if article.status %}<p class="status status-{{ article.status }}">{{ article.get_status_display }}</p>{% endif %}{% if article.pdf_name or article.url or article.download_file %}<p class="guide-links">{% if article.pdf_name %}<a href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a>{% endif %}{% if article.url %}<a href="{{ article.url }}" target="_blank" rel="noreferrer">Sitio oficial</a>{% endif %}{% if article.download_file and user.is_authenticated %}<a href="#/downloads">Descarga aprobada</a>{% endif %}</p>{% endif %}</div></div><span class="guide-author">{{ article.author }}</span><time datetime="{{ article.date|date:'Y-m-d' }}">{{ article.date|date:'Y-m-d' }}</time></article>{% endfor %}
+{% for article in articles %}<article class="guide-row" data-search="{{ article.title }} {{ article.author }} {{ article.summary }} {{ article.tags|join:' ' }}"><div class="guide-detail"><a class="guide-title" href="#/content/{{ article.slug }}">{{ article.title }}</a><p class="guide-summary">{{ article.summary }}</p><div class="guide-footer"><p class="tag-list">{% for tag in article.tags %}<span>{{ tag }}</span>{% endfor %}</p>{% if article.status %}<p class="status status-{{ article.status }}">{{ article.get_status_display }}</p>{% endif %}{% if article.pdf_name or article.url or article.download_file %}<p class="guide-links">{% if article.pdf_name %}<a href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a>{% endif %}{% if article.url %}<a href="{{ article.url }}" target="_blank" rel="noreferrer">Sitio oficial</a>{% endif %}{% if article.download_file and user.is_authenticated %}<a href="#/downloads">Descarga aprobada</a>{% endif %}</p>{% endif %}</div></div><span class="guide-author">{{ article.author }}</span><time datetime="{{ article.updated_at|date:'Y-m-d' }}">{{ article.updated_at|date:'Y-m-d' }}</time></article>{% endfor %}
 </div><div id="guide-topics" class="guide-topics"></div></div><p class="library-empty" hidden>No hay guías que coincidan con estos filtros.</p>
 {% endif %}
 {% if section == 'updates' %}<p class="timeline-intro">Novedades en orden cronológico, de la más reciente a la más antigua.</p>
 <ol class="timeline">
-{% regroup articles by date|date:'F Y' as months %}{% for month in months %}<li class="timeline-month"><h2>{{ month.grouper|capfirst }}</h2>
+{% regroup articles by updated_at|date:'F Y' as months %}{% for month in months %}<li class="timeline-month"><h2>{{ month.grouper|capfirst }}</h2>
 <ol>{% for article in month.list %}<li class="timeline-post">
-<time datetime="{{ article.date|date:'Y-m-d' }}"><span class="day">{{ article.date|date:'d' }}</span><span class="mon">{{ article.date|date:'M' }}</span></time>
+<time datetime="{{ article.updated_at|date:'Y-m-d' }}"><span class="day">{{ article.updated_at|date:'d' }}</span><span class="mon">{{ article.updated_at|date:'M' }}</span></time>
 <article class="library-card timeline-card">
-<small class="post-meta"><span>{{ article.get_kind_display }}</span> · {{ article.author }} · <time datetime="{{ article.date|date:'Y-m-d' }}">{{ article.date|date:'d/m/Y' }}</time></small>
+<small class="post-meta"><span>{{ article.get_kind_display }}</span> · {{ article.author }} · <time datetime="{{ article.updated_at|date:'Y-m-d' }}">{{ article.updated_at|date:'d/m/Y' }}</time></small>
 <h2><a href="#/content/{{ article.slug }}">{{ article.title }}</a></h2><p class="post-summary">{{ article.summary }}</p>
 {% if article.status %}<p class="status status-{{ article.status }}">{{ article.get_status_display }}</p>{% endif %}
 <p class="tag-list">{% for tag in article.tags %}<span>{{ tag }}</span>{% endfor %}</p>
@@ -24,7 +24,7 @@
 </ol>
 {% elif section == 'tools' %}<div class="library-grid">
 {% for article in articles %}<article class="library-card" data-search="{{ article.title }} {{ article.author }} {{ article.summary }} {{ article.tags|join:' ' }}" data-tags="{{ article.tags|join:'|' }}">
-<h2><a href="#/content/{{ article.slug }}">{{ article.title }}</a></h2><p>{{ article.summary }}</p><small><time datetime="{{ article.date|date:'Y-m-d' }}">{{ article.date|date:'Y-m-d' }}</time> · {{ article.author }}</small>
+<h2><a href="#/content/{{ article.slug }}">{{ article.title }}</a></h2><p>{{ article.summary }}</p><small><time datetime="{{ article.updated_at|date:'Y-m-d' }}">{{ article.updated_at|date:'Y-m-d' }}</time> · {{ article.author }}</small>
 {% if article.status %}<p class="status status-{{ article.status }}">{{ article.get_status_display }}</p>{% endif %}
 <p class="tag-list">{% for tag in article.tags %}<span>{{ tag }}</span>{% endfor %}</p>
 {% if article.pdf_name %}<p><a class="pdf-link" href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a></p>{% endif %}
