@@ -39,6 +39,9 @@ DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': DATA_DI
                          'OPTIONS': {'timeout': 20, 'transaction_mode': 'IMMEDIATE'}}}
 # Downloads live here and are served only through the signed-in /downloads/<slug> view, never as MEDIA_URL.
 MEDIA_ROOT = DATA_DIR / 'media'
+# Phone notifications for template downloads and sign-ins; no readable topic file means they are off.
+ATHENA_NTFY_SERVER = os.environ.get('ATHENA_NTFY_SERVER', 'https://ntfy.sh')
+ATHENA_NTFY_TOPIC_FILE = os.environ.get('ATHENA_NTFY_TOPIC_FILE', '/etc/athena/ntfy-topic')
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 12}},

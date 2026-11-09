@@ -2,7 +2,7 @@
 
 Athena runs on a DigitalOcean VPS with Django, SQLite, Gunicorn, and Caddy.
 The Spanish reader keeps its existing Docsify routes. Published articles can be public or require an account. Existing articles remain private by default.
-The current portal version is `1.17.0`; the REST API is `1.8.0`.
+The current portal version is `1.18.0`; the REST API is `1.8.0`.
 
 ## Production
 
@@ -87,6 +87,8 @@ The reader's **Descargas** page lists them in sections: Framework, Paquetes, Eje
 3. Save. Athena records the size and SHA-256 checksum. Clear **Publicado** to hide a file without deleting it.
 
 Every file that a signed-in user downloads (`/downloads/<slug>` or `/downloads/framework/latest`) is logged: the username, the download record, the title, file name, size and SHA-256 of the file that was served, the path, and the time. A missing file (404) and a visitor who is sent to sign in are not logged. Athena does not store IP addresses or user agents, and there is no retention limit yet. Only superusers and holders of the `athena.view_downloadevent` permission see the log: **Administración → Descargas registradas** (read-only; filters by user, download and date; search by username, title or file name) and the download lines in **Última actividad** on the admin index. Other administrators see Última actividad as before. The user directory does not grant this permission, so in practice only superusers see the log. The log entry keeps the username and the file data after the account is renamed or deleted, or the download is replaced or deleted.
+
+A download of a file in the **Framework** section (the Core Framework template, from either path) also sends a phone notification through ntfy; see [Phone notifications](#phone-notifications).
 
 Deleting a download also deletes its file. Uploads of up to 512 MB pass the proxy on `/admin/` and `/api/`; agents can use the API (see [API.md](API.md)).
 Files are in `/var/lib/athena/media/downloads/`. To load a folder tree once, copy it to the VPS and run:
@@ -173,10 +175,37 @@ The retired Cloudflare tools (`deploy.ps1`, `wrangler.jsonc`, and the Wrangler d
 Use the VPS deployment workflow below. Upload downloads through Athena's admin or API, or load them with `import_downloads` as described above.
 `ALLOWLIST.md` remains as documentation of the former hosting setup.
 
+## Phone notifications
+
+Athena sends a phone notification through [ntfy](https://ntfy.sh) for two events:
+
+- **Athena: descarga de plantilla**: a signed-in user downloads a file in the Framework section, from `/downloads/<slug>` or `/downloads/framework/latest`. The text has the username, the title, the file name, and the path. Other sections and a missing file (404) send nothing.
+- **Athena: inicio de sesión**: a user signs in (the portal sign-in form or the admin sign-in). The text has the username and, if set, the full name. A failed sign-in sends nothing.
+
+No IP address, user agent, or password data is sent. Athena sends after the database transaction commits, in a background thread with a 5 s timeout, so a slow or failed ntfy server does not change the download or the sign-in. An error is logged only by its exception type.
+
+The topic is a secret, so it is only in a file, never in the code, settings, or `athena.env`:
+
+| Variable | Default | Use |
+|---|---|---|
+| `ATHENA_NTFY_SERVER` | `https://ntfy.sh` | ntfy server URL |
+| `ATHENA_NTFY_TOPIC_FILE` | `/etc/athena/ntfy-topic` | File with the topic name on one line |
+
+A missing, unreadable, or empty file turns notifications off (one short log line per process, no error). To turn them on, as root on the VPS (the service user `athena` must pass through `/etc/athena`, mode 710, but cannot list it or read `athena.env`):
+
+```sh
+chgrp athena /etc/athena && chmod 710 /etc/athena
+install -m 640 -o root -g athena /dev/null /etc/athena/ntfy-topic
+nano /etc/athena/ntfy-topic   # one line: the topic name
+systemctl restart athena
+```
+
+The file is read for each notification, so a topic change needs no restart. To turn notifications off, empty or remove the file.
+
 ## Deployment and backup
 
 The application is installed at `/opt/athena`. Its database and PDFs are in `/var/lib/athena/athena.sqlite3`; download files are in `/var/lib/athena/media/`.
-Production secrets are in `/etc/athena/athena.env` (root only). The service runs as the unprivileged `athena` user.
+Production secrets are in `/etc/athena/athena.env` (root only) and the optional ntfy topic in `/etc/athena/ntfy-topic` (mode 640 root:athena). The service runs as the unprivileged `athena` user.
 Only SSH, HTTP, and HTTPS are open. Gunicorn listens on loopback.
 
 The initial deployment uses `deploy/cloud-init.yaml`, then runs `deploy/install.sh` after copying the release to `/opt/athena`.
@@ -197,6 +226,6 @@ An atomic `/var/backups/athena/current` link selects the complete database and m
 The media mirror has no history: a removed file leaves the mirror on the next successful run. The dated database snapshots retain 14 days, but only the current database has a matching media mirror.
 Backups on the same VPS do not cover VPS loss. An initial backup is also copied to this workstation's private `.secrets/` directory.
 No paid DigitalOcean backup or other paid add-on is enabled.
-For disaster recovery, retain a separate copy of the database, the download files, the release bundle, and `/etc/athena/athena.env`.
+For disaster recovery, retain a separate copy of the database, the download files, the release bundle, `/etc/athena/athena.env`, and `/etc/athena/ntfy-topic` if it is used.
 To restore the complete current backup, stop `athena` and the backup timer. Resolve `/var/backups/athena/current` once, then copy `database.sqlite3` and `media/` from that same directory to `/var/lib/athena/athena.sqlite3` and `/var/lib/athena/media/`. Set their owner to `athena:athena`, then restart the service and timer. Test sign-in, article/PDF access, and downloads.
 Use a dated database snapshot only when a matching separate media copy is available, or when the older database data alone is needed. The current media mirror can lack files from an older snapshot.

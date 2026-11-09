@@ -18,6 +18,7 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from markdown_it import MarkdownIt
 
 from .models import ApiKey, Article, Download, DownloadEvent, ManagedImage, readable_articles, visible_articles
+from .notify import notify_download
 
 
 def article_image_upload(request):
@@ -355,6 +356,7 @@ def send_download(request, item):
         DownloadEvent.objects.create(user=request.user, username=request.user.get_username(), download=item,
                                      title=item.title, filename=item.filename, size=item.size, sha256=item.sha256,
                                      path=request.path)
+        notify_download(request, item)
     except BaseException:
         file.close()
         raise

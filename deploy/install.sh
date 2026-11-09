@@ -3,7 +3,8 @@ set -eu
 cd /opt/athena
 id athena >/dev/null 2>&1 || useradd --system --home /var/lib/athena --shell /usr/sbin/nologin athena
 install -d -m 700 -o athena -g athena /var/lib/athena
-install -d -m 700 /etc/athena
+# 710: the athena user can open the optional ntfy-topic file (640 root:athena) but cannot list the folder.
+install -d -m 710 -o root -g athena /etc/athena
 if [ ! -f /etc/athena/athena.env ]; then
     python3 - <<'PY'
 import os, secrets

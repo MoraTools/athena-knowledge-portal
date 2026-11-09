@@ -29,6 +29,7 @@ Existing article routes must remain stable.
 - Search and filtering run in the browser using an access-filtered search index. Anonymous visitors receive only published public articles; signed-in readers also receive private published articles and approved download records.
 - Admins can add/remove users, rename accounts, reset passwords, edit/upload Markdown and PDFs, and publish drafts.
 - Each file download by a signed-in user is logged (user, file as served, path, time; no IP address or user agent). Only superusers and `view_downloadevent` holders see the log, in Descargas registradas and in Última actividad.
+- Phone notifications (ntfy) go to the owner for each download of a Framework file (username, file title and name, path) and for each sign-in (username and full name). Failed sign-ins, other sections and missing files send nothing. No IP address, user agent, or password data is sent. The topic is a secret in a file on the VPS; without it, notifications are off.
 - Agents use scoped, expiring bearer keys and the documented REST API.
 
 ## Experience principles
