@@ -777,6 +777,44 @@ function syncHtmlFrame() {
   htmlFrameViewport();
 }
 
+// Live status of the links an article marks with data-athena-status (API.md). The server checks them; the frame
+// cannot fetch. Asked when the frame is ready and every 5 minutes while that frame stays open.
+const STATUS_REFRESH_MS = 5 * 60 * 1000;
+const STATUS_MAX_ITEMS = 20;
+let htmlStatusTimer = 0;
+
+function statusItems(data) {
+  const items = {};
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return items;
+  for (const [url, item] of Object.entries(data).slice(0, STATUS_MAX_ITEMS)) {
+    if (/^https?:\/\//.test(url) && (item?.state === 'online' || item?.state === 'offline')
+      && typeof item.checked_at === 'string' && Number.isFinite(Date.parse(item.checked_at))) {
+      items[url] = { state: item.state, checked_at: item.checked_at };
+    }
+  }
+  return items;
+}
+
+async function sendHtmlStatus(frame) {
+  let items = {};
+  try {
+    const response = await fetch(frame.dataset.status, { headers: { Accept: 'application/json' } });
+    if (response.ok) items = statusItems(await response.json());
+  } catch { /* No answer: the article keeps what it shows and hides a status it never got. */ }
+  if (frame !== htmlFrame || !frame.isConnected) return;
+  if (Object.keys(items).length) frame.contentWindow?.postMessage({ type: 'athena:status', items }, '*');
+}
+
+function watchHtmlStatus(frame) {
+  clearInterval(htmlStatusTimer);
+  if (!frame.dataset.status) return;
+  sendHtmlStatus(frame);
+  htmlStatusTimer = setInterval(() => {
+    if (frame === htmlFrame && frame.isConnected) sendHtmlStatus(frame);
+    else clearInterval(htmlStatusTimer);
+  }, STATUS_REFRESH_MS);
+}
+
 function buildHtmlArticle() {
   const marker = document.querySelector('.markdown-section .html-article[data-src]');
   if (!marker || !marker.dataset.src.startsWith('/article-html/')) return;
@@ -785,6 +823,7 @@ function buildHtmlArticle() {
   frame.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
   frame.title = marker.dataset.title || document.querySelector('.markdown-section h1')?.textContent.trim() || 'Athena';
   frame.dataset.source = marker.dataset.source || '';
+  frame.dataset.status = marker.dataset.src.replace('/article-html/', '/article-status/');
   const params = new URLSearchParams({ theme: document.documentElement.dataset.theme || 'light', lang: currentLang() });
   frame.src = marker.dataset.src + '?' + params;
   // Shown on the first height report, or on load if the document never reports.
@@ -1028,6 +1067,7 @@ function handleHtmlFrameMessage(event) {
     queueHtmlViewport();
   } else if (type === 'athena:ready' || type === 'athena:viewport-request') {
     syncHtmlFrame();
+    if (type === 'athena:ready') watchHtmlStatus(frame);
   } else if (type === 'athena:search') {
     focusSearch();
   } else if (type === 'athena:images') {

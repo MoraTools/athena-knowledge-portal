@@ -320,6 +320,15 @@ def article_html_source(request, slug):
                         headers={'Content-Security-Policy': "sandbox; default-src 'none'"})
 
 
+def article_status(request, slug):
+    """Online or offline for the links the article marks with data-athena-status; same access as the article."""
+    from .link_status import statuses
+    if request.method != 'GET':
+        return HttpResponse(status=405, headers={'Allow': 'GET'})
+    article = get_object_or_404(visible_articles(request.user, include_drafts=True).defer('pdf'), slug=slug, format='html')
+    return JsonResponse(statuses(article.body))
+
+
 @xframe_options_sameorigin
 def article_html_preview(request):
     """The editor's live preview: unsaved HTML in the same sandboxed frame as the reader."""

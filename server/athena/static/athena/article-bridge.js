@@ -22,6 +22,11 @@
     if (type === 'athena:images-closed' && Number.isInteger(event.data.index)) {
       document.dispatchEvent(new CustomEvent('athena:images-closed', { detail: { index: event.data.index } }));
     }
+    // Live status of the links marked with data-athena-status: {href: {state: 'online'|'offline', checked_at}}.
+    // Athena checks them every 5 minutes; a link that Athena did not check is not in the items.
+    if (type === 'athena:status' && event.data.items && typeof event.data.items === 'object') {
+      document.dispatchEvent(new CustomEvent('athena:status', { detail: event.data.items }));
+    }
     if (type === 'athena:focus' && typeof value === 'string') {
       const heading = document.getElementById(value);
       if (!heading?.matches('h2, h3')) return;

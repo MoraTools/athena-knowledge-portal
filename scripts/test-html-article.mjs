@@ -9,6 +9,10 @@ const queries = {};
 let input;
 const root = { dataset: { theme: 'dark' }, lang: 'es' };
 const scrolls = [];
+const fetched = [];
+const timers = [];
+const cleared = [];
+let statusAnswer = async () => ({ ok: true, json: async () => ({}) });
 
 function frameWindow() {
   return { messages: [], postMessage(message, target) { this.messages.push({ ...message, target }); } };
@@ -50,6 +54,9 @@ const context = vm.createContext({
   ResizeObserver: class { observe() {} },
   navigator: { platform: 'Linux', clipboard: { writeText() {} } },
   setTimeout() {}, clearTimeout() {},
+  fetch(url) { fetched.push(url); return statusAnswer(); },
+  setInterval(callback, delay) { timers.push({ callback, delay }); return timers.length; },
+  clearInterval(id) { cleared.push(id); },
   requestAnimationFrame(callback) { callback(); },
   getComputedStyle: () => ({ position: 'static' }),
   innerHeight: 900,
@@ -330,6 +337,69 @@ outline('nope');
 assert.equal(tree(), undefined);
 delete queries['.markdown-section'];
 
+// Live status: asked for when this frame is ready, validated, posted only to the frame window, asked again every 5 minutes.
+{
+  const tick = () => new Promise(resolve => setImmediate(resolve));
+  const ready = source => message({ source, data: { type: 'athena:ready' } });
+  const posts = () => frame.contentWindow.messages.filter(data => data.type === 'athena:status');
+  const checked_at = '2026-11-11T15:00:00+00:00';
+  await tick();
+  assert.equal(frame.dataset.status, '/article-status/demos/');
+  assert.equal(posts().length, 0, 'An article with no marked links gets no status message.');
+  fetched.length = 0;
+  frame.contentWindow.messages.length = 0;
+  other.messages.length = 0;
+  statusAnswer = async () => ({ ok: true, json: async () => ({
+    'https://demo.test/': { state: 'online', checked_at, extra: 'dropped' },
+    'http://off.test/x': { state: 'offline', checked_at },
+    'javascript:alert(1)': { state: 'online', checked_at },
+    'https://unknown.test/': { state: 'maybe', checked_at },
+    'https://undated.test/': { state: 'online', checked_at: 'yesterday' },
+    'https://null.test/': null
+  }) });
+  ready(other);
+  message({ source: frame.contentWindow, data: { type: 'athena:viewport-request' } });
+  await tick();
+  assert.equal(fetched.length, 0, 'Only athena:ready from this frame starts the status.');
+  const timersBefore = timers.length;
+  ready(frame.contentWindow);
+  await tick();
+  assert.deepEqual(fetched, ['/article-status/demos/']);
+  assert.equal(JSON.stringify(posts()), JSON.stringify([{ type: 'athena:status', items: {
+    'https://demo.test/': { state: 'online', checked_at }, 'http://off.test/x': { state: 'offline', checked_at }
+  }, target: '*' }]));
+  assert.equal(other.messages.length, 0, 'Another window never gets the status.');
+  assert.equal(timers.length, timersBefore + 1);
+  assert.equal(timers.at(-1).delay, 5 * 60 * 1000);
+  assert.ok(cleared.includes(timersBefore), 'A new ready replaces the earlier timer.');
+  timers.at(-1).callback();
+  await tick();
+  assert.equal(fetched.length, 2);
+  assert.equal(posts().length, 2, 'The timer asks and posts again.');
+  // More than 20 items, a list, a server error or no network: nothing is posted.
+  for (const answer of [
+    async () => ({ ok: true, json: async () => Object.fromEntries(Array.from({ length: 30 }, (_, n) => [`https://d${n}.test/`, { state: 'online', checked_at }])) }),
+    async () => ({ ok: true, json: async () => [{ state: 'online', checked_at }] }),
+    async () => ({ ok: false, json: async () => ({ 'https://demo.test/': { state: 'online', checked_at } }) }),
+    async () => { throw new TypeError('network'); }
+  ]) {
+    statusAnswer = answer;
+    timers.at(-1).callback();
+    await tick();
+  }
+  assert.equal(posts().length, 3);
+  assert.equal(Object.keys(posts().at(-1).items).length, 20);
+  // A removed frame stops its timer and asks for nothing.
+  const asked = fetched.length;
+  frame.isConnected = false;
+  timers.at(-1).callback();
+  await tick();
+  assert.equal(fetched.length, asked);
+  assert.equal(cleared.at(-1), timers.length);
+  frame.isConnected = true;
+  statusAnswer = async () => ({ ok: true, json: async () => ({}) });
+}
+
 // A removed frame accepts nothing; a marker for another route is ignored.
 frame.isConnected = false;
 message({ source: frame.contentWindow, data: { type: 'athena:height', value: 10 } });
@@ -342,6 +412,7 @@ assert.equal(frame, previous);
 // The bridge in the frame: athena:outline from h2[id] and h3[id], one message per animation frame, opt-out meta, focus.
 {
   const posted = [];
+  const events = [];
   const frames = [];
   const listeners = {};
   let mutation;
@@ -368,7 +439,7 @@ assert.equal(frame, previous);
       querySelector: selector => selector === 'meta[name="athena-outline"]' ? meta : null,
       querySelectorAll: selector => selector === 'h2[id], h3[id]' ? headings : [],
       getElementById: id => [...headings, paragraph].find(node => node.id === id) || null,
-      addEventListener() {}, dispatchEvent() {}
+      addEventListener() {}, dispatchEvent(event) { events.push(event); }
     }
   };
   bridgeWindow.window = bridgeWindow;
@@ -412,6 +483,17 @@ assert.equal(frame, previous);
   assert.equal(focused.id, 'detalle');
   assert.equal(focused.options.preventScroll, true);
   assert.equal(headings[1].attributes.tabindex, '-1');
+  // athena:status: only from the parent, as the document event athena:status; nothing goes back to the parent.
+  const items = { 'https://demo.test/': { state: 'online', checked_at: '2026-11-11T15:00:00+00:00' } };
+  const sent = posted.length;
+  events.length = 0;
+  send({}, { type: 'athena:status', items });
+  send(bridgeWindow.parent, { type: 'athena:status', items: 'online' });
+  send(bridgeWindow.parent, { type: 'athena:status' });
+  assert.equal(events.length, 0);
+  send(bridgeWindow.parent, { type: 'athena:status', items });
+  assert.deepEqual(events.map(event => [event.type, event.detail]), [['athena:status', items]]);
+  assert.equal(posted.length, sent);
 }
 
-console.log('HTML article frame sandbox, URL, height source checks, theme/lang/viewport messages, Ctrl K, in-page scroll, image viewer, page tree and bridge outline passed.');
+console.log('HTML article frame sandbox, URL, height source checks, theme/lang/viewport messages, Ctrl K, in-page scroll, image viewer, page tree, live status and bridge outline passed.');

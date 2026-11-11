@@ -115,6 +115,20 @@ more; it drops other items. An empty list shows no tree. To turn the tree off, a
 `<meta name="athena-outline" content="off">`. A click in the tree scrolls the reader to the heading and sends
 `{type: 'athena:focus', value: id}`; the bridge focuses that heading (with `tabindex="-1"` if it has none). Change the
 heading text (for example for the language switch) and the tree follows. Do not draw an own page tree in the document.
+Live link status: add the attribute `data-athena-status` to a link (for example `<a class="open-demo"
+data-athena-status href="https://demo.example.com/">`) and Athena checks that address for the article. Only marked
+`http` and `https` links are checked, at most 20 per article. The reader gets
+`GET /article-status/{slug}/` (a browser route with the article's access rules, not a part of the REST API; `404` if
+the caller cannot read the article), which answers `{"<href>": {"state": "online" | "offline", "checked_at": "<ISO
+8601 UTC>"}}`. `online` is any HTTP status below 500 (a redirect to a login page included; redirects are not
+followed). `offline` is a timeout (5 seconds), a DNS, connection or TLS error, or a status of 500 or more. Athena
+keeps each result for 5 minutes and does not check a host with a loopback, private, link-local or reserved address;
+such a link is not in the answer. When the article is ready, and then every 5 minutes while it stays open, the reader
+posts `{type: 'athena:status', items}` to the article frame only, and the bridge sends the document event
+`athena:status` with `detail` = `items`, keyed by the `href` as written in the article. `items` has only the links
+that have a result, and no event comes when there is none. Show a neutral state first, and hide the status if no
+event comes in about 15 seconds: a missing status must not show a link as offline. The article posts nothing for
+this.
 `html` articles have no PDF export (`/content/{slug}.pdf` answers `404`); an attached PDF still works.
 Search indexes the visible text and headings of the document, without scripts, styles, and templates.
 

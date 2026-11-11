@@ -38,6 +38,7 @@ urlpatterns = [
     path('article-images/<uuid:image_id>/', views.article_image),
     path('article-html/<slug:slug>/', views.article_html_document),
     path('article-html/<slug:slug>/source', views.article_html_source),
+    path('article-status/<slug:slug>/', views.article_status),
     path('article-html-preview/', views.article_html_preview, name='article_html_preview'),
     re_path(r'^content/(?P<slug>[a-z0-9-]+)(?:\.md)?$', views.article_markdown),
     re_path(r'^content/(?P<slug>[a-z0-9-]+)\.pdf$', views.article_export),
