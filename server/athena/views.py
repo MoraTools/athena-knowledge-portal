@@ -1,4 +1,5 @@
 import mimetypes
+import os
 import re
 from html import unescape
 from html.parser import HTMLParser
@@ -59,7 +60,58 @@ def send_article_image(request, image_id, *, include_drafts=True, allow_preview=
             file = image_path(image).open('rb')
         except (OSError, ValidationError):
             raise Http404
-        return FileResponse(file, content_type=image.content_type)
+        return media_response(request, file, image.content_type)
+
+
+BYTE_RANGE = re.compile(r'bytes=(\d*)-(\d*)')
+RANGE_CHUNK = 8 * 1024 * 1024
+
+
+class FileSlice:
+    """The next length bytes of an open file; fileno() lets Gunicorn send them with sendfile."""
+
+    def __init__(self, file, length):
+        self.file, self.remaining, self.name = file, length, file.name
+
+    def read(self, size=-1):
+        data = self.file.read(self.remaining if size is None or size < 0 else min(size, self.remaining))
+        self.remaining -= len(data)
+        return data
+
+    def fileno(self):
+        return self.file.fileno()
+
+    def close(self):
+        self.file.close()
+
+
+def media_response(request, file, content_type):
+    """One byte range per request, which a video needs to seek (and Safari to play). Other Range forms get 200."""
+    size = os.fstat(file.fileno()).st_size
+    start, end, status = 0, size - 1, 200
+    match = BYTE_RANGE.fullmatch(request.headers.get('Range', ''))
+    if match and (match[1] or match[2]) and not (match[1] and match[2] and int(match[2]) < int(match[1])):
+        if match[1]:
+            start = int(match[1])
+            # An open range gets one chunk, so a paused video does not hold one of the few server threads.
+            end = min(size - 1, int(match[2]) if match[2] else start + RANGE_CHUNK - 1)
+        else:
+            start = max(0, size - int(match[2]))
+        if start >= size or not match[1] and not int(match[2]):
+            file.close()
+            return HttpResponse(status=416, headers={'Content-Range': f'bytes */{size}', 'Accept-Ranges': 'bytes'})
+        status = 206
+    headers = {'Accept-Ranges': 'bytes', 'Content-Length': str(end - start + 1)}
+    if status == 206:
+        headers['Content-Range'] = f'bytes {start}-{end}/{size}'
+    if request.method == 'HEAD':
+        file.close()
+        return HttpResponse(status=status, content_type=content_type, headers=headers)
+    file.seek(start)
+    response = FileResponse(FileSlice(file, end - start + 1), status=status, content_type=content_type)
+    for name, value in headers.items():
+        response[name] = value
+    return response
 
 
 def share_target(slug):
@@ -283,8 +335,17 @@ def export_href(href, origin):
     return href  # Other root-relative links resolve against base_url; absolute links stay.
 
 
+# A PDF cannot play a video: it becomes a link to the video file, which keeps the article's access rule.
+PDF_VIDEO = re.compile(r'<video\b[^>]*>.*?</video\s*>', re.I | re.S)
+
+
+def video_link(match):
+    source = re.search(r'(?<![\w-])src\s*=\s*(?:"([^"]*)"|\'([^\']*)\')', match[0])
+    return f'<a href="{escape(unescape(source[1] or source[2] or ""))}">Ver video</a>' if source else ''
+
+
 def article_html(article, origin):
-    body = MARKDOWN.render(article_body(article))
+    body = PDF_VIDEO.sub(video_link, MARKDOWN.render(article_body(article)))
     body = re.sub(r'\bhref="([^"]*)"', lambda m: f'href="{export_href(m[1], escape(origin))}"', body)
     return (f'<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>{escape(article.title)}</title>'
             f'<meta name="author" content="{escape(article.author)}"><style>{PDF_STYLE}</style></head>'
@@ -303,7 +364,7 @@ def pdf_fetcher(image_versions=None):
         def fetch(self, url, headers=None):
             image_id = image_id_from_url(url)
             if image_id and str(image_id) in allowed:
-                image = ManagedImage.objects.filter(pk=image_id, sha256=allowed[str(image_id)]).first()
+                image = ManagedImage.objects.filter(pk=image_id, sha256=allowed[str(image_id)]).exclude(format='mp4').first()
                 if image:
                     with image_path(image).open('rb') as file:
                         data = file.read(MAX_BYTES + 1)

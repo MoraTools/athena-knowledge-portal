@@ -16,7 +16,7 @@
     button.textContent = 'Insertar imagen';
     const picker = document.createElement('input');
     picker.type = 'file';
-    picker.accept = 'image/png,image/jpeg,image/webp,image/gif';
+    picker.accept = 'image/png,image/jpeg,image/webp,image/gif,video/mp4';
     picker.multiple = true;
     picker.hidden = true;
     const status = document.createElement('span');
@@ -65,14 +65,16 @@
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4'];
     // Some clipboard files have no MIME type. The server still checks their actual bytes.
-    const knownFile = file => (!file.type || file.type === 'application/octet-stream') && /\.(png|jpe?g|webp|gif)$/i.test(file.name || '');
+    const knownFile = file => (!file.type || file.type === 'application/octet-stream') && /\.(png|jpe?g|webp|gif|mp4)$/i.test(file.name || '');
+    const videoFile = file => file.type === 'video/mp4' || /\.mp4$/i.test(file.name || '');
     const imageFile = file => file && (file.type.startsWith('image/') || knownFile(file));
 
     async function upload(file, marker) {
       try {
-        if (!(allowedTypes.includes(file.type) || knownFile(file)) || file.size > 10 * 1024 * 1024) {
+        if (videoFile(file) && file.size > 200 * 1024 * 1024) throw new Error('Use un video MP4 de hasta 200 MiB.');
+        if (!(allowedTypes.includes(file.type) || knownFile(file)) || !videoFile(file) && file.size > 10 * 1024 * 1024) {
           throw new Error('Use PNG, JPEG, WebP o GIF de hasta 10 MiB.');
         }
         const data = new FormData();
@@ -99,9 +101,11 @@
         if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'No se pudo subir la imagen. Intente de nuevo.');
         if (!/^\/article-images\/[0-9a-f-]{36}\/$/.test(result.url || '')) throw new Error('La dirección de la imagen no es válida. Intente de nuevo.');
         const position = textarea.value.indexOf(marker);
-        // An HTML article gets an <img> tag; the format switch is read when the upload finishes.
+        // An HTML article gets an <img> tag; the format switch is read when the upload finishes. A video is raw HTML in both.
         const html = form.elements.namedItem('format')?.value === 'html';
-        if (position >= 0) replace(position, position + marker.length, html ? `<img src="${result.url}" alt="Imagen">` : `![Imagen](${result.url})`);
+        const snippet = result.content_type === 'video/mp4' ? `<video src="${result.url}" controls preload="metadata"></video>`
+          : html ? `<img src="${result.url}" alt="Imagen">` : `![Imagen](${result.url})`;
+        if (position >= 0) replace(position, position + marker.length, snippet);
       } catch (error) {
         const position = textarea.value.indexOf(marker);
         if (position >= 0) replace(position, position + marker.length, '');

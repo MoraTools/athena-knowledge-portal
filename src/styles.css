@@ -75,6 +75,7 @@ body .markdown-section h3{font:650 18px/24px var(--font-ui);color:var(--text)}
 .markdown-section code{background:var(--surface-2);color:var(--code)}
 body .markdown-section :is(h1,h2,h3) code{padding:1px 5px;border-radius:3px;font-size:.8em;font-weight:500}
 .markdown-section pre{background:var(--surface-strong);border:1px solid var(--border);border-radius:var(--radius)}
+.markdown-section video{display:block;width:100%;height:auto;margin:var(--space-2) 0;border-radius:var(--radius)}
 .markdown-section pre::after{color:var(--text-subtle);font:var(--label-weight) var(--label-size)/15px var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform)}
 body .markdown-section pre code,body .markdown-section pre code .token{background:transparent;color:var(--text)}
 body .markdown-section pre code .token.comment,body .markdown-section pre code .token.prolog,body .markdown-section pre code .token.doctype,body .markdown-section pre code .token.cdata{color:var(--text-muted)}

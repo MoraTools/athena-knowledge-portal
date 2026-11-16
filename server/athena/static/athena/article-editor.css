@@ -74,6 +74,7 @@
 .desk-preview-content p, .desk-preview-content li { font-size: inherit; line-height: inherit; }
 .desk-preview-content p { margin: 0 0 var(--space-2); }
 .desk-preview-content img { max-width: 100%; height: auto; }
+.desk-preview-content video { display: block; width: 100%; height: auto; }
 .desk-preview-content pre { max-width: 100%; overflow: auto; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-strong); }
 .desk-preview-content code { padding: 1px 5px; border-radius: 3px; color: var(--text); font: 500 13px/1.45 var(--font-mono); background: var(--surface-strong); }
 .desk-preview-content :is(h1, h2, h3) code { font-size: .8em; }

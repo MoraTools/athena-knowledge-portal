@@ -35,7 +35,7 @@
     };
     return DOMPurify.sanitize(marked.parse(body, { renderer, gfm: true, breaks: false }), {
       FORBID_TAGS: ['style', 'iframe', 'script', 'object', 'embed', 'form', 'input', 'select', 'option', 'textarea', 'button', 'fieldset', 'label', 'dialog', 'svg', 'math'],
-      FORBID_ATTR: ['style', 'id', 'name', 'form', 'class', 'autofocus', 'contenteditable', 'tabindex'],
+      FORBID_ATTR: ['style', 'id', 'name', 'form', 'class', 'autofocus', 'contenteditable', 'tabindex', 'autoplay'],
       ALLOW_DATA_ATTR: false
     });
   }

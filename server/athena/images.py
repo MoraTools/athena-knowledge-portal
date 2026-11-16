@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 from datetime import timedelta
 from urllib.parse import unquote, urlsplit
 from uuid import UUID
@@ -26,12 +27,17 @@ from .models import Article, ManagedImage, readable_articles, visible_articles
 
 
 MAX_BYTES = 10 * 1024 * 1024
+MAX_VIDEO_BYTES = 200 * 1024 * 1024
+# ISO base media brands that browsers play as MP4; QuickTime, HEIF and AVIF brands are not here.
+MP4_BRANDS = {b'isom', b'iso2', b'iso3', b'iso4', b'iso5', b'iso6', b'mp41', b'mp42', b'avc1', b'M4V ', b'dash'}
+MAX_MP4_BOXES = 100_000  # Bounds the parse time of a crafted file made of tiny boxes.
+INVALID_VIDEO = 'El video no es válido. Use un archivo MP4 (H.264 y AAC).'
 MAX_PIXELS = 20_000_000
 MAX_GIF_FRAMES = 2_000
 MAX_GIF_PIXELS = 2_000_000_000
 GRACE = timedelta(hours=24)
 IMAGE_PATH = re.compile(r'/article-images/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/?')
-GENERATED_FILE = re.compile(r'[0-9a-f]{32}\.(?:png|jpg|webp|gif)')
+GENERATED_FILE = re.compile(r'[0-9a-f]{32}\.(?:png|jpg|webp|gif|mp4)')
 MARKDOWN = MarkdownIt('commonmark', {'html': True}).enable(['table', 'strikethrough'])
 # Any managed-image URL in an HTML body (attributes, CSS url(), script strings), not inside another URL path.
 HTML_IMAGE_URL = re.compile(r'(?<![\w/.%:-])(?:https?://[^/\s"\'<>()]+)?/article-images/'
@@ -66,8 +72,8 @@ class ImageSources(HTMLParser):
         self.urls = []
 
     def handle_starttag(self, tag, attrs):
-        if tag == 'img':
-            self.urls.extend(value for name, value in attrs if name == 'src' and value)
+        names = {'img': {'src'}, 'video': {'src', 'poster'}, 'source': {'src'}}.get(tag, ())
+        self.urls.extend(value for name, value in attrs if name in names and value)
 
 
 def html_image_ids(body):
@@ -139,7 +145,7 @@ def sign_image_urls(body, allowed):
 
 
 def image_path(image):
-    if image.format not in ('png', 'jpg', 'webp', 'gif'):
+    if image.format not in ('png', 'jpg', 'webp', 'gif', 'mp4'):
         raise ValidationError('Formato de imagen no permitido.')
     root = Path(settings.MEDIA_ROOT) / 'article-images'
     path = root / image.filename
@@ -268,9 +274,95 @@ def clean_gif(raw):
     return data, width, height
 
 
+def mp4_brands(head):
+    """The brands of an ftyp box at the start of the file: major brand, then compatible brands."""
+    size = int.from_bytes(head[:4], 'big')
+    if head[4:8] != b'ftyp' or not 16 <= size <= len(head):
+        return set()
+    return {head[8:12]} | {head[n:n + 4] for n in range(16, size - 3, 4)}
+
+
+def mp4_boxes(file, start, end):
+    """(type, body start, end) of the boxes in [start, end); they must fill it exactly."""
+    for _ in range(MAX_MP4_BOXES):
+        if start >= end:
+            return
+        file.seek(start)
+        header = file.read(16)
+        length, kind, offset = int.from_bytes(header[:4], 'big'), header[4:8], 8
+        if length == 1 and len(header) == 16:
+            length, offset = int.from_bytes(header[8:], 'big'), 16
+        elif length == 0:
+            length = end - start
+        if len(header) < offset or length < offset or start + length > end:
+            raise ValueError('Invalid MP4 box')
+        yield kind, start + offset, start + length
+        start += length
+    raise ValueError('Too many MP4 boxes')
+
+
+def mp4_size(file, size):
+    """Width and height of the first track with a size in its tkhd box, or 0 × 0. Validates the box structure."""
+    top = list(mp4_boxes(file, 0, size))
+    if top[0][0] != b'ftyp' or not any(kind == b'moov' for kind, _, _ in top):
+        raise ValueError('Not an MP4 movie')
+    for _, start, end in (box for box in top if box[0] == b'moov'):
+        for _, start, end in (box for box in mp4_boxes(file, start, end) if box[0] == b'trak'):
+            for kind, start, end in mp4_boxes(file, start, end):
+                if kind == b'tkhd' and end - start >= 84:
+                    file.seek(end - 8)  # Both tkhd versions end with 16.16 fixed-point width and height.
+                    data = file.read(8)
+                    width, height = int.from_bytes(data[:4], 'big') >> 16, int.from_bytes(data[4:], 'big') >> 16
+                    if width and height:
+                        return width, height
+    return 0, 0
+
+
+def create_video(upload, user):
+    """Stream the MP4 to a private temporary file while hashing; the bytes are stored as uploaded."""
+    if upload.size > MAX_VIDEO_BYTES:
+        raise ValidationError('Use un video MP4 de hasta 200 MiB.')
+    root = Path(settings.DATA_DIR)
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    digest, size = hashlib.sha256(), 0
+    with tempfile.NamedTemporaryFile(dir=root, prefix='video-upload-', suffix='.part') as temporary:
+        for chunk in upload.chunks():
+            size += len(chunk)
+            if size > MAX_VIDEO_BYTES:
+                raise ValidationError('El video supera 200 MiB.')
+            digest.update(chunk)
+            temporary.write(chunk)
+        temporary.flush()
+        try:
+            width, height = mp4_size(temporary, size)
+        except (ValueError, IndexError) as error:
+            raise ValidationError(INVALID_VIDEO) from error
+        image = ManagedImage(uploader=user, format='mp4', size=size, sha256=digest.hexdigest(), width=width, height=height)
+        path = image_path(image)
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        linked = False
+        try:
+            with transaction.atomic():
+                os.link(temporary.name, path)  # Fails if the name exists; closing removes the temporary name.
+                linked = True
+                image.save(force_insert=True)
+        except Exception:
+            if linked:
+                path.unlink(missing_ok=True)
+            raise
+    return image
+
+
 def create_image(upload, user):
+    head = upload.read(4096)
+    upload.seek(0)
+    if mp4_brands(head) & MP4_BRANDS:
+        return create_video(upload, user)
+    # Only the bytes make a video; a video name or type with other bytes is rejected with the video message.
+    if (upload.content_type or '').startswith('video/') or (upload.name or '').lower().endswith(('.mp4', '.m4v')):
+        raise ValidationError(INVALID_VIDEO)
     if upload.size > MAX_BYTES:
-        raise ValidationError('Use una imagen PNG, JPEG, WebP o GIF de hasta 10 MiB.')
+        raise ValidationError('Use una imagen PNG, JPEG, WebP o GIF de hasta 10 MiB, o un video MP4 de hasta 200 MiB.')
     root = Path(settings.DATA_DIR)
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     # One conversion per VPS, including GIF workers, keeps decoded pixels out of concurrent requests.
@@ -335,7 +427,9 @@ def _create_image(upload, user):
 
 def image_data(image):
     url = image.get_absolute_url()
-    return {'id': str(image.pk), 'url': url, 'markdown': f'![Imagen]({url})', 'content_type': image.content_type,
+    # Raw HTML works in Markdown and HTML articles alike.
+    markdown = f'<video src="{url}" controls preload="metadata"></video>' if image.format == 'mp4' else f'![Imagen]({url})'
+    return {'id': str(image.pk), 'url': url, 'markdown': markdown, 'content_type': image.content_type,
             'size': image.size, 'width': image.width, 'height': image.height, 'sha256': image.sha256}
 
 
@@ -377,4 +471,10 @@ def collect_images(*, dry_run=False, now=None):
                     report['orphans'].append(path.name)
                     if not dry_run:
                         transaction.on_commit(lambda path=path: path.unlink(missing_ok=True))
+        # A killed worker can leave a video upload's temporary file behind.
+        for path in Path(settings.DATA_DIR).glob('video-upload-*.part'):
+            if not path.is_symlink() and path.is_file() and path.stat().st_mtime <= (now - GRACE).timestamp():
+                report['orphans'].append(path.name)
+                if not dry_run:
+                    path.unlink(missing_ok=True)
     return report

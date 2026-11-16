@@ -118,7 +118,7 @@ The language toggle uses the Lucide languages icon; the theme toggle shows a sun
 ## Controls and states
 
 Use native inputs, selects, date and calendar controls, file uploads, and Django validation messages.
-The article Markdown textarea supports pasted PNG/JPEG/WebP images and a secondary **Insertar imagen** button below the field. In an HTML article it inserts an `<img>` tag.
+The article Markdown textarea supports pasted PNG/JPEG/WebP images and a secondary **Insertar imagen** button below the field. In an HTML article it inserts an `<img>` tag. The button also takes an MP4 and inserts `<video controls preload="metadata">` in both formats; the reader shows it as a block at the full content width with `--radius` corners and the browser's native controls.
 Keep its native text behavior. Image insertion preserves selected text; progress and upload errors appear beside the button with a live status.
 Save controls stay disabled during upload. The helper wraps below the textarea on narrow screens and uses the existing control and spacing tokens.
 **Detalles → Publicación → Imagen para compartir** shows the saved or chosen image at the 1.91:1 crop that chat apps use (at most 360px wide, `object-fit: cover`, 1px `--border`, `--radius`), then **Elegir imagen** (or **Cambiar imagen**) and **Quitar imagen** as secondary buttons and a live status in 12px subtle text (`--crit-text` for errors). With a saved share image, a top-bordered **Enlace para compartir** block follows: a read-only URL field in the mono 13px voice and a secondary **Copiar enlace** button (shown only with the clipboard API), which wrap on narrow screens. Its help line says when a draft or restricted article shows no preview.

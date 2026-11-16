@@ -43,7 +43,8 @@ window.$docsify = {
       hook.afterEach((html) => DOMPurify.sanitize(html, {
         ADD_TAGS: ['input', 'select', 'option', 'label'],
         FORBID_TAGS: ['style', 'iframe', 'script', 'object', 'embed'],
-        FORBID_ATTR: ['style']
+        // Article videos never start on their own (DOMPurify allows video, source and their other attributes).
+        FORBID_ATTR: ['style', 'autoplay']
       }));
     }
   ]

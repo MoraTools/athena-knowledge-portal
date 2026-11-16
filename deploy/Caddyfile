@@ -1,7 +1,7 @@
 athena.moratechnology.com {
-    # Download uploads (admin form and API) may be large; everything else keeps the small limit.
-    @big path /admin/* /api/*
-    @small not path /admin/* /api/*
+    # Download and video uploads (admin form, editor, API) may be large; everything else keeps the small limit.
+    @big path /admin/* /api/* /article-images/upload/
+    @small not path /admin/* /api/* /article-images/upload/
     request_body @big {
         max_size 512MB
     }
@@ -17,6 +17,7 @@ athena.moratechnology.com {
             header_up X-Real-IP {remote_host}
         }
     }
+    # The default encode types leave video/* and images other than SVG uncompressed, so byte ranges stay exact.
     encode zstd gzip
 }
 

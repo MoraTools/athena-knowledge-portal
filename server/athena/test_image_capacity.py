@@ -3,10 +3,10 @@ import fcntl
 import multiprocessing
 from pathlib import Path
 import tempfile
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase, TestCase, override_settings
 
@@ -14,6 +14,13 @@ from .forms import permissions
 from .images import ImageUploadBusy, MAX_BYTES, create_image
 from .models import ApiKey, ManagedImage
 from .test_images import picture
+
+
+def upload(size=1):
+    # create_image reads the first 4 KiB to tell a video from an image; the reported size drives the image limit.
+    file = SimpleUploadedFile('image.png', b'x')
+    file.size = size
+    return file
 
 
 def capacity_worker(root, barrier, release, active, peak, counters, results):
@@ -31,7 +38,7 @@ def capacity_worker(root, barrier, release, active, peak, counters, results):
     def request():
         barrier.wait(timeout=10)
         try:
-            create_image(SimpleNamespace(size=1), None)
+            create_image(upload(), None)
         except ImageUploadBusy:
             results.put('busy')
         else:
@@ -76,27 +83,28 @@ class ImageCapacityTests(SimpleTestCase):
             results.close()
             results.join_thread()
 
-    def test_busy_request_does_not_read_upload_or_start_decoder(self):
-        upload = Mock(size=1)
-        with (self.root / 'image-upload.lock').open('a') as lock, patch('athena.images._create_image') as decode:
+    def test_busy_request_reads_only_the_head_and_does_not_start_decoder(self):
+        file = upload()
+        with (self.root / 'image-upload.lock').open('a') as lock, patch('athena.images._create_image') as decode, \
+                patch.object(SimpleUploadedFile, 'read', wraps=file.read) as read:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             with self.assertRaises(ImageUploadBusy):
-                create_image(upload, None)
-            upload.read.assert_not_called()
+                create_image(file, None)
+            read.assert_called_once_with(4096)
             decode.assert_not_called()
 
     def test_failed_conversion_releases_capacity(self):
         result = object()
         with patch('athena.images._create_image', side_effect=[ValidationError('Invalid image'), result]):
             with self.assertRaises(ValidationError):
-                create_image(SimpleNamespace(size=1), None)
-            self.assertIs(create_image(SimpleNamespace(size=1), None), result)
+                create_image(upload(), None)
+            self.assertIs(create_image(upload(), None), result)
 
     def test_oversized_upload_keeps_validation_response_when_busy(self):
         with (self.root / 'image-upload.lock').open('a') as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             with self.assertRaises(ValidationError) as caught:
-                create_image(SimpleNamespace(size=MAX_BYTES + 1), None)
+                create_image(upload(MAX_BYTES + 1), None)
             self.assertNotIsInstance(caught.exception, ImageUploadBusy)
 
 

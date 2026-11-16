@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Athena management API",
-    "version": "1.9.0",
+    "version": "1.10.0",
     "description": "Private knowledge base. Create a scoped key in /admin/athena/apikey/. Keys expire after 90 days by default and are revoked when the owning user is disabled, removed, or has their password reset. Browser cookies are not accepted by the API. Guide for agents: GET /api/docs/. Check a key with GET /me/."
   },
   "servers": [
@@ -822,8 +822,8 @@
     "/article-images/": {
       "post": {
         "operationId": "upload_article_image",
-        "summary": "Stage a private article image",
-        "description": "Requires articles or admin scope and add_article or change_article. Validates PNG/JPEG/WebP/GIF up to 10 MiB and 20 million pixels. The server runs one image conversion at a time. If another conversion is active, the upload returns 503 with Retry-After: 2 and a JSON error message. Retry the same upload after at least two seconds. The file, pixel, and GIF limits stay the same. GIF can be static or animated, with at most 2000 frames and 2000 million processed pixels (canvas width × height × frame count). Reduce frame count or resolution if the limits are exceeded. Animated PNG/WebP and unsupported GIF rendering extensions are rejected. PNG/JPEG/WebP are re-encoded; GIF image blocks, timing, transparency, disposal, and loop settings are preserved. Every GIF frame is decoded in sequence by a separate worker limited to 10 CPU seconds, 12 elapsed seconds, and 512 MiB of memory. Comments, other application metadata, and data after the trailer are removed. PDF exports use the first GIF frame. Does not change an article or its ETag. Paste the returned markdown into an article body, then use the normal article create/PATCH or Markdown upload endpoint. An unattached image is visible only to its uploader while the uploader can still edit articles.",
+        "summary": "Stage a private article image or MP4 video",
+        "description": "Requires articles or admin scope and add_article or change_article. Validates PNG/JPEG/WebP/GIF up to 10 MiB and 20 million pixels. The server runs one image conversion at a time. If another conversion is active, the upload returns 503 with Retry-After: 2 and a JSON error message. Retry the same upload after at least two seconds. The file, pixel, and GIF limits stay the same. GIF can be static or animated, with at most 2000 frames and 2000 million processed pixels (canvas width × height × frame count). Reduce frame count or resolution if the limits are exceeded. Animated PNG/WebP and unsupported GIF rendering extensions are rejected. PNG/JPEG/WebP are re-encoded; GIF image blocks, timing, transparency, disposal, and loop settings are preserved. Every GIF frame is decoded in sequence by a separate worker limited to 10 CPU seconds, 12 elapsed seconds, and 512 MiB of memory. Comments, other application metadata, and data after the trailer are removed. PDF exports use the first GIF frame. Does not change an article or its ETag. Paste the returned markdown into an article body, then use the normal article create/PATCH or Markdown upload endpoint. An unattached image is visible only to its uploader while the uploader can still edit articles. API 1.10.0: also accepts an MP4 video (ISO base media file with an MP4 brand in its ftyp box, for example H.264 and AAC) up to 200 MiB. The bytes decide the type, not the file name; other video files answer 400. The video is stored as uploaded, without the image conversion slot (no 503). width and height come from the first sized track header, or are 0. The returned markdown is a <video src=... controls preload=\"metadata\"> element for Markdown and HTML articles. A video cannot be a share_image.",
         "requestBody": {
           "required": true,
           "content": {
@@ -898,7 +898,7 @@
     "/article-images/{id}/": {
       "get": {
         "operationId": "read_article_image",
-        "summary": "Read an article image with a bearer key",
+        "summary": "Read an article image or video with a bearer key",
         "description": "Read keys see images in published articles. Article editors with articles/admin keys can read draft images. Only the uploader with an edit-capable key can preview an unattached image. The returned url uses browser session/public article access; it does not accept bearer keys.",
         "parameters": [
           {
@@ -909,11 +909,21 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "bytes=0-1023"
+            },
+            "description": "One byte range: bytes=start-end, bytes=start- (answers at most 8 MiB), or bytes=-suffix. Other forms get the whole file."
           }
         ],
         "responses": {
           "200": {
-            "description": "PNG/JPEG/WebP/GIF bytes. Animated GIFs retain all frames.",
+            "description": "PNG/JPEG/WebP/GIF or MP4 bytes. Animated GIFs retain all frames. Accept-Ranges: bytes.",
             "content": {
               "image/png": {
                 "schema": {
@@ -938,6 +948,23 @@
                   "type": "string",
                   "format": "binary"
                 }
+              },
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "The requested byte range, with Content-Range.",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               }
             }
           },
@@ -946,6 +973,9 @@
           },
           "404": {
             "description": "Missing image or no readable reference"
+          },
+          "416": {
+            "description": "The range starts past the end of the file; Content-Range: bytes */size."
           }
         }
       }
@@ -1111,10 +1141,11 @@
           },
           "url": {
             "type": "string",
-            "description": "Root-relative reader image URL."
+            "description": "Root-relative reader image or video URL."
           },
           "markdown": {
-            "type": "string"
+            "type": "string",
+            "description": "Ready Markdown image, or a <video> element for a video."
           },
           "content_type": {
             "type": "string",
@@ -1122,14 +1153,16 @@
               "image/png",
               "image/jpeg",
               "image/webp",
-              "image/gif"
+              "image/gif",
+              "video/mp4"
             ]
           },
           "size": {
             "type": "integer"
           },
           "width": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Pixels; 0 for a video without a sized track."
           },
           "height": {
             "type": "integer"

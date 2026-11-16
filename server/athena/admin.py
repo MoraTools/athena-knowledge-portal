@@ -246,7 +246,7 @@ class ArticleAdmin(RowControlsAdmin):
                 field.widget.attrs['data-html-preview-url'] = reverse('article_html_preview')
             elif 'format' in form.base_fields:  # HTML articles need the article change right (forms.ArticleForm).
                 form.base_fields['format'].choices = [('markdown', 'Markdown')]
-            field.help_text = 'Pegue una imagen o use Insertar imagen. PNG, JPEG, WebP o GIF, hasta 10 MiB y 20 millones de píxeles. Se conserva el texto seleccionado.'
+            field.help_text = 'Pegue una imagen o use Insertar imagen. PNG, JPEG, WebP o GIF, hasta 10 MiB y 20 millones de píxeles, o un video MP4 de hasta 200 MiB. Se conserva el texto seleccionado.'
         return form
 
     @admin.display(description='Estado', ordering='published')

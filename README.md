@@ -2,7 +2,7 @@
 
 Athena runs on a DigitalOcean VPS with Django, SQLite, Gunicorn, and Caddy.
 The Spanish reader keeps its existing Docsify routes. Published articles can be public or require an account. Existing articles remain private by default.
-The current portal version is `1.20.0`; the REST API is `1.9.0`.
+The current portal version is `1.21.0`; the REST API is `1.10.0`.
 
 ## Production
 
@@ -46,7 +46,7 @@ An article has a format: **Markdown** (the default; existing articles keep it) o
 An HTML article is a full HTML document with its own inline CSS and JavaScript, up to 1 MiB. Only accounts that can change articles (the existing editor and administrator permission, or an `articles` or `admin` API key of such an account) can create or edit HTML articles.
 The reader shows the document under the article title, in an iframe with `sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"` (never `allow-same-origin`). The document comes from `/article-html/<slug>/` with the article's access rules and its own Content Security Policy: inline CSS and scripts only, no `fetch`, forms, or external scripts, and the same sandbox if the route is opened directly.
 Athena adds a bridge script before `</body>`. It sets `data-theme` on the root element, sends the language (`athena:lang`) and the visible part of the frame (`athena:viewport`, for dialogs) as document events, reports the height, scrolls the reader for in-page `#` links, and forwards Ctrl K to the Athena search. It also exposes `window.athena.openImages(items, index)` with `items` as `[{src, caption, alt}]`: Athena opens its image viewer over the whole window (rail and command bar included), with previous and next, the arrow keys and swipe, **Tamaño real** (100% with drag panning, also by double-click or double-tap), and **Abrir imagen original**. Athena accepts only `/article-images/<id>/` URLs of this site (an optional `?sig=`), at most 50 items, and captions and alt text up to 500 characters (shown as text). On close, the article receives the document event `athena:images-closed` with `detail.index`. Link `/assets/suite-tokens.css` to use the Athena fonts and theme tokens; Django sends the font files with `Access-Control-Allow-Origin: *`, so they load inside the frame.
-Reference images by their `/article-images/<id>/` URL, in `<img>`, CSS `url()`, or script strings. **Insertar imagen** inserts an `<img>` tag. The frame cannot send the session cookie, so the server replaces each reference with a signed URL that is valid for one hour.
+Reference images and videos by their `/article-images/<id>/` URL, in `<img>`, `<video src>` or `poster`, `<source src>`, CSS `url()`, or script strings. **Insertar imagen** inserts an `<img>` tag, or a `<video>` tag for an MP4. The frame cannot send the session cookie, so the server replaces each reference with a signed URL that is valid for one hour.
 Search indexes the visible text and headings of the document (not scripts, styles, or templates) and links to the article. HTML articles have no **Exportar PDF**; an attached PDF still opens. The reader shows the same **En esta página** tree as for Markdown, from the document's `h2[id]` and `h3[id]` headings (the bridge reports them; `<meta name="athena-outline" content="off">` turns the tree off). A click scrolls to the heading and focuses it; the tree text follows heading changes such as the language switch. **Copiar página** copies the saved HTML. The editor preview shows the unsaved HTML in the same sandboxed frame.
 Live link status: a link with the attribute `data-athena-status` (http or https, at most 20 per article) is checked by the server, because the frame cannot make requests. `/article-status/<slug>/` (same access as the article) answers `{href: {state: "online" | "offline", checked_at}}`: online is any HTTP status below 500 with no redirect followed, offline is a timeout (5 s), a connection or TLS error, or 500 and above. Results stay 5 minutes in `DATA_DIR/link-status/`; hosts with a loopback, private, link-local or reserved address are never requested. The reader posts `athena:status` to the frame when the article is ready and every 5 minutes; the article gets it as the document event `athena:status` and must hide the status if none comes (see `API.md`). The editor preview sends no status.
 
@@ -135,10 +135,14 @@ Editors can see images in drafts. Only the uploader can preview an image with no
 Shared images follow any readable article that uses them. Removing the uploader does not remove saved article images.
 The reader plays animated GIFs. PDF exports use the first GIF frame. The bounded PDF worker receives only this article's image IDs and content hashes.
 
+### Article videos
+
+**Insertar imagen** also takes an MP4 video (H.264 and AAC; use `ffmpeg -movflags +faststart` for a fast start) of up to 200 MiB, and inserts `<video src="/article-images/<id>/" controls preload="metadata"></video>` in Markdown and HTML articles. Athena keeps the file as uploaded in `MEDIA_ROOT/article-images/<hex>.mp4`, with the same access rules, signed URLs in HTML articles, and cleanup as images. The server checks the `ftyp` and box structure, streams the upload to a temporary file in `DATA_DIR` while it computes the SHA-256, and reads the size from the track header (`0 × 0` if there is none). `/article-images/<id>/` answers byte ranges (`206`, `416`, `HEAD`) so that browsers can seek. The Markdown reader removes `autoplay`. PDF exports show a **Ver video** link. A video cannot be a share image. There is no transcoding and no adaptive bitrate: one 1-CPU VPS serves the file.
+
 The daily `athena-image-gc.timer` removes unused managed images after a 24-hour grace period.
 Cleanup checks all saved bodies, including drafts, shared images, inline/reference Markdown, HTML image sources, HTML article bodies, and local absolute URLs.
 After the last reference is removed, a new 24-hour grace period starts. Backups, downloads, and PDF attachments are outside cleanup's scope.
-An interrupted upload can leave an orphan file; cleanup removes only generated orphan names in the managed-image directory after 24 hours.
+An interrupted upload can leave an orphan file; cleanup removes only generated orphan names in the managed-image directory, and `video-upload-*.part` files in `DATA_DIR`, after 24 hours.
 
 ```sh
 .venv/bin/python server/manage.py collect_article_images --dry-run

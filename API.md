@@ -56,8 +56,8 @@ A scope never grants more authority than its owner has. A key owned by an ordina
 | POST | `/articles/{slug}/markdown/` | Replace body from multipart field `file`; requires `If-Match` |
 | POST | `/articles/{slug}/pdf/` | Attach or replace PDF from multipart field `file`; requires `If-Match` |
 | GET | `/articles/{slug}/pdf/` | Download PDF |
-| POST | `/article-images/` | Stage an image from multipart field `file`; returns `id`, `url`, `markdown`, `content_type`, `size`, `width`, `height`, `sha256` |
-| GET | `/article-images/{id}/` | Read image bytes with the current key's article access |
+| POST | `/article-images/` | Stage an image or an MP4 video from multipart field `file`; returns `id`, `url`, `markdown`, `content_type`, `size`, `width`, `height`, `sha256` |
+| GET | `/article-images/{id}/` | Read image or video bytes with the current key's article access; videos accept `Range` |
 | GET | `/downloads/` | List downloads; `read` sees published files only |
 | POST | `/downloads/` | Upload a file from multipart fields `title`, `section`, `file`, optional `note` |
 | DELETE | `/downloads/{slug}/` | Remove a download and its stored file |
@@ -238,3 +238,49 @@ curl -X PATCH https://athena.moratechnology.com/api/v1/articles/my-guide/ \
 - Drafts, restricted articles, articles without a share image and unknown slugs answer the same `302` to
   `/#/content/{slug}`, with no article data. `/s/{slug}/image` serves the image only in the preview case, else `404`.
 - The share image counts as a use of the image, so the image cleanup keeps it while it is set.
+
+## Article videos
+
+API version 1.10.0 accepts an MP4 video on `POST /article-images/`, with the same multipart field `file`, the same
+scopes and permissions, and the same access rules as images. Athena stores the video itself, as uploaded: no
+external video host, no transcoding, no adaptive bitrate.
+
+- Format: MP4 (ISO base media file with an MP4 brand in its `ftyp` box), for example H.264 video with AAC audio. The
+  server checks the bytes, not the file name. QuickTime `.mov` and other files answer `400`
+  (`El video no es válido. Use un archivo MP4 (H.264 y AAC).`). It does not check the codecs: use H.264 and AAC so
+  that every browser plays the video. Put the `moov` box first (`ffmpeg -movflags +faststart`) for a faster start.
+- Size: at most 200 MiB (images keep 10 MiB). The proxy accepts up to 512 MB on `/api/` and on the editor upload.
+- Response: `content_type` is `video/mp4`; `width` and `height` come from the first video track header, or are `0`
+  when the file has no sized track; `markdown` is a ready `<video>` element that works in Markdown and HTML articles.
+  A video upload does not wait for the image conversion slot, so it never answers `503`.
+
+```sh
+curl --fail-with-body https://athena.moratechnology.com/api/v1/article-images/ \
+  -H "Authorization: Bearer $ATHENA_API_KEY" -F 'file=@demo.mp4'
+```
+
+```json
+{"id": "8b0c5d6e-...", "url": "/article-images/8b0c5d6e-.../",
+ "markdown": "<video src=\"/article-images/8b0c5d6e-.../\" controls preload=\"metadata\"></video>",
+ "content_type": "video/mp4", "size": 7340032, "width": 1920, "height": 1080, "sha256": "..."}
+```
+
+Put the `markdown` value in the article body. In a Markdown article the reader keeps `src`, `poster`, `controls`,
+`preload`, `width`, `height`, `playsinline`, `muted`, and `loop`, and removes `autoplay`; the video fills the content
+width. In an HTML article use any `<video>` markup; each `/article-images/{id}/` URL in `src`, `poster`, or
+`<source src>` counts as a use and is served as a signed URL, like an image:
+
+```html
+<video controls preload="metadata" poster="/article-images/{image-id}/">
+  <source src="/article-images/{video-id}/" type="video/mp4">
+</video>
+```
+
+- `/article-images/{id}/` and `GET /api/v1/article-images/{id}/` answer `Range: bytes=start-end`, `bytes=start-`, and
+  `bytes=-suffix` with `206 Partial Content`, `Accept-Ranges: bytes`, and `Content-Range`; a range past the end answers
+  `416`. An open range (`bytes=start-`) returns at most 8 MiB, so a player asks again for the next part. `HEAD` works.
+  Other `Range` forms get the whole file with `200`.
+- A signed URL in an HTML article is valid for one hour after the page loads; reload the page to seek after that.
+- The PDF export shows a video as a "Ver video" link to the video URL, which keeps the article's access rule.
+  A video cannot be a `share_image` (`400`).
+- Cleanup keeps a video while an article uses it and removes it after the same 24-hour grace period as images.

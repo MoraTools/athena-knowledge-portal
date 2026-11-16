@@ -232,6 +232,21 @@ async function failure(request, error = 'La imagen no es válida.') {
   assert.equal(submit(state.form), false);
 }
 
+// An MP4 from the chooser is a video up to 200 MiB and becomes the same <video> snippet in Markdown and HTML articles.
+for (const format of ['markdown', 'html']) {
+  const state = setup({ format });
+  assert.ok(state.picker.accept.includes('video/mp4'));
+  const clip = { name: 'demo.mp4', type: 'video/mp4', size: 150 * 1024 * 1024 };
+  state.picker.files = [clip, { name: 'huge.mp4', type: '', size: 201 * 1024 * 1024 }];
+  state.picker.dispatchEvent({ type: 'change' });
+  assert.equal(state.requests[0].options.body.fields.get('file'), clip);
+  state.requests[0].resolve({ ok: true, json: async () => ({ url: url(1), content_type: 'video/mp4' }) });
+  await new Promise(setImmediate);
+  assert.equal(state.requests.length, 1, 'A video over 200 MiB is not sent.');
+  assert.equal(state.textarea.value, `Before <video src="${url(1)}" controls preload="metadata"></video>\nSELECTED After`);
+  assert.match(state.status.textContent, /huge\.mp4: Use un video MP4 de hasta 200 MiB\./);
+}
+
 console.log('Article image paste, async order, selection, failure, text, CSRF and native chooser checks passed.');
 
 // Compile actual Markdown with the shipped Docsify bundle, including its image path resolution.
@@ -269,6 +284,7 @@ console.log('Article image paste, async order, selection, failure, text, CSRF an
   const external = 'https://raw.githubusercontent.com/example/image.png';
   assert.ok(compiler.compile(`![External](${external})`).includes(`src="${external}"`));
   assert.ok(compiler.compile(`<img src="${managed}" alt="HTML">`).includes(`src="${managed}"`));
+  assert.ok(compiler.compile(`<video src="${managed}" controls preload="metadata"></video>`).includes(`<video src="${managed}" controls`));
   for (const [href, expected] of [
     ['other', '#/content/other'], ['other.md', '#/content/other'],
     ['other.md?q=one#detail', '#/content/other?q=one&id=detail'],
