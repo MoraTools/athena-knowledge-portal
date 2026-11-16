@@ -145,7 +145,7 @@ class CacheTests(SimpleTestCase):
             self.assertEqual(checked.call_count, 3)
             self.assertEqual(later['https://on.test/'], {'state': 'online', 'checked_at': '2027-01-15T08:05:00+00:00'})
         self.assertEqual(statuses('<p>No marked links</p>'), {})
-        self.assertEqual(sorted(path.suffix for path in (self.root / 'link-status').iterdir()), ['.json'] * 3)
+        self.assertEqual(sorted(path.suffix for path in (self.root / 'link-status').iterdir()), ['.json'] * 3 + ['.lock'] * 3)
 
     def test_one_check_of_a_url_at_a_time(self):
         calls = []

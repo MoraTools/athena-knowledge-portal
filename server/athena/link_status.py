@@ -104,15 +104,16 @@ def refresh(url):
     entry = cached(url)
     if fresh(entry):
         return entry
-    with cache_file(url).open('a+', encoding='utf-8') as file:
-        fcntl.flock(file, fcntl.LOCK_EX)
-        file.seek(0)
-        entry = read(file)
+    path = cache_file(url)
+    # A separate lock file, and the result moved into place whole, so a reader never sees a half-written file.
+    with path.with_suffix('.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        entry = cached(url)
         if not fresh(entry):
             entry = {'state': check(url), 'time': time.time()}
-            file.seek(0)
-            file.truncate()
-            file.write(json.dumps(entry))
+            temporary = path.with_suffix('.tmp')
+            temporary.write_text(json.dumps(entry), encoding='utf-8')
+            temporary.replace(path)
         return entry
 
 
