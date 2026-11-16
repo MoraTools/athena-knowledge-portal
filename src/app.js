@@ -821,7 +821,9 @@ function buildHtmlArticle() {
   const frame = document.createElement('iframe');
   frame.className = 'html-article-frame';
   frame.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
-  frame.allow = 'fullscreen'; // Article videos can open full screen.
+  // Article videos can open full screen. "*" because the sandboxed frame has an opaque origin, which 'src' may not match.
+  frame.allow = 'fullscreen *';
+  frame.setAttribute('allowfullscreen', ''); // Older Firefox reads only this attribute.
   frame.title = marker.dataset.title || document.querySelector('.markdown-section h1')?.textContent.trim() || 'Athena';
   frame.dataset.source = marker.dataset.source || '';
   frame.dataset.status = marker.dataset.src.replace('/article-html/', '/article-status/');
