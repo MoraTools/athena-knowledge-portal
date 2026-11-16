@@ -29,6 +29,16 @@ def read_upload(upload, extension, limit):
     return data
 
 
+SHARE_IMAGE_MAX_BYTES = 5 * 1000 * 1000
+SHARE_IMAGE_MIN = (600, 315)
+
+
+class ShareImageWidget(forms.HiddenInput):
+    """The image id; static/athena/share-image.js adds upload and remove buttons around the preview."""
+    template_name = 'admin/athena/article/share_image.html'
+    is_hidden = False  # Keep the label and help text in the admin form.
+
+
 ACCESS_CHOICES = [('public', 'Público'), ('account', 'Con cuenta'), ('restricted', 'Usuarios seleccionados')]
 
 
@@ -41,11 +51,13 @@ class ArticleForm(forms.ModelForm):
     access = forms.ChoiceField(label='Acceso', required=False, choices=ACCESS_CHOICES, help_text=(
         'Público: si está publicado, cualquier persona lo lee sin una cuenta. Con cuenta: cualquier usuario que ingresa. '
         'Usuarios seleccionados: solo los usuarios de la lista y los superusuarios. Las imágenes y los PDF siguen este acceso.'))
+    # Declared, so the admin does not wrap it in a related-object widget with add and change links.
+    share_image = Article._meta.get_field('share_image').formfield(widget=ShareImageWidget)
 
     class Meta:
         model = Article
         fields = ['title', 'slug', 'kind', 'summary', 'author', 'date', 'tags', 'format', 'body',
-                  'status', 'url', 'download_file', 'published', 'access', 'allowed_users', 'pdf_only']
+                  'status', 'url', 'download_file', 'published', 'access', 'allowed_users', 'pdf_only', 'share_image']
         widgets = {'body': forms.Textarea(attrs={'rows': 24, 'cols': 90}),
                    'summary': forms.Textarea(attrs={'rows': 3, 'cols': 80}),
                    'date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
@@ -67,6 +79,20 @@ class ArticleForm(forms.ModelForm):
 
     def clean_format(self):
         return self.cleaned_data.get('format') or self.instance.format or 'markdown'
+
+    def clean_share_image(self):
+        image = self.cleaned_data.get('share_image')
+        if image:
+            from .images import image_path, usable_image_ids
+            if (image.format not in ('png', 'jpg') or image.size > SHARE_IMAGE_MAX_BYTES
+                    or image.width < SHARE_IMAGE_MIN[0] or image.height < SHARE_IMAGE_MIN[1]):
+                raise ValidationError('Use una imagen PNG o JPEG de al menos 600 × 315 píxeles y hasta 5 MB.')
+            if not image_path(image).is_file():
+                raise ValidationError('La imagen para compartir ya no está disponible. Súbala de nuevo.')
+            # The rule of body images: own uploads or images of articles the editor can read.
+            if self.actor and image.pk != self.instance.share_image_id and usable_image_ids({image.pk}, self.actor) != {image.pk}:
+                raise ValidationError('Solo puede usar sus imágenes sin guardar. Vuelva a subir la imagen con su cuenta.')
+        return image
 
     def clean_tags(self):
         return [tag.strip() for tag in self.cleaned_data['tags'].split(',') if tag.strip()]

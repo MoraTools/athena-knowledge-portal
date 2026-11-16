@@ -2,7 +2,7 @@
 
 Athena runs on a DigitalOcean VPS with Django, SQLite, Gunicorn, and Caddy.
 The Spanish reader keeps its existing Docsify routes. Published articles can be public or require an account. Existing articles remain private by default.
-The current portal version is `1.19.0`; the REST API is `1.8.0`.
+The current portal version is `1.20.0`; the REST API is `1.9.0`.
 
 ## Production
 
@@ -55,6 +55,17 @@ Open an article to edit, replace or remove its PDF, unpublish it, or delete it.
 **Ver en el sitio** previews saved drafts for editors. Existing article addresses cannot be changed.
 Jeiser Vargas remains the editorial reviewer.
 The database is now the source of truth for articles, accounts, keys, PDFs, and the download list.
+
+### Sharing an article with a link preview
+
+Reader addresses are `/#/content/<slug>`. Chat apps (WhatsApp, Teams, Slack) never see the part after `#`, so they show no title or image for it. To share a feed post or any other article with a preview:
+
+1. Open the article in the admin, then **Detalles → Publicación → Imagen para compartir**. Select **Elegir imagen** and pick a PNG or JPEG of at least 600 × 315 pixels (1200 × 630 is best) and at most 5 MB.
+2. Save the article. The same tab now shows **Enlace para compartir**, `https://athena.moratechnology.com/s/<slug>`, with **Copiar enlace**. The API returns it as `share_url`.
+3. Paste that link in the chat. The app shows the article title, the summary and the image. A person who opens the link goes to the article in the reader, where the article's access rule applies.
+
+The preview is an opt-in per article: without a share image, `/s/<slug>` only redirects. With one, anyone who has the link sees the title, the summary and the image, also for an account-only article. Drafts and restricted articles never show a preview: their link, like an unknown address, is the same bare redirect to `/#/content/<slug>`. To stop the preview, select **Quitar imagen** and save. Chat apps keep their own copy of a preview for some time.
+`/s/<slug>/image` serves the image only while the preview shows; it is cached for a long time with an ETag from the image SHA-256. `robots.txt` lets crawlers read `/s/` so that link previews work; the pages still carry `noindex`.
 
 ## Public library
 

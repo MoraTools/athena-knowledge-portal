@@ -12,4 +12,11 @@
     {% endif %}
   </div>
   {% if field.field.help_text %}<div class="help"{% if field.field.id_for_label %} id="{{ field.field.id_for_label }}_helptext"{% endif %}>{{ field.field.help_text|safe }}</div>{% endif %}
+  {% if field.field.name == 'share_image' and original.share_image_id %}{% url 'article_share' original.slug as share_path %}
+  <div class="share-link">
+    <label for="share-link-url">Enlace para compartir</label>
+    <div class="share-link-row"><input id="share-link-url" type="url" readonly value="{{ request.scheme }}://{{ request.get_host }}{{ share_path }}" aria-describedby="share-link-help"><button class="button" type="button" data-copy-share-link hidden>Copiar enlace</button><span class="share-link-status" role="status" aria-live="polite"></span></div>
+    <div class="help" id="share-link-help">{% if not original.published %}Sin vista previa mientras el artículo sea un borrador: el enlace solo abre el artículo.{% elif original.is_restricted %}Sin vista previa porque el artículo es restringido: el enlace solo abre el artículo.{% else %}Pegue este enlace en WhatsApp, Teams o Slack para mostrar la vista previa guardada.{% endif %}</div>
+  </div>
+  {% endif %}
 </div>

@@ -127,6 +127,15 @@
 .desk-dialog .field-summary textarea { height: 80px; min-height: 80px; resize: vertical; }
 .desk-dialog input[type=file] { width: 100%; min-width: 0; font: 13px/1.5 var(--font-ui); }
 .desk-dialog .errorlist { margin: 0 0 var(--space-1); }
+/* Share image: preview at the 1.91:1 crop that chat apps show, then the link to copy. */
+.share-image { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); min-width: 0; }
+.share-image-preview { display: block; width: min(100%, 360px); aspect-ratio: 1200 / 630; object-fit: cover; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-strong); }
+.share-image-preview[hidden], .share-image-tools [hidden] { display: none; }
+.share-image-tools, .share-link-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); min-width: 0; }
+.share-image-status, .share-link-status { color: var(--text-subtle); font-size: 12px; }
+.share-image-status--error { color: var(--crit-text); }
+.share-link { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--border); }
+.share-link-row input { flex: 1 1 16rem; min-width: 0; font: 13px/1.4 var(--font-mono); }
 .desk-tool-fields { margin-top: var(--space-2); padding-top: var(--space-1); border-top: 1px solid var(--border); }
 .desk-tool-fields > summary { display: list-item; min-height: var(--control-height); padding-top: 6px; box-sizing: border-box; color: var(--accent-text); font: 600 13px/1.4 var(--font-ui); cursor: pointer; }
 .desk-dialog-footer { display: flex; flex: none; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border); }

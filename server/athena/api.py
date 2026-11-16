@@ -10,6 +10,7 @@ from django.db import IntegrityError, transaction
 from django.forms.models import model_to_dict, modelform_factory
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
@@ -113,14 +114,17 @@ def me(request):
     })
 
 
-def article_data(article, detail=True, *, editor=False):
+def article_data(request, article, detail=True, *, editor=False):
     result = {field: getattr(article, field) for field in
               ('id', 'slug', 'title', 'kind', 'format', 'summary', 'author', 'tags', 'published', 'is_public', 'access',
                'pdf_only', 'status', 'url', 'download_file')}
     if editor:  # Usernames only for keys that can change articles.
         result['allowed_users'] = sorted(user.username for user in article.allowed_users.all())
     result.update(date=article.date.isoformat(), updated_at=article.updated_at.isoformat(),
-                  route=article.get_absolute_url(), pdf=f'/api/v1/articles/{article.slug}/pdf/' if article.pdf_name else None)
+                  route=article.get_absolute_url(), pdf=f'/api/v1/articles/{article.slug}/pdf/' if article.pdf_name else None,
+                  share_image=str(article.share_image_id) if article.share_image_id else None,
+                  share_url=request.build_absolute_uri(reverse('article_share', args=[article.slug]))
+                  if article.share_image_id else None)
     if detail:
         result['body'] = article.body
     return result
@@ -136,7 +140,9 @@ def article_form(data, instance=None, files=None, *, actor=None):
             raise ValidationError(f'{field} must be a boolean.')
     if 'tags' in data and (not isinstance(data['tags'], list) or any(not isinstance(t, str) or ',' in t for t in data['tags'])):
         raise ValidationError('tags must be a list of strings without commas.')
-    if any(not isinstance(value, (str, list, bool)) for value in data.values()):
+    if 'share_image' in data and not (data['share_image'] is None or isinstance(data['share_image'], str)):
+        raise ValidationError({'share_image': ['share_image must be an article image id or null.']})
+    if any(not isinstance(value, (str, list, bool)) for key, value in data.items() if key != 'share_image'):
         raise ValidationError('Invalid field value type.')
     if 'allowed_users' in data and (not isinstance(data['allowed_users'], list)
                                     or any(not isinstance(name, str) for name in data['allowed_users'])):
@@ -177,7 +183,7 @@ def articles(request, slug=None):
         query = visible_articles(request.user, include_drafts=editor).defer('pdf').prefetch_related('allowed_users')
         if slug:
             article = get_object_or_404(query, slug=slug)
-            return JsonResponse(article_data(article, editor=editor), headers={'ETag': f'"{article.updated_at.isoformat()}"'})
+            return JsonResponse(article_data(request, article, editor=editor), headers={'ETag': f'"{article.updated_at.isoformat()}"'})
         if request.GET.get('q'):
             from django.db.models import Q
             q = request.GET['q']
@@ -187,7 +193,7 @@ def articles(request, slug=None):
         offset = max(0, int(request.GET.get('offset', 0)))
         limit = max(1, min(100, int(request.GET.get('limit', 50))))
         return JsonResponse({'count': query.count(), 'offset': offset, 'limit': limit,
-                             'results': [article_data(a, False, editor=editor) for a in query[offset:offset + limit]]})
+                             'results': [article_data(request, a, False, editor=editor) for a in query[offset:offset + limit]]})
     action = {'POST': 'add', 'PATCH': 'change', 'DELETE': 'delete'}[request.method]
     if not can_edit(request, action):
         return denied()
@@ -205,7 +211,7 @@ def articles(request, slug=None):
         if article and 'slug' in data and data['slug'] != article.slug:
             raise ValidationError('Article slugs cannot be changed.')
         article = article_form(data, article, actor=request.user).save()
-        return JsonResponse(article_data(article, editor=True), status=201 if request.method == 'POST' else 200,
+        return JsonResponse(article_data(request, article, editor=True), status=201 if request.method == 'POST' else 200,
                             headers={'ETag': f'"{article.updated_at.isoformat()}"'})
 
 
@@ -230,7 +236,7 @@ def article_upload(request, slug, kind):
         if request.headers.get('If-Match') != f'"{article.updated_at.isoformat()}"':
             return JsonResponse({'error': 'Send the current article ETag in If-Match.'}, status=412)
         article = article_form({}, article, {f'{kind}_file': request.FILES['file']}, actor=request.user).save()
-        return JsonResponse(article_data(article, editor=True), headers={'ETag': f'"{article.updated_at.isoformat()}"'})
+        return JsonResponse(article_data(request, article, editor=True), headers={'ETag': f'"{article.updated_at.isoformat()}"'})
 
 
 @api

@@ -121,6 +121,7 @@ Use native inputs, selects, date and calendar controls, file uploads, and Django
 The article Markdown textarea supports pasted PNG/JPEG/WebP images and a secondary **Insertar imagen** button below the field. In an HTML article it inserts an `<img>` tag.
 Keep its native text behavior. Image insertion preserves selected text; progress and upload errors appear beside the button with a live status.
 Save controls stay disabled during upload. The helper wraps below the textarea on narrow screens and uses the existing control and spacing tokens.
+**Detalles → Publicación → Imagen para compartir** shows the saved or chosen image at the 1.91:1 crop that chat apps use (at most 360px wide, `object-fit: cover`, 1px `--border`, `--radius`), then **Elegir imagen** (or **Cambiar imagen**) and **Quitar imagen** as secondary buttons and a live status in 12px subtle text (`--crit-text` for errors). With a saved share image, a top-bordered **Enlace para compartir** block follows: a read-only URL field in the mono 13px voice and a secondary **Copiar enlace** button (shown only with the clipboard API), which wrap on narrow screens. Its help line says when a draft or restricted article shows no preview.
 Keep visible labels, skip links, focus outlines, and reduced-motion support.
 Focus outlines are 2px `--focus` with a 2px offset everywhere, the admin included.
 Most reader surfaces are square. Reader and account controls are 32px high (44px for a coarse pointer), 4px radius, 1px `--border-strong` border. Admin controls follow the same rule.

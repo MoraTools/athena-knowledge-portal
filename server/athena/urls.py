@@ -34,6 +34,9 @@ urlpatterns = [
     # Any other API path answers in JSON instead of redirecting an agent to the browser login.
     re_path(r'^api(?:/.*)?$', api.not_found),
     path('search-index.json', views.search_index),
+    # Link previews for chat apps, which never see the reader's #/content/ fragment.
+    re_path(r'^s/(?P<slug>[a-z0-9-]+)/?$', views.share_page, name='article_share'),
+    re_path(r'^s/(?P<slug>[a-z0-9-]+)/image$', views.share_image, name='article_share_image'),
     path('article-images/upload/', views.article_image_upload, name='article_image_upload'),
     path('article-images/<uuid:image_id>/', views.article_image),
     path('article-html/<slug:slug>/', views.article_html_document),

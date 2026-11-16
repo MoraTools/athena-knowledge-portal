@@ -1,0 +1,4 @@
+<div class="share-image" data-share-image>
+  <input type="hidden" name="{{ widget.name }}"{% if widget.value != None %} value="{{ widget.value|stringformat:'s' }}"{% endif %}{% include "django/forms/widgets/attrs.html" %}>
+  {% if widget.value %}<img class="share-image-preview" alt="Imagen para compartir" src="/article-images/{{ widget.value }}/">{% endif %}
+</div>

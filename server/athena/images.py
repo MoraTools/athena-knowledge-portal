@@ -92,14 +92,18 @@ def all_references():
     ids = set()
     for body, format in Article.objects.values_list('body', 'format'):
         ids.update(referenced_image_ids(body, conservative=True, html=format == 'html'))
-    return ids
+    return ids | share_image_ids(Article.objects.all())
+
+
+def share_image_ids(articles):
+    return set(articles.exclude(share_image=None).values_list('share_image_id', flat=True))
 
 
 def attached_image_ids(articles):
     ids = set()
     for body, format in articles.values_list('body', 'format'):
         ids.update(referenced_image_ids(body, html=format == 'html'))
-    return ids
+    return ids | share_image_ids(articles)  # A share image follows its article's access, like a body image.
 
 
 def usable_image_ids(ids, actor):

@@ -216,3 +216,25 @@ Setting only `is_public` does not publish a draft. `is_public: false` requires a
 All `/api/v1/articles/` operations still require a bearer key. Existing scopes, user edit permissions, and ETags still apply.
 A read-only key cannot change public access or read drafts, even when its owner is an editor.
 Package downloads remain restricted to signed-in users. Search-engine indexing remains disabled.
+
+## Share links with link previews
+
+API version 1.9.0 adds `share_image` to article create, read, and update, and `share_url` to article responses.
+`share_image` is the `id` of an image from `POST /article-images/`, or `null` to remove it. The image must be PNG or
+JPEG, at least 600 × 315 pixels (1200 × 630 is best), and at most 5 MB; otherwise the answer is `400` on
+`share_image`. As in article bodies, a key may use only its owner's uploads or images of articles the owner can read.
+
+```sh
+curl -X PATCH https://athena.moratechnology.com/api/v1/articles/my-guide/ \
+  -H "Authorization: Bearer $ATHENA_API_KEY" -H "If-Match: $ETAG" \
+  -H "Content-Type: application/json" -d '{"share_image": "8b0c5d6e-..."}'
+```
+
+- `share_url` is `https://athena.moratechnology.com/s/{slug}` when the article has a share image, else `null`.
+  Chat apps (WhatsApp, Teams, Slack) read the title, summary and image from that page; people who open it go to
+  `/#/content/{slug}`.
+- **The preview is public.** For a published article that is not restricted, anyone who has the link sees the title,
+  the summary and the image, also when the article is account-only. The article body stays behind its access rule.
+- Drafts, restricted articles, articles without a share image and unknown slugs answer the same `302` to
+  `/#/content/{slug}`, with no article data. `/s/{slug}/image` serves the image only in the preview case, else `404`.
+- The share image counts as a use of the image, so the image cleanup keeps it while it is set.

@@ -61,3 +61,11 @@ Public articles include metadata, referenced images, attached PDFs, and generate
 The existing reader, library, search, URLs, and article-edit permissions are reused.
 Package downloads and account functions require sign-in; the management API requires bearer keys.
 Public access does not enable search-engine indexing.
+
+## Share links
+
+An article can have a share image (opt-in). Then `/s/<slug>` gives chat apps a link preview: the title, the summary and the image.
+This exposure rule is intended: the title, the summary and the share image become visible to anyone who has the link,
+also for account-only articles. The body, the other images and the PDFs keep the article's access rule.
+Drafts, restricted articles and articles without a share image show no preview; their link is the same bare redirect as an
+unknown address, so the share route does not tell which articles exist. Share pages carry `noindex`.

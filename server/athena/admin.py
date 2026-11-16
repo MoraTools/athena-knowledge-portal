@@ -225,14 +225,15 @@ class ArticleAdmin(RowControlsAdmin):
     fieldsets = [
         ('Información', {'fields': ['title', 'format', 'body', 'summary', 'author', 'kind', 'tags', 'slug',
                                      'status', 'url', 'download_file']}),
-        ('Publicación', {'fields': ['published', 'access', 'allowed_users', 'date', 'last_updated']}),
+        ('Publicación', {'fields': ['published', 'access', 'allowed_users', 'share_image', 'date', 'last_updated']}),
         ('Archivos', {'fields': ['markdown_file', 'pdf_file', 'current_pdf', 'remove_pdf', 'pdf_only']}),
     ]
     filter_horizontal = ['allowed_users']
     save_on_top = True
 
     class Media:
-        js = ['/vendor/marked.umd.js', '/vendor/purify.min.js', 'athena/article-images.js', 'athena/article-editor.js']
+        js = ['/vendor/marked.umd.js', '/vendor/purify.min.js', 'athena/article-images.js', 'athena/article-editor.js',
+              'athena/share-image.js']
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)

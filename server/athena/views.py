@@ -8,7 +8,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.http import FileResponse, Http404, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.defaultfilters import filesizeformat
 from django.urls import reverse
@@ -60,6 +60,55 @@ def send_article_image(request, image_id, *, include_drafts=True, allow_preview=
         except (OSError, ValidationError):
             raise Http404
         return FileResponse(file, content_type=image.content_type)
+
+
+def share_target(slug):
+    """The article a share link may describe: published, not restricted, with a share image on disk."""
+    from .images import image_path
+    article = (Article.objects.filter(slug=slug, published=True, is_restricted=False).exclude(share_image=None)
+               .select_related('share_image').defer('body', 'pdf').first())
+    try:
+        return article if article and image_path(article.share_image).is_file() else None
+    except ValidationError:
+        return None
+
+
+def share_page(request, slug):
+    """Open Graph tags for link previews. Every other case is one bare redirect, so the route reveals nothing."""
+    if request.method not in ('GET', 'HEAD'):
+        return HttpResponse(status=405, headers={'Allow': 'GET, HEAD'})
+    article = share_target(slug)
+    reader = '/#/content/' + slug
+    if article is None:
+        return HttpResponseRedirect(reader)
+    image = article.share_image
+    image_url = request.build_absolute_uri(reverse('article_share_image', args=[slug])) + '?v=' + image.sha256[:16]
+    return render(request, 'share.html', {'article': article, 'image': image, 'image_url': image_url, 'reader': reader,
+                                          'share_url': request.build_absolute_uri(reverse('article_share', args=[slug]))})
+
+
+def share_image(request, slug):
+    """The share image while the share page shows it; a stable URL that never expires, unlike signed image URLs."""
+    from django.utils.cache import get_conditional_response
+    from .images import image_path
+    if request.method not in ('GET', 'HEAD'):
+        return HttpResponse(status=405, headers={'Allow': 'GET, HEAD'})
+    article = share_target(slug)
+    if article is None:
+        raise Http404
+    image = article.share_image
+    # The page links ?v=<sha256 prefix>; only that versioned URL is immutable.
+    headers = {'ETag': f'"{image.sha256}"', 'Cache-Control': 'public, max-age=31536000, immutable'
+               if request.GET.get('v') == image.sha256[:16] else 'public, max-age=3600'}
+    response = get_conditional_response(request, etag=headers['ETag'])
+    if response is None:
+        try:
+            response = FileResponse(image_path(image).open('rb'), content_type=image.content_type)
+        except OSError:
+            raise Http404
+    for name, value in headers.items():
+        response[name] = value
+    return response
 
 
 def admin_view_on_site(request, content_type_id, object_id):
@@ -479,7 +528,8 @@ def sidebar_links(user):
 
 
 def robots(request):
-    return HttpResponse('User-agent: *\nDisallow: /\n', content_type='text/plain; charset=utf-8')
+    # Some link-preview crawlers obey robots.txt; share pages still carry noindex.
+    return HttpResponse('User-agent: *\nAllow: /s/\nDisallow: /\n', content_type='text/plain; charset=utf-8')
 
 
 def contributing_visible(user):

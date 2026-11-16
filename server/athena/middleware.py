@@ -72,7 +72,9 @@ class AccessMiddleware:
             response = HttpResponse(status=404)
         if login and response.status_code == 302:
             LoginAttempt.objects.filter(key__in=keys).update(count=0, locked_until=None)
-        if not path.startswith(('/static/', '/assets/', '/fonts/', '/vendor/')):
+        # A share image is public by the article's opt-in and sets its own long cache (views.share_image).
+        if not path.startswith(('/static/', '/assets/', '/fonts/', '/vendor/')) and not (
+                path.startswith('/s/') and path.endswith('/image')):
             patch_cache_control(response, private=True, no_store=True)
             patch_vary_headers(response, ['Cookie'])
         # Docsify needs inline styles, but article scripts and remote scripts stay blocked.

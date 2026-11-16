@@ -49,6 +49,13 @@ class Article(models.Model):
     pdf_name = models.CharField(max_length=240, blank=True, editable=False)
     pdf_only = models.BooleanField('solo PDF', default=False,
                                    help_text='El PDF adjunto es el contenido del artículo. El lector no ofrece «Exportar PDF».')
+    share_image = models.ForeignKey(
+        'ManagedImage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+        verbose_name='imagen para compartir', help_text=(
+            'Opcional. Con esta imagen, el enlace para compartir muestra una vista previa en WhatsApp, Teams o Slack. '
+            'Cualquier persona que tenga el enlace ve el título, el resumen y la imagen, también si el artículo '
+            'es solo para usuarios con cuenta. Los borradores y los artículos restringidos no muestran la vista previa. '
+            'PNG o JPEG, al menos 600 × 315 píxeles (mejor 1200 × 630), hasta 5 MB.'))
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -97,6 +104,8 @@ class Article(models.Model):
             if self.pk and kwargs.get('update_fields') is not None and 'body' not in kwargs['update_fields']:
                 body, format = Article.objects.values_list('body', 'format').get(pk=self.pk)
             check_references(body, actor=getattr(self, '_image_actor', None), html=format == 'html')
+            if self.share_image_id and not ManagedImage.objects.filter(pk=self.share_image_id).exists():
+                raise ValidationError({'share_image': 'La imagen para compartir ya no está disponible. Súbala de nuevo.'})
             super().save(*args, **kwargs)
             sync_image_usage()
 
@@ -111,6 +120,9 @@ class ManagedImage(models.Model):
     height = models.PositiveIntegerField()
     created_at = models.DateTimeField(default=timezone.now)
     unused_since = models.DateTimeField(default=timezone.now, null=True)
+
+    def __str__(self):
+        return f'{self.get_format_display()} {self.width} × {self.height}'
 
     @property
     def filename(self):

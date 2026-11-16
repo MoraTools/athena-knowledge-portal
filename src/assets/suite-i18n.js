@@ -132,7 +132,25 @@
     'No puedes eliminar tu propia cuenta': 'You cannot delete your own account', 'Solo un administrador con todos los permisos puede editar esta cuenta.': 'Only an administrator with all permissions can edit this account.',
     'Copie la clave ahora. Athena guarda solo su hash y': 'Copy the key now. Athena stores only its hash and', 'no volverá a mostrarla': 'will not show it again',
     'Descargas registradas': 'Logged downloads', 'descarga registrada': 'logged download', 'descargó': 'downloaded', 'Ver todas las descargas': 'View all downloads', 'Ruta': 'Path',
-    'Configurar en la terminal': 'Set up in the terminal', 'Comprobar acceso': 'Check access', 'Ya la copié': 'I copied it', 'Documentación de la API': 'API documentation'
+    'Configurar en la terminal': 'Set up in the terminal', 'Comprobar acceso': 'Check access', 'Ya la copié': 'I copied it', 'Documentación de la API': 'API documentation',
+    'Imagen para compartir': 'Share image', 'Elegir imagen': 'Choose image', 'Cambiar imagen': 'Change image', 'Quitar imagen': 'Remove image',
+    'Opcional. Con esta imagen, el enlace para compartir muestra una vista previa en WhatsApp, Teams o Slack. Cualquier persona que tenga el enlace ve el título, el resumen y la imagen, también si el artículo es solo para usuarios con cuenta. Los borradores y los artículos restringidos no muestran la vista previa. PNG o JPEG, al menos 600 × 315 píxeles (mejor 1200 × 630), hasta 5 MB.': 'Optional. With this image, the share link shows a preview in WhatsApp, Teams or Slack. Anyone who has the link sees the title, the summary and the image, also when the article is for signed-in users only. Drafts and restricted articles show no preview. PNG or JPEG, at least 600 × 315 pixels (1200 × 630 is best), up to 5 MB.',
+    'Subiendo la imagen…': 'Uploading the image…', 'Imagen lista. Guarde el artículo para usarla en el enlace.': 'Image ready. Save the article to use it in the link.',
+    'Se quitará al guardar. El enlace dejará de mostrar la vista previa.': 'It is removed when you save. The link stops showing the preview.',
+    'Espere a que termine la subida antes de guardar.': 'Wait for the upload to finish before you save.',
+    'Enlace para compartir': 'Share link', 'Copiar enlace': 'Copy link', 'Enlace copiado.': 'Link copied.',
+    'No se pudo copiar. El enlace está seleccionado: cópielo con Ctrl+C.': 'Could not copy. The link is selected: copy it with Ctrl+C.',
+    'Pegue este enlace en WhatsApp, Teams o Slack para mostrar la vista previa guardada.': 'Paste this link in WhatsApp, Teams or Slack to show the saved preview.',
+    'Sin vista previa mientras el artículo sea un borrador: el enlace solo abre el artículo.': 'No preview while the article is a draft: the link only opens the article.',
+    'Sin vista previa porque el artículo es restringido: el enlace solo abre el artículo.': 'No preview because the article is restricted: the link only opens the article.',
+    'Use una imagen PNG o JPEG de al menos 600 × 315 píxeles y hasta 5 MB.': 'Use a PNG or JPEG image of at least 600 × 315 pixels and up to 5 MB.',
+    'La imagen para compartir ya no está disponible. Súbala de nuevo.': 'The share image is no longer available. Upload it again.',
+    'Solo puede usar sus imágenes sin guardar. Vuelva a subir la imagen con su cuenta.': 'You can only use your own unsaved images. Upload the image again with your account.',
+    'Use una imagen PNG o JPEG de hasta 5 MB.': 'Use a PNG or JPEG image of up to 5 MB.',
+    'La imagen es demasiado pequeña. Use al menos 600 × 315 píxeles (mejor 1200 × 630).': 'The image is too small. Use at least 600 × 315 pixels (1200 × 630 is best).',
+    'No se pudo conectar con el servidor. Intente de nuevo.': 'Could not connect to the server. Try again.',
+    'El servidor no respondió. Intente de nuevo.': 'The server did not answer. Try again.',
+    'La respuesta del servidor no es válida. Intente de nuevo.': 'The server answer is not valid. Try again.'
   };
   const sourceText = new WeakMap();
   const sourceAttributes = new WeakMap();

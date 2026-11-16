@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Athena management API",
-    "version": "1.8.0",
+    "version": "1.9.0",
     "description": "Private knowledge base. Create a scoped key in /admin/athena/apikey/. Keys expire after 90 days by default and are revoked when the owning user is disabled, removed, or has their password reset. Browser cookies are not accepted by the API. Guide for agents: GET /api/docs/. Check a key with GET /me/."
   },
   "servers": [
@@ -154,7 +154,7 @@
         "summary": "Get article",
         "responses": {
           "200": {
-            "description": "Success. JSON article with metadata, format (markdown or html), access (public, account, or restricted), body, and route. Keys that can edit articles also get allowed_users (usernames). A restricted article that the key owner may not read answers 404.",
+            "description": "Success. JSON article with metadata, format (markdown or html), access (public, account, or restricted), body, and route. Keys that can edit articles also get allowed_users (usernames). share_image is the share image id or null; share_url is the absolute share link (/s/{slug}) when the article has a share image, else null. A restricted article that the key owner may not read answers 404.",
             "headers": {
               "ETag": {
                 "description": "Version for If-Match on updates and deletes.",
@@ -1053,6 +1053,12 @@
               "type": "string"
             },
             "description": "Usernames that can read a restricted article. Replaces the list. Unknown usernames, or a non-empty list without access restricted, answer 400. Changing access away from restricted clears the list."
+          },
+          "share_image": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Id of an uploaded article image (POST /article-images/) for link previews, or null to remove it. PNG or JPEG, at least 600 x 315 pixels (1200 x 630 is best), at most 5 MB; otherwise 400. Only your own uploads or images of articles you can read. With a share image, /s/{slug} shows the title, summary and image to anyone who has the link, also for account-only articles; drafts and restricted articles show no preview."
           }
         }
       },
