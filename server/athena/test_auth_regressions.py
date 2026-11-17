@@ -107,6 +107,25 @@ class AdminAuthRegressionTests(TestCase):
         self.assertEqual(self.client.post(f'/admin/athena/apikey/{safe.pk}/delete/', {'post': 'yes'}).status_code, 302)
         self.assertFalse(ApiKey.objects.filter(pk=safe.pk).exists())
 
+    def test_key_expiry_is_site_local_time_and_an_unchanged_save_keeps_its_minute(self):
+        from datetime import datetime, timezone as dt_timezone
+        response = self.client.post('/admin/athena/apikey/add/', {**self.key_data(self.reader, 'read'),
+                                                                  'expires_at': '2099-01-01T10:30'})
+        self.assertEqual(response.status_code, 200)
+        # settings.TIME_ZONE is America/Lima, UTC-5 with no daylight saving time.
+        self.assertEqual(ApiKey.objects.get(user=self.reader).expires_at, datetime(2099, 1, 1, 15, 30, tzinfo=dt_timezone.utc))
+        key, _ = self.issue_key(self.reader, 'read')
+        key.expires_at = datetime(2098, 6, 1, 12, 34, 56, 789, tzinfo=dt_timezone.utc)
+        key.save()
+        path = f'/admin/athena/apikey/{key.pk}/change/'
+        # The change form shows the stored instant in site time, to the minute; an unchanged save sends it back.
+        self.assertContains(self.client.get(path), 'value="2098-06-01T07:34"')
+        response = self.client.post(path, {'name': key.name, 'expires_at': '2098-06-01T07:34'})
+        self.assertEqual(response.status_code, 302)
+        key.refresh_from_db()
+        # The field has no seconds, so an unchanged save rounds the stored value down to its minute.
+        self.assertEqual(key.expires_at, datetime(2098, 6, 1, 12, 34, tzinfo=dt_timezone.utc))
+
     def test_superuser_can_issue_keys_to_superusers(self):
         self.client.force_login(self.root)
         response = self.client.post('/admin/athena/apikey/add/', self.key_data(self.root))
