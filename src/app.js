@@ -174,17 +174,26 @@ function prepareGuideLibrary(library) {
 }
 
 // Each guide is listed once, under its first topic tag (its other tags stay chips); topics are alphabetical, 'Sin etiqueta' last.
+// Every topic also holds hidden copies of the guides that have its tag later, for the topic filter (filterGuides).
 function buildGuideTopics(library, state) {
   if (state.groups) return;
   const topics = library.querySelector('#guide-topics');
   const jumps = document.createElement('nav');
   jumps.className = 'guide-topic-jumps';
   jumps.setAttribute('aria-label', t('Temas de las guías'));
+  const all = document.createElement('a');
+  all.href = '#/guides';
+  all.textContent = t('Todos los temas');
+  jumps.append(all);
   const byTopic = new Map();
   state.rows.forEach((entry) => {
-    const [key, label] = entry.tags.entries().next().value || ['', t('Sin etiqueta')];
-    if (!byTopic.has(key)) byTopic.set(key, { label, entries: [] });
-    byTopic.get(key).entries.push(entry);
+    const tags = entry.tags.size ? [...entry.tags] : [['', t('Sin etiqueta')]];
+    tags.forEach(([key, label], index) => {
+      if (!byTopic.has(key)) byTopic.set(key, { label, entries: [] });
+      // A topic is named as its guides list it first.
+      if (!index && !byTopic.get(key).entries.some(({ primary }) => primary)) byTopic.get(key).label = label;
+      byTopic.get(key).entries.push({ entry, primary: !index });
+    });
   });
   const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
   const order = [...byTopic.keys()].sort((left, right) => (!left) - (!right) || collator.compare(byTopic.get(left).label, byTopic.get(right).label));
@@ -201,7 +210,6 @@ function buildGuideTopics(library, state) {
     section.append(heading);
     const jump = document.createElement('a');
     jump.href = '#/guides?id=' + heading.id;
-    jump.dataset.guideTopic = heading.id;
     const name = document.createElement('span');
     name.textContent = label;
     const count = document.createElement('span');
@@ -210,7 +218,7 @@ function buildGuideTopics(library, state) {
     jumps.append(jump);
     topics.append(section);
     const group = { section, jump, count, entries: [] };
-    entries.forEach((entry) => {
+    entries.forEach(({ entry, primary }) => {
       const article = document.createElement('article');
       article.className = 'guide-topic-row';
       const detail = entry.row.querySelector('.guide-detail').cloneNode(true);
@@ -222,10 +230,11 @@ function buildGuideTopics(library, state) {
       meta.append(author, entry.row.querySelector('time').cloneNode(true));
       article.append(detail, meta);
       section.append(article);
-      group.entries.push({ entry, article });
+      group.entries.push({ entry, article, primary });
     });
     state.groups.set(key, group);
   });
+  state.all = all;
   // Phones get the topics in a closed native box; wider readers see the open row (updateGuideTopicsLayout).
   const picker = document.createElement('details');
   picker.className = 'guide-topic-picker';
@@ -237,10 +246,6 @@ function buildGuideTopics(library, state) {
   state.picker = { name, count };
   topics.prepend(picker);
   updateGuideTopicsLayout();
-  // An article tag link (#/guides?id=<topic>) arrives before the sections exist, so Docsify cannot scroll to it.
-  const target = getRouteState().params.get('id');
-  const group = [...state.groups.values()].find(({ section }) => section.children[0].id === target);
-  if (group) showGuideTopic(group.section.children[0]);
 }
 
 function showGuideTopic(heading) {
@@ -268,15 +273,33 @@ function filterGuides() {
     if (!entry.row.hidden) visible += 1;
   });
   if (library.querySelector('#guide-topics')) buildGuideTopics(library, state);
+  // A topic link (#/guides?id=<topic>, from the topic row or an article tag) shows every guide with that tag.
+  const id = getRouteState().params.get('id');
+  const topic = [...(state.groups?.values() || [])].find(({ section }) => section.children[0].id === id);
   state.groups?.forEach((group) => {
     let shown = 0;
-    group.entries.forEach(({ entry, article }) => {
-      article.hidden = entry.row.hidden;
+    let tagged = 0;
+    let listed = false;
+    group.entries.forEach(({ entry, article, primary }) => {
+      article.hidden = entry.row.hidden || (topic ? group !== topic : !primary);
       if (!article.hidden) shown += 1;
+      if (!entry.row.hidden) tagged += 1;
+      if (primary && !entry.row.hidden) listed = true;
     });
-    group.section.hidden = group.jump.hidden = !shown;
-    group.count.textContent = new Intl.NumberFormat(currentLang()).format(shown);
+    group.section.hidden = !shown;
+    // The topic row keeps the topics of the unfiltered page; its counts are guides with the tag.
+    group.jump.hidden = !tagged || !(listed || group === topic);
+    if (group === topic) group.jump.setAttribute('aria-current', 'true');
+    else group.jump.removeAttribute('aria-current');
+    group.count.textContent = new Intl.NumberFormat(currentLang()).format(tagged);
   });
+  if (topic) visible = topic.entries.filter(({ article }) => !article.hidden).length;
+  if (state.all) state.all.hidden = !topic;
+  // An article tag link arrives before the sections exist, so Docsify cannot scroll to it; show each new topic once.
+  if (state.groups && state.topic !== id) {
+    state.topic = id;
+    if (topic) showGuideTopic(topic.section.children[0]);
+  }
   if (state.picker) {
     state.picker.name.textContent = t('Temas');
     const topics = [...state.groups.values()].filter((group) => !group.jump.hidden).length;
@@ -372,13 +395,10 @@ function filterLibrary() {
   showFilterActions(empty);
 }
 
-// A table wider than its box is a keyboard stop with a right-edge cue until the reader reaches its end.
+// A table wider than its box is a keyboard stop (styles.css draws its right-edge cue).
 function syncTableScroll(table) {
-  const overflow = table.scrollWidth > table.clientWidth + 1;
-  if (overflow) table.tabIndex = 0;
+  if (table.scrollWidth > table.clientWidth + 1) table.tabIndex = 0;
   else table.removeAttribute('tabindex');
-  if (overflow && table.scrollLeft + table.clientWidth < table.scrollWidth - 1) table.dataset.scrollMore = 'true';
-  else delete table.dataset.scrollMore;
 }
 
 // A Docsify render replaces the tables; a removed one reports its last resize and is dropped.
@@ -402,7 +422,6 @@ function buildTableSorting() {
         }
       }
       if (!table.caption && heading) table.setAttribute('aria-labelledby', heading.id);
-      table.addEventListener('scroll', () => syncTableScroll(table), { passive: true });
       tableResize.observe(table);
       syncTableScroll(table);
     }
@@ -982,15 +1001,13 @@ async function buildArticleMeta() {
   meta.append(...metaItems(entry));
   const topicTags = entry.tags.filter(isTopicTag);
   if (topicTags.length) {
-    // A guide tag that is a Guías section (some guide's first topic tag) opens that section; other tags search Athena.
-    const sections = new Set(entry.kind === 'guide' ? index.filter((item) => item.kind === 'guide')
-      .map((item) => normalize(item.tags.find(isTopicTag))) : []);
+    // A guide tag opens Guías filtered to that tag; tags of other kinds search Athena.
     const tags = document.createElement('span');
     tags.className = 'article-meta__tags';
     tags.lang = 'es';
     topicTags.forEach((tag) => {
       const link = document.createElement('a');
-      link.href = sections.has(normalize(tag)) ? '#/guides?id=' + guideTopicId(normalize(tag)) : buildSearchHash(tag, '');
+      link.href = entry.kind === 'guide' ? '#/guides?id=' + guideTopicId(normalize(tag)) : buildSearchHash(tag, '');
       // The link is the touch target; the chip inside it keeps the chip size.
       const chip = document.createElement('span');
       chip.textContent = tag;
@@ -1574,17 +1591,9 @@ document.addEventListener('click', async (event) => {
     document.querySelector('#athena-search-input').focus();
   }
   document.querySelectorAll('.crumb-collapse[open]').forEach((menu) => { if (!menu.contains(event.target)) menu.open = false; });
-  const topicJump = event.target.closest('[data-guide-topic]');
-  if (topicJump) {
-    const heading = document.getElementById(topicJump.dataset.guideTopic);
-    if (heading) {
-      event.preventDefault();
-      // The phone box closes after a jump, like the inline page tree.
-      const picker = topicJump.closest('.guide-topic-picker');
-      if (picker?.dataset.layout === 'box') picker.open = false;
-      showGuideTopic(heading);
-    }
-  }
+  // A topic link changes the route (filterGuides filters to its tag); the phone box closes, like the inline page tree.
+  const picker = event.target.closest('.guide-topic-picker a')?.closest('.guide-topic-picker');
+  if (picker?.dataset.layout === 'box') picker.open = false;
   const pageTreeLink = event.target.closest('.page-tree a');
   if (pageTreeLink) {
     updatePageTreeLayout();
@@ -1679,10 +1688,12 @@ document.addEventListener('input', (event) => {
     return;
   }
   // A pause in typing opens search (one history entry; later typing replaces it). A page-scope chip filters the page.
+  // On an article only Enter opens search, so typing never leaves the article the reader is in.
   clearTimeout(searchTyping);
   const input = event.target;
   searchTyping = setTimeout(() => {
-    if (!searchScope && input.value.trim() && document.activeElement === input && getRouteState().path !== '/search') {
+    const { path } = getRouteState();
+    if (!searchScope && input.value.trim() && document.activeElement === input && path !== '/search' && !path.startsWith('/content/')) {
       location.hash = buildSearchHash(input.value, '');
     }
   }, 250);

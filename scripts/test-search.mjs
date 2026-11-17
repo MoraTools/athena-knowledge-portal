@@ -299,17 +299,25 @@ assert.equal(returnTarget(), '/#/search?q=submitted&type=guide');
 // A pause in typing on another page opens search with the typed words, while the field keeps focus.
 const typingTimers = [];
 context.setTimeout = (callback, delay) => typingTimers.push([callback, delay]);
-context.location.hash = '#/content/example';
+context.location.hash = '#/guides';
 input.value = 'typed words';
 handlers.input({ target: input });
 context.document.activeElement = null;
 typingTimers[0][0]();
-assert.equal(context.location.hash, '#/content/example', 'Typing that lost focus does not change the page.');
+assert.equal(context.location.hash, '#/guides', 'Typing that lost focus does not change the page.');
 context.document.activeElement = input;
 handlers.input({ target: input });
 assert.equal(typingTimers[1][1], 250);
 typingTimers[1][0]();
 assert.equal(context.location.hash, '#/search?q=typed+words');
+// On an article a pause in typing keeps the reader on it; Enter opens search.
+vm.runInContext("searchScope = ''", context);
+context.location.hash = '#/content/example';
+handlers.input({ target: input });
+typingTimers.at(-1)[0]();
+assert.equal(context.location.hash, '#/content/example', 'Typing on an article does not change the route.');
+handlers.submit({ preventDefault() {}, target: { matches: () => true, querySelector: () => input } });
+assert.equal(context.location.hash, '#/search?q=typed+words', 'Enter on an article opens search.');
 context.setTimeout = () => {};
 context.document.activeElement = undefined;
 
@@ -602,14 +610,14 @@ assert.ok(skipped.every((item) => !item.dataset.sortReady), 'Structural and inte
 assert.equal(records.tabIndex, 0, 'A table that scrolls in its own box takes keyboard focus.');
 assert.equal(records.getAttribute('aria-labelledby'), 'claves-de-api', 'The scroll region is named by the heading before it.');
 assert.equal(records.getAttribute('aria-label'), null);
-assert.equal(records.dataset.scrollMore, 'true', 'A cut table shows the right-edge cue.');
-records.scrollLeft = 300;
-records.listeners.scroll.forEach((handler) => handler());
-assert.equal(records.dataset.scrollMore, undefined, 'The cue goes at the end of the scroll.');
+// The right-edge cue is a scroll-shadow background, so no mask clips the focus ring or fades the last column.
+const readerCss = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
+assert.doesNotMatch(readerCss, /mask-image/, 'No reader table is masked.');
+assert.match(readerCss, /\.markdown-section table\{[^}]*background-attachment:local,scroll/, 'The cue moves off at the end of the scroll.');
 records.clientWidth = 900;
-records.listeners.scroll.forEach((handler) => handler());
+context.syncTableScroll(records);
 assert.equal(records.tabIndex, undefined, 'A table that fits again is no tab stop.');
-assert.equal(records.listeners.scroll.length, 1, 'Repeated sync adds one scroll listener.');
+assert.equal(records.listeners.scroll, undefined, 'The cue needs no scroll listener.');
 assert.equal(merged.tabIndex, 0, 'Tables that cannot sort still scroll by keyboard.');
 assert.ok([emptyTable, footer, proseTable].every((item) => item.tabIndex === undefined), 'Tables that fit take no focus.');
 assert.ok(layout.tabIndex === undefined && nestedChild.tabIndex === undefined, 'Layout and nested tables take no focus.');
@@ -687,8 +695,8 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
   const [label, , date] = updated.children;
   assert.equal(label.textContent, 'Actualizado');
   assert.equal(date.dateTime, '2026-11-15');
-  // RPA is a guide's first topic tag, so a Guías section; no guide starts with Colas, so it searches Athena.
-  assert.deepEqual(tagLinks.children.map((link) => link.href), ['#/guides?id=guide-topic-rpa', '#/search?q=Colas']);
+  // A guide's tag links always open Guías filtered to that tag, also when no guide lists it first (Colas).
+  assert.deepEqual(tagLinks.children.map((link) => link.href), ['#/guides?id=guide-topic-rpa', '#/guides?id=guide-topic-colas']);
   assert.deepEqual(tagLinks.children.map((link) => link.children[0].textContent), ['RPA', 'Colas'], 'Each tag link holds its chip; the placement tag is none.');
   context.location.hash = '#/content/tool';
   section.childNodes = [title];
@@ -814,10 +822,12 @@ assert.equal(guides.topics.hidden, false, 'Topics are the only view, with no sto
 assert.equal('view' in context.prepareGuideLibrary(guides.grid), false, 'The library no longer holds a view choice.');
 const topicSections = guides.topics.children.slice(1);
 const groupFor = (label) => topicSections.find((section) => section.children[0].textContent === label);
-assert.deepEqual(topicSections.map((section) => section.children[0].textContent), ['café', 'RPA', 'Sin etiqueta'],
-  'One section per first topic tag, alphabetical with Spanish rules, Sin etiqueta last; the placement tag is no topic.');
-assert.deepEqual(topicSections.map((section) => section.children.length - 1), [1, 1, 2], 'Each guide is listed once, so the sections add up to the result count.');
-assert.deepEqual(topicSections.map((section) => section.children[0].id), ['guide-topic-cafe', 'guide-topic-rpa', 'guide-untagged'],
+const shownSections = () => topicSections.filter((section) => !section.hidden);
+assert.deepEqual(shownSections().map((section) => section.children[0].textContent), ['café', 'RPA', 'Sin etiqueta'],
+  'One shown section per first topic tag, alphabetical with Spanish rules, Sin etiqueta last; the placement tag is no topic.');
+assert.deepEqual(shownSections().map((section) => section.children.slice(1).filter((row) => !row.hidden).length), [1, 1, 2],
+  'Each guide is listed once, so the sections add up to the result count.');
+assert.deepEqual(shownSections().map((section) => section.children[0].id), ['guide-topic-cafe', 'guide-topic-rpa', 'guide-untagged'],
   'Section ids come from the tag, so article tag links can name them.');
 assert.equal(vm.runInContext("guideTopicId(normalize('Plantilla  Básica'))", context), 'guide-topic-plantilla-basica');
 const copiedDetail = groupFor('RPA').children[1].children[0];
@@ -851,23 +861,30 @@ assert.ok(!groupFor('RPA').children[1].hidden && groupFor('café').hidden, 'A ma
 const picker = guides.topics.children[0];
 assert.equal(picker.tagName, 'DETAILS', 'The topic row sits in a native box that phones show closed.');
 const jumps = picker.children[1];
-assert.equal(jumps.children.filter((jump) => !jump.hidden).length, 1, 'Only topics with a matching guide keep their jump.');
+assert.equal(jumps.children.filter((jump) => !jump.hidden).length, 1, 'Only topics with a matching guide keep their jump; All topics hides without a filter.');
 assert.equal(picker.children[0].textContent, 'Temas (1)', 'The box summary counts the visible topics.');
 assert.equal(jumps.children.find((jump) => jump.textContent.startsWith('RPA ')).children.at(-1).textContent, '1', 'A topic jump counts its visible guides.');
 const activeJump = jumps.children.find((jump) => !jump.hidden);
+assert.equal(activeJump.href, '#/guides?id=guide-topic-rpa', 'A topic jump is a route: it filters the page to its tag.');
+const boxPicker = { dataset: { layout: 'box' }, open: true };
+let jumpPrevented = false;
+await handlers.click({
+  target: { closest: (selector) => selector === '.guide-topic-picker a' ? { closest: () => boxPicker } : null },
+  preventDefault() { jumpPrevented = true; }
+});
+assert.ok(!boxPicker.open && !jumpPrevented, 'The phone box closes and the link changes the route.');
 const activeHeading = groupFor('RPA').children[0];
 let jumpFocused = false;
 let jumpScrolled = false;
-let jumpPrevented = false;
 activeHeading.focus = ({ preventScroll }) => { jumpFocused = preventScroll; };
 activeHeading.scrollIntoView = ({ block }) => { jumpScrolled = block === 'start'; };
-context.document.getElementById = (id) => topicSections.map((section) => section.children[0]).find((heading) => heading.id === id);
-await handlers.click({
-  target: { closest: (selector) => selector === '[data-guide-topic]' ? activeJump : null },
-  preventDefault() { jumpPrevented = true; }
-});
-assert.ok(jumpFocused && jumpScrolled && jumpPrevented, 'A topic jump focuses its heading without starting a new Docsify route.');
-assert.equal(context.location.hash, '#/guides');
+context.location.hash = activeJump.href;
+context.syncView();
+assert.ok(jumpFocused && jumpScrolled, 'The filtered topic heading takes focus and scrolls to the top.');
+assert.equal(activeJump.getAttribute('aria-current'), 'true', 'The topic row marks the current filter.');
+context.location.hash = '#/guides';
+context.syncView();
+assert.equal(activeJump.getAttribute('aria-current'), null);
 assert.equal(guides.source.hidden, true, 'Filtering never exposes the source records.');
 for (const query of ['jeiser', 'seguridad', 'alvaro']) {
   guides.query.value = query;
@@ -903,6 +920,29 @@ context.syncView();
 context.syncView();
 context.document.createElement = createElement;
 assert.deepEqual(arrivals, [['guide-topic-rpa', 'focus', true], ['guide-topic-rpa', 'scroll', 'start']]);
+// A topic link filters Guías to every guide with that tag: Seguridad is only the first guide's fifth tag.
+context.location.hash = '#/guides?id=guide-topic-seguridad';
+guides = guidePage(entries);
+context.document.createElement = (tag) => Object.assign(createElement(tag), { focus() {}, scrollIntoView() {} });
+context.syncView();
+context.document.createElement = createElement;
+const filteredSections = guides.topics.children.slice(1);
+const seguridad = filteredSections.find((section) => section.children[0].id === 'guide-topic-seguridad');
+assert.ok(seguridad && !seguridad.hidden, 'The tag link shows its topic.');
+assert.deepEqual(seguridad.children.slice(1).filter((row) => !row.hidden).map((row) => row.children[0].children[0].textContent), ['Álvaro'],
+  'A guide whose tag is not its first tag is visible after following that tag link.');
+assert.ok(filteredSections.every((section) => section === seguridad || section.hidden), 'Other topics hide while a topic filter is on.');
+assert.equal(guides.count.textContent, '1 resultado');
+const filterJumps = guides.topics.children[0].children[1];
+assert.equal(filterJumps.children[0].href, '#/guides', 'A topic filter has a way back to all topics.');
+assert.equal(filterJumps.children[0].textContent, 'Todos los temas');
+assert.equal(filterJumps.children[0].hidden, false);
+assert.equal(filterJumps.children.find((jump) => jump.textContent.startsWith('café ')).children.at(-1).textContent, '2', 'A topic counts the guides with its tag.');
+context.location.hash = '#/guides';
+context.syncView();
+assert.equal(filterJumps.children[0].hidden, true, 'All topics shows only while a topic filter is on.');
+assert.ok(seguridad.hidden, 'Without a filter each guide shows once, under its first topic.');
+assert.equal(guides.count.textContent, '4 resultados');
 context.location.hash = '#/guides';
 guides = guidePage([entries[2]]);
 context.syncView();

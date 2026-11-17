@@ -106,17 +106,18 @@ body .markdown-section pre code .token.comment,body .markdown-section pre code .
 body .markdown-section p.tip,body .markdown-section p.tip em,body .markdown-section p.tip code{color:var(--text)!important}
 body .markdown-section p.tip:before{color:var(--on-accent)}
 /* Docsify keeps wide tables in their own scroll area; all reader tables use the dark reading surface. */
-.markdown-section table{display:block;width:100%;max-width:100%;margin:var(--space-3) 0;overflow:auto;scrollbar-color:var(--line-strong) var(--surface)}
-.markdown-section tr,.markdown-section tr:nth-child(2n){background:var(--surface);border-color:var(--line)}
+/* A table that scrolls shows a right-edge shadow until the reader reaches its end: the local cover moves over the fixed
+   shadow at the end of the scroll. A background, not a mask, so the focus ring and the last column stay whole. */
+.markdown-section table{display:block;width:100%;max-width:100%;margin:var(--space-3) 0;overflow:auto;scrollbar-color:var(--line-strong) var(--surface);background:linear-gradient(to left,var(--surface) 50%,transparent) right/48px 100% no-repeat,linear-gradient(to left,color-mix(in oklab,var(--text) 16%,transparent),transparent) right/24px 100% no-repeat var(--surface);background-attachment:local,scroll}
+.markdown-section tr,.markdown-section tr:nth-child(2n){background:transparent;border-color:var(--line)}
 /* break-word, not the section's anywhere: a column keeps at least its longest word, so a wide table scrolls instead. */
 .markdown-section td,.markdown-section th{padding:8px 12px;border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}
-.markdown-section th{background:var(--surface-raised);color:var(--text-muted);font:600 11px/1.4 var(--font-mono);text-transform:uppercase;letter-spacing:.06em}
+/* A see-through header tint (close to --surface-raised) keeps the scroll shadow visible in the header row. */
+.markdown-section th{background:color-mix(in oklab,var(--text) 3%,transparent);color:var(--text-muted);font:600 11px/1.4 var(--font-mono);text-transform:uppercase;letter-spacing:.06em}
 .markdown-section td{color:var(--text)}
 .markdown-section table code{overflow-wrap:normal;white-space:nowrap}
 .markdown-section td[data-width=long]{min-width:30ch}.markdown-section td[data-width=text]{min-width:14ch}
 @container reader (max-width:600px){.markdown-section td[data-width=text]{min-width:0}}
-/* A table that scrolls fades at its right edge until the reader reaches the end (app.js sets data-scroll-more). */
-.markdown-section table[data-scroll-more]{mask-image:linear-gradient(to left,transparent,var(--bg) 48px)}
 .markdown-section th:has(.table-sort){padding-top:0;padding-bottom:0}
 .markdown-section .table-sort{display:flex;align-items:center;justify-content:space-between;gap:var(--space-1);width:100%;min-height:40px;margin:0;padding:calc(var(--space-1) / 2) 0;border:0;background:transparent;color:inherit;font:inherit;text-align:inherit;cursor:pointer}
 .markdown-section .table-sort>span:first-child{flex:1;min-width:0}
@@ -231,7 +232,7 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 .guide-topic-jumps{display:flex;flex-wrap:wrap;gap:0 var(--space-3);max-width:100%;margin:0 0 var(--space-2);border-bottom:1px solid var(--line)}
 /* Only the topic name is underlined, not its count. */
 .guide-topic-jumps a{display:inline-flex;align-items:center;gap:var(--space-1);min-height:32px;max-width:24ch;color:var(--text-muted);font:var(--label-weight) var(--label-size)/1.3 var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform);overflow-wrap:anywhere;text-decoration:none}
-.guide-topic-jumps a:is(:hover,:focus-visible){color:var(--accent-text)}
+.guide-topic-jumps a:is(:hover,:focus-visible,[aria-current]){color:var(--accent-text)}
 .topic-count{color:var(--text-subtle);font-variant-numeric:tabular-nums}
 .guide-topic-picker>summary{cursor:pointer;padding:var(--space-1) var(--space-2);color:var(--text-muted);font:var(--label-weight) var(--label-size)/1.3 var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform)}
 @media(pointer:coarse){.guide-topic-picker>summary,.guide-topic-jumps a{min-height:44px}.guide-topic-picker>summary{padding-block:15px}}
