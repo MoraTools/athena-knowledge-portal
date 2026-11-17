@@ -1,8 +1,4 @@
-{% extends 'admin/change_list.html' %}{% load admin_urls %}
-{# One create verb across Athena: Nuevo artículo, as on Guías (Nuevo usuario in the directory). #}
-{% block object-tools-items %}{% if has_add_permission %}{% url cl.opts|admin_urlname:'add' as add_url %}
-<li><a href="{% add_preserved_filters add_url is_popup to_field %}" class="addlink">Nuevo artículo</a></li>
-{% endif %}{% endblock %}
+{% extends 'admin/change_list.html' %}
 {# Search and the Estado, Acceso and Tipo filters in one GET form above the table, at every width; they replace the filter panel. #}
 {% block search %}
 <div id="toolbar"><form id="changelist-search" class="list-toolbar" method="get" role="search">

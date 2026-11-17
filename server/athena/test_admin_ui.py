@@ -203,6 +203,36 @@ class AdminEditorTests(TestCase):
         self.assertRegex(page, r'href="/admin/athena/downloadevent/" class="viewlink"[^>]*>Ver</a>')
         self.assertNotIn('>Vista</a>', page)
 
+    def test_each_list_create_button_matches_its_add_page_title(self):
+        from django.contrib import admin
+        from django.urls import reverse
+        from .admin import RowControlsAdmin
+        checked = []
+        for model, model_admin in admin.site._registry.items():
+            base = f'admin:{model._meta.app_label}_{model._meta.model_name}'
+            if not isinstance(model_admin, RowControlsAdmin) or not model_admin.has_add_permission(type('R', (), {'user': self.root})()):
+                continue
+            with self.subTest(model=model.__name__):
+                page = self.client.get(reverse(base + '_changelist') + '?o=1').content.decode()
+                add = self.client.get(reverse(base + '_add')).content.decode()
+                title = re.search(r'<title>(.+?) · Athena</title>', add)[1]
+                self.assertIn(f'<li><a href="{reverse(base + "_add")}?_changelist_filters=o%3D1" class="addlink">{title}</a></li>', page)
+                checked.append(title)
+        self.assertEqual(sorted(checked), ['Nueva clave de API', 'Nueva descarga', 'Nuevo artículo'])
+
+    def test_app_list_is_django_s_with_only_the_ver_link_changed(self):
+        # A copy of Django's template: a Django update that changes the original must fail here, so the copy follows it.
+        from pathlib import Path
+        import django
+        ours = (settings.BASE_DIR / 'server/athena/templates/admin/app_list.html').read_text().splitlines()
+        theirs = (Path(django.__file__).parent / 'contrib/admin/templates/admin/app_list.html').read_text().splitlines()
+        self.assertTrue(ours[0].startswith('{#') and ours[0].endswith('#}'), ours[0])
+        self.assertEqual(len(ours[1:]), len(theirs))
+        changed = [(a, b) for a, b in zip(ours[1:], theirs) if a != b]
+        self.assertEqual(changed, [(theirs_line.replace("{% translate 'View' %}", 'Ver'), theirs_line)
+                                   for theirs_line in theirs if "{% translate 'View' %}" in theirs_line])
+        self.assertEqual(len(changed), 1)
+
     def test_tags_help_counts_the_published_first_steps_articles(self):
         Article.objects.create(title='Inicio', slug='inicio', body='Texto', published=True, tags=['Primeros-Pasos'])
         Article.objects.create(title='Borrador', slug='borrador-inicio', body='Texto', tags=['primeros-pasos'])

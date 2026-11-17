@@ -183,7 +183,12 @@ def row_controls(model_admin, request, obj, *extra):
 
 
 class RowControlsAdmin(admin.ModelAdmin):
-    """Binds the request to the controls column, since list_display callables receive only the row."""
+    """Binds the request to the controls column, since list_display callables receive only the row.
+    add_title names the add page and the list's create button, so both say the same."""
+    add_title = None
+
+    def changelist_view(self, request, extra_context=None):
+        return super().changelist_view(request, {'add_title': self.add_title, **(extra_context or {})})
 
     def get_form(self, request, obj=None, **kwargs):
         return plain_labels(super().get_form(request, obj, **kwargs))
@@ -326,6 +331,7 @@ class AthenaUserAdmin(UserAdmin):
 
 @admin.register(Article)
 class ArticleAdmin(RowControlsAdmin):
+    add_title = 'Nuevo artículo'
     form = AdminArticleForm
     change_form_template = 'admin/athena/article/change_form.html'
     list_display = ['title', 'kind', 'state', 'access', 'author', 'article_date', 'last_updated', 'controls']
@@ -423,7 +429,7 @@ class ArticleAdmin(RowControlsAdmin):
                                                  'filter_names': names, **(extra_context or {})})
 
     def add_view(self, request, form_url='', extra_context=None):
-        return super().add_view(request, form_url, {'title': 'Nuevo artículo', 'state_chips': state_chips(None),
+        return super().add_view(request, form_url, {'title': self.add_title, 'state_chips': state_chips(None),
                                                     'placement_tags': PLACEMENT_TAGS, **(extra_context or {})})
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
@@ -472,6 +478,7 @@ class ArticleAdmin(RowControlsAdmin):
 
 @admin.register(Download)
 class DownloadAdmin(RowControlsAdmin):
+    add_title = 'Nueva descarga'
     list_display = ['title', 'section_pill', 'human_size', 'created', 'controls']
     list_filter = ['section', 'published']
     search_fields = ['title', 'slug']
@@ -501,7 +508,7 @@ class DownloadAdmin(RowControlsAdmin):
                                                  **(extra_context or {})})
 
     def add_view(self, request, form_url='', extra_context=None):
-        return super().add_view(request, form_url, {'title': 'Nueva descarga', **(extra_context or {})})
+        return super().add_view(request, form_url, {'title': self.add_title, **(extra_context or {})})
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         return super().change_view(request, object_id, form_url, {'title': 'Editar descarga', 'subtitle': None, **(extra_context or {})})
@@ -540,6 +547,7 @@ class DownloadEventAdmin(RowControlsAdmin):
 
 @admin.register(ApiKey)
 class ApiKeyAdmin(RowControlsAdmin):
+    add_title = 'Nueva clave de API'
     form = ApiKeyForm
     list_display = ['name', 'user', 'scope', 'status', 'expires', 'created', 'controls']
     fields = ['name', 'user', 'scope', 'expires_at']
@@ -616,7 +624,7 @@ class ApiKeyAdmin(RowControlsAdmin):
         return super().changelist_view(request, {'title': 'Claves de API', 'subtitle': subtitle, **(extra_context or {})})
 
     def add_view(self, request, form_url='', extra_context=None):
-        return super().add_view(request, form_url, {'title': 'Nueva clave de API',
+        return super().add_view(request, form_url, {'title': self.add_title,
                                                     'subtitle': 'La clave se muestra una sola vez, después de guardar.',
                                                     **(extra_context or {})})
 

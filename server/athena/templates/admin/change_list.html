@@ -1,4 +1,8 @@
-{% extends 'admin/change_list.html' %}{% load admin_list %}
+{% extends 'admin/change_list.html' %}{% load admin_list admin_urls %}
+{# The create button says what the add page title says (RowControlsAdmin.add_title), as Nuevo usuario in the directory. #}
+{% block object-tools-items %}{% if add_title and has_add_permission %}{% url cl.opts|admin_urlname:'add' as add_url %}
+<li><a href="{% add_preserved_filters add_url is_popup to_field %}" class="addlink">{{ add_title }}</a></li>
+{% else %}{{ block.super }}{% endif %}{% endblock %}
 {# Breadcrumb root: Administración, since the portal home is the reader's Inicio; no Django app level. #}
 {% block breadcrumbs %}
 <div class="breadcrumbs">
