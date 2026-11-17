@@ -28,6 +28,9 @@ div#main{min-height:100vh;width:auto;padding-left:var(--rail-current);container:
 .search-toolbar{display:flex;align-items:center;gap:.8rem;margin:0 0 var(--space-2)}
 .search-toolbar label{color:var(--muted);font-weight:700}
 .search-toolbar select{min-width:190px;min-height:32px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--field-bg);color:var(--text);padding:6px 12px;font:14px var(--font-ui)}
+/* The loading shell before Docsify: a page title and a muted status line, not vue.css's centred 30px text. */
+div#app.boot-shell{margin:0;font-size:inherit;font-weight:inherit;text-align:left}
+.markdown-section .boot-status{color:var(--muted)}
 .search-result-count{width:fit-content;min-height:1.55em;margin:var(--space-2) 0 var(--space-4)!important;color:var(--muted)}
 .search-results{display:grid;gap:var(--space-2)}
 .markdown-section .search-result__meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-1);margin:0 0 2px;color:var(--text-muted);font:13px/20px var(--font-mono)}
@@ -82,7 +85,7 @@ body .markdown-section h2{font:600 30px/36px var(--font-display);text-wrap:balan
 :is(.article-meta,.search-result__meta)>*::before{content:'·';content:'·' / '';display:inline-block;width:var(--sep);text-align:center}
 .article-meta>.article-meta__tags{display:flex;flex-wrap:wrap;flex-basis:100%;gap:4px;padding-left:var(--sep)}.article-meta>.article-meta__tags::before{content:none}
 .article-meta__tags a{display:inline-flex;align-items:center;text-decoration:none}
-@media(pointer:coarse){:is(.article-meta__tags,.search-result__actions,.contribute-note) a{display:inline-flex;align-items:center;min-height:44px}}
+@media(pointer:coarse){:is(.article-meta__tags,.search-result__actions,.contribute-note,.boot-status) a{display:inline-flex;align-items:center;min-height:44px}}
 .markdown-section .article-access{margin:calc(-1 * var(--space-1)) 0 var(--space-3);color:var(--muted);font:400 14px/1.5 var(--font-ui)}
 body .markdown-section h3{font:650 18px/24px var(--font-ui);color:var(--text)}
 .markdown-section code,.markdown-section pre{font-family:var(--font-mono)}

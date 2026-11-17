@@ -24,4 +24,19 @@
     html.classList.add('suite-translating');
     root.setTimeout(() => html.classList.remove('suite-translating'), 1500);
   }
+  // Reader shell only: a script that fails to load, or no render after 10 s, turns the loading line into an error.
+  function failBoot() {
+    const status = root.document.querySelector('.boot-status');
+    if (!status || 'failed' in status.dataset) return;
+    status.dataset.failed = '';
+    const reload = root.document.createElement('a');
+    reload.href = root.location.href;
+    reload.textContent = 'Volver a cargar';
+    // A same-page link with a hash does not reload by itself.
+    reload.addEventListener('click', (event) => { event.preventDefault(); root.location.reload(); });
+    status.replaceChildren('No se pudo cargar Athena. ', reload);
+    if (root.AthenaI18n) root.AthenaI18n.translate();
+  }
+  root.addEventListener('error', (event) => { if (event.target instanceof root.HTMLScriptElement) failBoot(); }, true);
+  root.setTimeout(failBoot, 10000);
 })(typeof window === 'undefined' ? globalThis : window);

@@ -19,6 +19,47 @@ for (const [stored, languages, expected] of [[null, ['fr', 'en-US', 'es'], 'en']
 }
 assert.equal(boot.storedValueAfterToggle('dark', 'dark'), null);
 assert.equal(boot.storedValueAfterToggle('en', 'es'), 'en');
+
+// The reader loading shell: a failed script or no render after 10 s turns the status line into an error with a reload link.
+{
+  class Script {}
+  const listeners = {};
+  const timers = [];
+  const status = { dataset: {}, children: [], replaceChildren(...nodes) { this.children = nodes; } };
+  let reloaded = 0;
+  let translated = 0;
+  const page = {
+    HTMLScriptElement: Script,
+    localStorage: { getItem: () => null },
+    matchMedia: () => ({ matches: false }),
+    navigator: { languages: ['es'] },
+    location: { href: 'https://athena.example.test/#/guides', reload() { reloaded += 1; } },
+    setTimeout: (callback, delay) => timers.push([callback, delay]),
+    addEventListener: (name, handler, capture) => { listeners[name] = [handler, capture]; },
+    AthenaI18n: { translate() { translated += 1; } },
+    document: {
+      documentElement: { dataset: {}, classList: { add() {} } },
+      querySelector: (selector) => (selector === '.boot-status' ? status : null),
+      createElement: () => ({ listeners: {}, addEventListener(name, handler) { this.listeners[name] = handler; } })
+    }
+  };
+  vm.runInContext(bootSource, vm.createContext({ window: page }));
+  assert.equal(listeners.error[1], true, 'Script load errors do not bubble: listen in the capture phase.');
+  assert.equal(timers.at(-1)[1], 10000);
+  listeners.error[0]({ target: {} });
+  assert.equal(status.children.length, 0, 'An image or other resource error leaves the loading line.');
+  listeners.error[0]({ target: new Script() });
+  const [text, link] = status.children;
+  assert.equal(text, 'No se pudo cargar Athena. ');
+  assert.equal(link.textContent, 'Volver a cargar');
+  assert.equal(link.href, page.location.href);
+  let prevented = false;
+  link.listeners.click({ preventDefault() { prevented = true; } });
+  assert.ok(prevented && reloaded === 1, 'The link reloads the page, also on a hash route.');
+  assert.equal(translated, 1);
+  timers.at(-1)[0]();
+  assert.equal(status.children[1], link, 'The timer after a script error keeps one error line.');
+}
 for (const path of ['src/index.html', 'src/request-access.html', 'server/athena/templates/base.html', 'server/athena/templates/admin/base_site.html']) {
   const source = read(path);
   assert(source.indexOf('/assets/boot.js') < source.indexOf('rel="stylesheet"'), path + ': boot must precede styles');
