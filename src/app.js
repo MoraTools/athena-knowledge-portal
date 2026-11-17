@@ -1018,7 +1018,7 @@ function markSpanishContent() {
   let content = false;
   [...article.children].forEach((node) => {
     content ||= node.tagName === 'H1';
-    if (content && !node.matches('.article-meta,.article-access,.pdf-viewer,.page-tree,.article-actions')) node.lang = 'es';
+    if (content && !node.matches('.article-meta,.article-access,.pdf-viewer,.page-tree,.article-actions,.code-block')) node.lang = 'es';
   });
 }
 
@@ -1400,6 +1400,37 @@ function placeArticleTools() {
   holder.remove();
 }
 
+// The copy and check icons of 'Copiar página' (src/config.js); .copied shows the check.
+const COPY_ICONS = '<svg class="copy-page__copy" aria-hidden="true" viewBox="0 0 24 24"><path d="M8 7V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M5 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z"/></svg>'
+  + '<svg class="copy-page__check" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>';
+
+// Each code block gets a head row with its language and a 'Copiar' button; the block keeps its own scroll.
+function buildCodeCopy() {
+  document.querySelectorAll('.markdown-section pre:not(.code-block > pre)').forEach((pre) => {
+    const block = document.createElement('div');
+    block.className = 'code-block';
+    const head = document.createElement('div');
+    head.className = 'code-head';
+    if (pre.dataset.lang) {
+      const lang = document.createElement('span');
+      lang.className = 'code-lang';
+      lang.textContent = pre.dataset.lang;
+      head.append(lang);
+    }
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'copy-page code-copy';
+    button.setAttribute('aria-label', t('Copiar código'));
+    button.innerHTML = COPY_ICONS;
+    const label = document.createElement('span');
+    label.textContent = t('Copiar');
+    button.append(label);
+    head.append(button);
+    pre.before(block);
+    block.append(head, pre);
+  });
+}
+
 function syncView() {
   const { path } = getRouteState();
   document.body.classList.toggle('home-view', path === '/');
@@ -1418,6 +1449,7 @@ function syncView() {
   // The viewer belongs to the article frame that opened it.
   if (viewer?.dialog.open && !viewer.frame?.isConnected) viewer.dialog.close();
   placeArticleTools();
+  buildCodeCopy();
   placeArticleHead();
   buildTableSorting();
   markSpanishContent();
@@ -1429,7 +1461,8 @@ function syncView() {
 
 function commandLevels(path, name, kind, unavailable = false) {
   const home = { label: 'Athena', href: '#/' };
-  const library = { label: 'Biblioteca', href: '#/?id=explorar' };
+  // No Biblioteca page exists: the level names the group as text, not a link.
+  const library = { label: 'Biblioteca' };
   if (path === '/') return [home, { label: 'Inicio' }];
   if (path.startsWith('/content/') && !unavailable) {
     const sections = { guide: ['Guías', '#/guides'], tool: ['Herramientas', '#/tools'], announcement: ['Actualizaciones', '#/updates'], release: ['Actualizaciones', '#/updates'] };
@@ -1450,8 +1483,8 @@ function updateCommand(path) {
   const levels = commandLevels(path, name, document.querySelector('[data-article-kind]')?.dataset.articleKind, unavailable);
   const label = (level) => level.article ? level.label : t(level.label);
   const link = (level) => {
-    const node = document.createElement('a');
-    node.href = level.href;
+    const node = document.createElement(level.href ? 'a' : 'span');
+    if (level.href) node.href = level.href;
     node.textContent = label(level);
     return node;
   };
@@ -1487,7 +1520,8 @@ function updateCommand(path) {
   if (article) current.dataset.articleTitle = '';
   current.textContent = label(levels.at(-1));
   box.append(current);
-  const parent = levels.at(-2), back = document.querySelector('.command-parent');
+  // The phone back link goes to the nearest level that is a page.
+  const parent = levels.slice(0, -1).findLast((level) => level.href), back = document.querySelector('.command-parent');
   back.hidden = !parent;
   if (parent) {
     back.href = parent.href;
@@ -1568,28 +1602,55 @@ document.addEventListener('click', async (event) => {
     }
   }
 
+  const codeButton = event.target.closest('button.code-copy');
+  if (codeButton) {
+    const pre = codeButton.closest('.code-block').querySelector('pre');
+    copyWith(codeButton, async () => (pre.querySelector('code') || pre).textContent, 'Copiar', 'Código copiado');
+    return;
+  }
+  const linkButton = event.target.closest('button.copy-link');
+  if (linkButton) {
+    // /s/<slug> exists for every article: it shows a link preview or redirects to the reader, and reveals nothing else.
+    copyWith(linkButton, async () => location.origin + '/s/' + getRouteState().path.replace(/^\/content\//, ''), 'Copiar enlace', 'Enlace copiado');
+    return;
+  }
   const copyButton = event.target.closest('button.copy-page');
   if (!copyButton) return;
-  const label = copyButton.querySelector('span');
-  try {
+  copyWith(copyButton, async () => {
     const route = getRouteState().path;
     // An HTML article copies its saved HTML source, not the reader's marker.
     const source = document.querySelector('.markdown-section .html-article-frame')?.dataset.source;
     const response = await fetch(source || (route.endsWith('.md') ? route : route + '.md'));
     if (!response.ok) throw new Error('Article request failed: ' + response.status);
-    const text = source ? await response.text() : (await response.text()).replace(/\n*<div class="article-tools">.*<\/div>\n?$/, '\n').replace(/\n*<span class="article-context"[^>]*><\/span>\n?/, '\n').replace(/\n*<p class="article-access">[^<]*<\/p>\n?/, '\n');
-    await navigator.clipboard.writeText(text);
-    copyButton.classList.add('copied');
+    return source ? await response.text() : (await response.text()).replace(/\n*<div class="article-tools">.*<\/div>\n?$/, '\n').replace(/\n*<span class="article-context"[^>]*><\/span>\n?/, '\n').replace(/\n*<p class="article-access">[^<]*<\/p>\n?/, '\n');
+  }, 'Copiar página', 'Página copiada');
+});
+
+// One copy flow for page, link and code: the button shows "Copiado" and its check icon for 2 s; #copy-status announces it.
+async function copyWith(button, getText, idle, done) {
+  const label = button.querySelector('span');
+  const status = document.querySelector('#copy-status');
+  if (button.classList.contains('copied')) return;
+  const name = button.getAttribute('aria-label');
+  try {
+    await navigator.clipboard.writeText(await getText());
+    button.classList.add('copied');
     label.textContent = t('Copiado');
+    // The accessible name keeps the visible word in it while the label says "Copiado".
+    if (name) button.setAttribute('aria-label', t(done));
+    if (status) status.textContent = t(done);
     setTimeout(() => {
-      if (!copyButton.isConnected) return;
-      copyButton.classList.remove('copied');
-      label.textContent = t('Copiar página');
+      if (!button.isConnected) return;
+      button.classList.remove('copied');
+      label.textContent = t(idle);
+      if (name) button.setAttribute('aria-label', name);
+      if (status?.textContent === t(done)) status.textContent = '';
     }, 2000);
   } catch {
     label.textContent = t('No se pudo copiar');
+    if (status) status.textContent = t('No se pudo copiar');
   }
-});
+}
 
 document.addEventListener('submit', (event) => {
   if (!event.target.matches('#athena-search')) return;
@@ -1664,6 +1725,11 @@ document.addEventListener('suite:lang', () => {
   syncView();
   document.querySelectorAll('.table-sort').forEach((button) => {
     button.setAttribute('aria-label', sortLabel(button.textContent.trim(), button.closest('th').getAttribute('aria-sort') === 'ascending'));
+  });
+  // The translator leaves article bodies alone, so the code buttons relabel themselves.
+  document.querySelectorAll('.code-copy:not(.copied)').forEach((button) => {
+    button.setAttribute('aria-label', t('Copiar código'));
+    button.querySelector('span').textContent = t('Copiar');
   });
 });
 window.addEventListener('load', syncView);

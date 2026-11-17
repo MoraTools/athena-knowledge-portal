@@ -4,7 +4,7 @@
 .account-main { width: 100%; min-width: 0; max-width: 650px; margin: 0 auto; padding: var(--space-4) var(--space-3); overflow-wrap: anywhere; }
 /* With the rail: the reader's page offset, width cap and padding (src/styles.css div#main, .markdown-section). */
 body:has(#rail) { padding-left: var(--rail-current); transition: padding-left var(--rail-dur) var(--rail-ease); }
-body:has(#rail) .account-main { max-width: var(--content-max); margin: 0; padding: var(--space-4) var(--space-4) var(--space-5); }
+body:has(#rail) .account-main { max-width: var(--content-max); margin: 0; padding: var(--space-3) var(--space-3) var(--space-5); }
 /* One wordmark: the rail's, or this header's when the rail is hidden. */
 body:has(#rail) .account-header { display: none; max-width: var(--content-max); padding: var(--space-3) var(--space-4) 0; }
 html[data-rail=hidden] body:has(#rail) .account-header { display: block; }

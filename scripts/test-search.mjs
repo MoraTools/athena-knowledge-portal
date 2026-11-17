@@ -233,12 +233,45 @@ const metadata = context.findSnippet(metadataEntry, context.searchTerms('Especia
 assert.equal(metadata.text, '');
 assert.equal(metadata.source, 'Coincidencia en: etiqueta');
 
+// One copy flow for page, link and code: copied state, the status line, the accessible name, then back after 2 s.
+{
+  const status = { textContent: '' };
+  const label = { textContent: 'Copiar' };
+  const classes = new Set();
+  const attributes = new Map([['aria-label', 'Copiar código']]);
+  const button = {
+    isConnected: true, querySelector: () => label,
+    classList: { add: (name) => classes.add(name), remove: (name) => classes.delete(name), contains: (name) => classes.has(name) },
+    getAttribute: (name) => attributes.get(name) ?? null, setAttribute: (name, value) => attributes.set(name, value)
+  };
+  const copied = [];
+  const timers = [];
+  const querySelector = context.document.querySelector;
+  context.navigator.clipboard.writeText = async (text) => { copied.push(text); };
+  context.setTimeout = (callback) => timers.push(callback);
+  context.document.querySelector = (selector) => (selector === '#copy-status' ? status : null);
+  await context.copyWith(button, async () => 'code text', 'Copiar', 'Código copiado');
+  assert.deepEqual([copied, label.textContent, classes.has('copied'), attributes.get('aria-label'), status.textContent],
+    [['code text'], 'Copiado', true, 'Código copiado', 'Código copiado']);
+  await context.copyWith(button, async () => 'again', 'Copiar', 'Código copiado');
+  assert.equal(copied.length, 1, 'A second press while the button shows Copiado does nothing.');
+  timers.forEach((callback) => callback());
+  assert.deepEqual([label.textContent, classes.has('copied'), attributes.get('aria-label'), status.textContent], ['Copiar', false, 'Copiar código', '']);
+  await context.copyWith(button, async () => { throw new Error('denied'); }, 'Copiar', 'Código copiado');
+  assert.deepEqual([label.textContent, status.textContent], ['No se pudo copiar', 'No se pudo copiar']);
+  context.setTimeout = () => {};
+  context.navigator.clipboard.writeText = () => {};
+  context.document.querySelector = querySelector;
+}
+
 // Crumb parents come from the article kind, not from the current section.
-for (const [kind, parent] of [['guide', '#/guides'], ['tool', '#/tools'], ['announcement', '#/updates'], ['release', '#/updates'], ['page', '#/?id=explorar']]) {
+for (const [kind, parent] of [['guide', '#/guides'], ['tool', '#/tools'], ['announcement', '#/updates'], ['release', '#/updates'], ['page', undefined]]) {
   const levels = context.commandLevels('/content/example', '<Exact title>', kind);
   assert.equal(levels.at(-2).href, parent);
   assert.equal(levels.at(-1).label, '<Exact title>');
-  assert.ok(levels.slice(0, -1).every((level) => level.href));
+  // Biblioteca has no page, so it is text; every other level above the current one is a link.
+  assert.ok(levels.slice(0, -1).every((level) => Boolean(level.href) === (level.label !== 'Biblioteca')));
+  assert.equal(levels[1].label, 'Biblioteca');
   assert.ok(!levels.at(-1).href);
 }
 assert.equal(context.commandLevels('/content/private', 'Artículo no disponible', 'guide', true).length, 2, 'Unavailable content must disclose no section.');

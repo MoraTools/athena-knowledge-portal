@@ -53,6 +53,7 @@
     'Abrir PDF': 'Open PDF', 'Abrir PDF original': 'Open original PDF', 'Descargar PDF': 'Download PDF', 'Exportar PDF': 'Export PDF',
     'Abrir en pestaña nueva': 'Open in new tab', 'Documento PDF': 'PDF document', 'Sitio oficial': 'Official site', 'Descarga aprobada': 'Approved download',
     'Copiar página': 'Copy page', 'Copiado': 'Copied', 'No se pudo copiar': 'Could not copy', 'Editar artículo': 'Edit article',
+    'Copiar': 'Copy', 'Copiar código': 'Copy code', 'Código copiado': 'Code copied', 'Enlace copiado': 'Link copied', 'Página copiada': 'Page copied',
     'Borrador.': 'Draft.', 'Solo visible para editores.': 'Visible to editors only.', 'En esta página': 'On this page',
     'Artículo no disponible': 'Article unavailable', 'No se puede mostrar esta página.': 'This page cannot be shown.',
     'Si tiene una cuenta, ingrese para consultar el contenido de su equipo.': 'If you have an account, sign in to read your team’s content.', 'Volver a las guías': 'Back to guides',

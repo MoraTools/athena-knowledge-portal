@@ -93,6 +93,13 @@ body .markdown-section h3{font:650 18px/24px var(--font-ui);color:var(--text)}
 body .markdown-section :is(h1,h2,h3) code{padding:1px 5px;border-radius:3px;font-size:.8em;font-weight:500}
 .markdown-section pre{background:var(--surface-strong);border:1px solid var(--border);border-radius:var(--radius)}
 .markdown-section video{display:block;width:100%;height:auto;margin:var(--space-2) 0;border-radius:var(--radius)}
+/* A code block: a head row with the language and 'Copiar' (buildCodeCopy) above the scrolling code. */
+.code-block{margin:1.2em 0}
+.code-head{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2);padding:4px 4px 4px var(--space-2);border:1px solid var(--border);border-bottom:0;border-radius:var(--radius) var(--radius) 0 0;background:var(--surface-strong)}
+.code-lang{color:var(--text-subtle);font:var(--label-weight) var(--label-size)/15px var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform)}
+.markdown-section .code-block>pre{margin:0;border-radius:0 0 var(--radius) var(--radius)}
+.markdown-section .code-block>pre::after{content:none}
+.markdown-section .code-block>pre>code{padding-top:var(--space-2)}
 .markdown-section pre::after{color:var(--text-subtle);font:var(--label-weight) var(--label-size)/15px var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform)}
 body .markdown-section pre code,body .markdown-section pre code .token{background:transparent;color:var(--text)}
 body .markdown-section pre code .token.comment,body .markdown-section pre code .token.prolog,body .markdown-section pre code .token.doctype,body .markdown-section pre code .token.cdata{color:var(--text-muted)}
@@ -367,7 +374,7 @@ body .markdown-section :is(p.tip,p.warn,p.callout) code{background:var(--surface
 .crumb-collapse summary{display:grid;place-items:center;cursor:pointer;list-style:none;min-width:var(--control-h);min-height:var(--control-h);color:var(--text)}
 .crumb-collapse summary::-webkit-details-marker{display:none}
 .crumb-menu{position:absolute;top:100%;left:0;min-width:160px;padding:var(--s-2);border:1px solid var(--border-strong);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow-overlay)}
-.crumb-menu a{display:block;padding:var(--s-2)}
+.crumb-menu>*{display:block;padding:var(--s-2)}
 html{scroll-padding-top:68px}
 @media(max-width:760px){
   .reader-command{height:auto;min-height:113px;flex-wrap:wrap;gap:var(--s-2);padding:var(--s-2) var(--space-2)}
