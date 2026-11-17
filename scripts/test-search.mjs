@@ -413,6 +413,8 @@ assert.equal(viewer.className, 'pdf-viewer');
 assert.equal(viewer.children[1].src, '/pdf/guide.pdf#zoom=page-width&pagemode=none&view=FitH&navpanes=0', 'The viewer opens at page width.');
 assert.equal(viewer.children[0].children[0].href, '/pdf/guide.pdf?download=1');
 assert.equal(viewer.children[0].children[1].target, '_blank');
+assert.deepEqual(viewer.children[0].children.map((link) => link.className), ['download-link', 'pdf-link'],
+  'Descargar PDF is the gold primary; Abrir en pestaña nueva is secondary.');
 const originalViewer = viewer;
 context.buildPdfViewer();
 assert.equal(viewer, originalViewer, 'Repeated sync keeps one viewer.');

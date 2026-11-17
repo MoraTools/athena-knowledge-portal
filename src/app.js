@@ -796,7 +796,8 @@ function buildPdfViewer() {
   actions.className = 'pdf-viewer__actions';
   [['Descargar PDF', src + '?download=1', ''], ['Abrir en pestaña nueva', src, '_blank']].forEach(([label, href, target]) => {
     const a = document.createElement('a');
-    a.className = 'pdf-link';
+    // Descargar PDF is the view's one gold primary; Abrir en pestaña nueva is secondary.
+    a.className = target ? 'pdf-link' : 'download-link';
     a.href = href;
     a.textContent = t(label);
     if (target) {
