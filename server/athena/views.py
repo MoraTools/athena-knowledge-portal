@@ -191,7 +191,8 @@ class HtmlText(HTMLParser):
 
     One pass gives two texts: parts (everything readable, for matching) and prose (the same without code blocks
     and with "…" for inline code, the source of result excerpts). With blocks_only (an HTML article, whose cards put
-    titles and link labels between sentences), prose keeps only text in paragraph-level blocks, outside links and headings.
+    titles and link labels between sentences), prose keeps only text in paragraph-level blocks, outside links and headings,
+    one block per line, and headings records each h2[id] and h3[id] with its place in both texts.
     """
     SKIP = {'script', 'style', 'template', 'noscript', 'title', 'svg', 'button', 'video'}
     CODE = {'pre', 'code'}
@@ -207,6 +208,7 @@ class HtmlText(HTMLParser):
         # skips: open skipped elements as [tag, its open count, text held since it opened, prose held, hides text].
         # A code element holds only prose: its text stays in parts.
         self.parts, self.prose, self.skips = [], [], []
+        self.headings, self.heading = [], None
 
     def out(self):
         text = next((skip[2] for skip in reversed(self.skips) if skip[4]), self.parts)
@@ -230,9 +232,15 @@ class HtmlText(HTMLParser):
         if self.open is not None and (tag in self.BLOCKS or tag in self.LABELS):
             key = 'block' if tag in self.BLOCKS else 'label'
             self.open[key] = max(0, self.open[key] + step)  # A stray end tag never goes below zero.
+            if step < 0 and key == 'block':
+                self.out()[1].append(BLOCK_END)
 
     def handle_starttag(self, tag, attrs):
         self.count(tag, 1)
+        # Only outside skipped elements, where both texts grow in place: the recorded offsets stay true.
+        if self.open is not None and tag in ('h2', 'h3') and not self.skips and not self.heading and dict(attrs).get('id'):
+            self.heading = {'tag': tag, 'id': dict(attrs)['id'], 'start': len(self.parts), 'prose': len(self.prose)}
+            self.headings.append(self.heading)
         hides = tag in self.SKIP or ('aria-hidden', 'true') in attrs
         if tag not in self.VOID and (hides or tag in self.CODE):
             if not hides:
@@ -245,6 +253,8 @@ class HtmlText(HTMLParser):
 
     def handle_endtag(self, tag):
         self.count(tag, -1)
+        if self.heading and tag == self.heading['tag'] and not self.skips:
+            self.heading['end'], self.heading = len(self.parts), None
         depth = next((i for i in range(len(self.skips) - 1, -1, -1) if self.skips[i][0] == tag), None)
         if depth is not None:
             self.release(depth + 1)
@@ -267,12 +277,37 @@ class HtmlText(HTMLParser):
         self.release(0)
 
 
-def html_texts(body, blocks_only=False):
-    """(text, prose) of an HTML body; see HtmlText."""
+BLOCK_END = '\ue000'  # Marks a block end in prose; not whitespace, so it outlives the folding and becomes "\n".
+
+
+def fold(parts):
+    return re.sub(r' ?\ue000[\ue000 ]*', '\n', re.sub(r'\s+', ' ', ''.join(parts))).strip()
+
+
+def parse_html(body, blocks_only=False):
     parser = HtmlText(blocks_only)
     parser.feed(body)
     parser.close()
-    return tuple(re.sub(r'\s+', ' ', ''.join(parts)).strip() for parts in (parser.parts, parser.prose))
+    return parser
+
+
+def html_texts(body, blocks_only=False):
+    """(text, prose) of an HTML body; see HtmlText."""
+    parser = parse_html(body, blocks_only)
+    return fold(parser.parts), fold(parser.prose)
+
+
+def html_headings(parser):
+    """Search sections of a blocks_only parse, as Markdown entries give them, plus the element id."""
+    headings = [heading for heading in parser.headings if 'end' in heading]  # An unclosed heading has no title.
+    ends = [(heading['start'], heading['prose']) for heading in headings[1:]] + [(len(parser.parts), len(parser.prose))]
+    sections = []
+    for heading, (end, prose_end) in zip(headings, ends):
+        title = fold(parser.parts[heading['start']:heading['end']])
+        sections.append({'level': int(heading['tag'][1]), 'raw': title, 'title': title,
+                         'text': fold(parser.parts[heading['end']:end]),
+                         'prose': fold(parser.prose[heading['prose']:prose_end]), 'id': heading['id']})
+    return sections
 
 
 def html_text(body):
@@ -286,12 +321,12 @@ def search_text(body):
 
 def search_entry(article):
     if article.format == 'html':
-        # Headings live inside the sandboxed frame; results link to the article itself.
-        text, prose = html_texts(article.body, blocks_only=True)
+        # Headings live inside the sandboxed frame; their ids let a result open the section.
+        parser = parse_html(article.body, blocks_only=True)
         return {'title': article.title, 'kind': article.kind, 'summary': article.summary, 'author': article.author,
                 'date': timezone.localdate(article.updated_at).isoformat(), 'tags': article.tags, 'route': '#/content/' + article.slug,
-                'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '', 'text': text, 'prose': prose,
-                'headings': []}
+                'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '', 'text': fold(parser.parts),
+                'prose': fold(parser.prose), 'headings': html_headings(parser)}
     # One parse and one render per article: the text is the stored body, the sections come from the reader's body.
     prefix, body, suffix = article_parts(article)
     env = {}

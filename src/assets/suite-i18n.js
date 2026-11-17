@@ -60,7 +60,7 @@
     'Leer': 'Read', 'Estable': 'Stable', 'Próximamente': 'Coming soon', 'Publicado': 'Published', 'Borrador': 'Draft',
     'Archivos aprobados. Solo para usuarios de Athena.': 'Approved files. For Athena users only.',
     'Buscar archivo, sección o nota': 'Search file, section or note', 'Sección': 'Section',
-    'Enlace permanente a la última versión:': 'Permanent link to the latest version:', 'Versiones anteriores': 'Previous versions', 'Ocultar archivos': 'Hide files', 'Secciones de Descargas': 'Download sections',
+    'Enlace permanente a la última versión:': 'Permanent link to the latest version:', 'Versiones anteriores': 'Previous versions', 'Ver en Descargas': 'See in Downloads', 'Ocultar archivos': 'Hide files', 'Secciones de Descargas': 'Download sections',
     'Descargar': 'Download', 'Todavía no hay archivos publicados.': 'No files have been published yet.', 'No hay archivos que coincidan.': 'No files match.',
     'Lector · Última sesión': 'Reader · Last sign-in', 'Administrador · Última sesión': 'Administrator · Last sign-in', 'Lectura': 'Read', 'Lectura y escritura': 'Read and write', 'Administrador': 'Administrator', 'Lector': 'Reader', 'Última sesión': 'Last sign-in', 'nunca': 'never', 'Sesión': 'Session',
     'Cambie su contraseña o cierre la sesión en este navegador. Cambiar la contraseña cierra sus otras sesiones y revoca sus claves de API.': 'Change your password or sign out of this browser. Changing your password closes your other sessions and revokes your API keys.',

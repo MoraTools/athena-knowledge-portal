@@ -635,6 +635,10 @@ class PortalTests(TestCase):
         self.client.force_login(self.reader)
         private = self.client.get('/guides.md').content.decode()
         self.assertIn('href="#/downloads">Descarga aprobada', private)
+        # Round 4 #3 (contract 1): the row meta line; .guide-author stays for the reader script until it reads .item-meta.
+        self.assertRegex(private, r'<p class="item-meta"><span class="item-meta__kind">Guía</span>'
+                                  r'<span class="item-meta__author guide-author">Equipo &lt;A&gt;</span>'
+                                  r'<span class="item-meta__date">Actualizado <time datetime="\d{4}-\d{2}-\d{2}">')
         self.assertIn('<div id="guide-topics" class="guide-topics"></div>', private)
         self.assertNotIn('data-guide-view', private)
         self.assertIn('aria-live="polite" aria-atomic="true">1 resultado', private)
@@ -686,8 +690,9 @@ class PortalTests(TestCase):
         self.client.force_login(self.reader)
         tools = self.client.get('/tools.md').content.decode()
         self.assertLess(tools.index('#/content/new-tool'), tools.index('#/content/old-tool'))
-        # One meta order: author, then 'Actualizado' and the date (the page names the type).
-        self.assertIn('<small>A · Actualizado <time datetime="2026-10-20">2026-10-20</time></small>', tools)
+        # Round 4 #3 (contract 1): the list meta line of every reader list, kind, author, date.
+        self.assertIn('<p class="item-meta"><span class="item-meta__kind">Herramienta</span><span class="item-meta__author">A</span>'
+                      '<span class="item-meta__date">Actualizado <time datetime="2026-10-20">2026-10-20</time></span></p>', tools)
         self.assertNotIn('2020-01-01', tools)
         updates = self.client.get('/updates.md').content.decode()
         slugs = re.findall(r'<h3><a href="#/content/([\w-]+)">', updates)
@@ -715,6 +720,7 @@ class PortalTests(TestCase):
             self.assertNotIn('data-guide-view', page)
         tools = self.client.get('/tools.md').content.decode()
         self.assertIn('Real tool', tools)
+        self.assertNotIn('Ver en Descargas', tools)  # Visitors see no download link.
         self.assertIn('status-alpha', tools)
         self.assertIn('https://example.test/tool', tools)
         updates = self.client.get('/updates.md').content.decode()
@@ -722,6 +728,23 @@ class PortalTests(TestCase):
         self.assertIn('Real news', updates)
         self.assertNotIn('First guide', updates)  # A guide is no update.
         self.assertNotIn('<p class="post-actions">', updates)  # No PDF, site or download: no action row.
+
+    def test_tool_download_links_to_its_file_row(self):
+        # Round 4 #37 (contract 3): the link opens the Descargas row of the newest published file of that name.
+        self.enterContext(override_settings(MEDIA_ROOT=self.enterContext(tempfile.TemporaryDirectory())))
+        Article.objects.create(title='Faro', slug='faro', kind='tool', status='stable', summary='S', author='A',
+                               download_file='faro.zip', published=True)
+        Article.objects.create(title='Telar', slug='telar', kind='tool', status='stable', summary='S', author='A',
+                               download_file='telar.zip', published=True)
+        Download.objects.create(title='Old', section='previous', file=ContentFile(b'x', name='faro.zip'))
+        newer = Download.objects.create(title='New', section='packages', file=ContentFile(b'y', name='faro.zip'))
+        Download.objects.create(title='Hidden', section='packages', published=False, file=ContentFile(b'z', name='faro.zip'))
+        self.assertNotEqual(newer.slug, 'faro-zip')
+        self.client.force_login(self.reader)
+        tools = self.client.get('/tools.md').content.decode()
+        self.assertIn(f'<a href="#/downloads?id=download-file-{newer.slug}">Ver en Descargas</a>', tools)
+        self.assertIn('<a href="#/downloads?id=download-file-telar-zip">Ver en Descargas</a>', tools)  # No file yet: its slug.
+        self.assertNotIn('Descarga aprobada', tools)
 
     def test_placement_tag_is_no_chip_and_actions_only_with_a_target(self):
         Article.objects.create(title='Start tool', slug='start-tool', kind='tool', summary='S', author='A',
@@ -1503,7 +1526,9 @@ class ReaderPageTests(TestCase):
         self.assertIn('<p>Guías, herramientas y conocimiento compartido por el equipo.</p>', self.client.get('/README.md').content.decode())
         self.assertIn('<p>Guías, herramientas y conocimiento compartido por el equipo.</p>', page)  # page: signed in.
         self.assertNotIn('feed', page)
-        self.assertIn(f'<small>Guía</small><small>Actualizado <time datetime="{timezone.localdate(old.updated_at).isoformat()}">', page)
+        # Round 4 #3 (contract 1): one meta line, kind, author, date.
+        self.assertIn('<p class="item-meta"><span class="item-meta__kind">Guía</span><span class="item-meta__author">a</span>'
+                      f'<span class="item-meta__date">Actualizado <time datetime="{timezone.localdate(old.updated_at).isoformat()}">', page)
 
     def test_home_first_steps_are_tagged_readable_articles_in_date_order(self):
         def home(user=None):
@@ -1518,8 +1543,10 @@ class ReaderPageTests(TestCase):
                 return None
             self.assertLess(page.index('## Primeros pasos'), page.index('## Recientes'))
             part = page[page.index('## Primeros pasos'):page.index('## Recientes')]
-            # The Recientes date cell in every row.
-            self.assertEqual(part.count('<small>Actualizado <time datetime="'), part.count('class="guide-topic-row"'))
+            # The meta line and (round 4 #8) the summary in every row.
+            rows = part.count('class="guide-topic-row"')
+            self.assertEqual(part.count('<span class="item-meta__date">Actualizado <time datetime="'), rows)
+            self.assertEqual(part.count('<p class="guide-summary">s</p>'), rows)
             return re.findall(r'<a class="guide-title" href="#/content/([^"]+)">', part)
 
         def make(slug, day, tags, **fields):
@@ -1538,7 +1565,8 @@ class ReaderPageTests(TestCase):
         self.assertEqual(first_steps(), ['primero', 'mayusculas'])  # Visitors: public articles only.
         self.assertEqual(first_steps(self.reader), ['primero', 'mayusculas', 'con-cuenta', 'mas-5', 'mas-6'])  # At most 5.
         self.assertEqual(first_steps(self.listed), ['restringido', 'primero', 'mayusculas', 'con-cuenta', 'mas-5'])
-        self.assertIn('<small>Guía</small><small>Actualizado <time datetime="', home(self.reader))  # Round 3 #4: the Recientes cell.
+        self.assertIn('<span class="item-meta__kind">Guía</span><span class="item-meta__author">a</span>'
+                      '<span class="item-meta__date">Actualizado <time datetime="', home(self.reader))  # Round 3 #4: the Recientes cell.
 
     def test_downloads_mark_the_framework_file_that_latest_serves(self):
         def make(title, section, minutes):
@@ -1612,9 +1640,27 @@ class ReaderPageTests(TestCase):
                           updated_at=timezone.now())
         from .views import search_entry
         entry = search_entry(article)
-        self.assertEqual(entry['prose'], 'Demos grabadas. Lee la cola de cuotas vencidas. Extrae los datos. Uno …')
+        # Round 4 #10: one block per line, so an excerpt never joins two cards.
+        self.assertEqual(entry['prose'], 'Demos grabadas.\nLee la cola de cuotas vencidas.\nExtrae los datos.\nUno …')
         self.assertEqual(entry['text'], 'Demos grabadas. Finanzas Cobranzas Lee la cola de cuotas vencidas. Abrir demo '
                                         'Registro Extrae los datos. Uno x')
+        self.assertEqual(entry['headings'], [
+            {'level': 2, 'raw': 'Finanzas', 'title': 'Finanzas', 'text': '', 'prose': '', 'id': 'f'},
+            {'level': 3, 'raw': 'Cobranzas', 'title': 'Cobranzas', 'text': 'Lee la cola de cuotas vencidas. Abrir demo',
+             'prose': 'Lee la cola de cuotas vencidas.', 'id': 'c'},
+            {'level': 3, 'raw': 'Registro', 'title': 'Registro', 'text': 'Extrae los datos. Uno x',
+             'prose': 'Extrae los datos.\nUno …', 'id': 'r'}])
+
+    def test_html_article_headings_need_an_id_and_cards_stay_apart(self):
+        from .views import search_entry
+        body = ('<h2 id="uno">Uno</h2><div class="card"><p>Primera\n tarjeta.</p></div><h4 id="x">Bajo</h4>'
+                '<h2>Sin id</h2><div class="card"><p>Segunda tarjeta.</p></div>'
+                '<h2 id="dos">Dos <a href="#a">enlace</a></h2><p>Fin.</p><h3 id="abierto">Sin cierre')
+        article = Article(title='T', slug='t', kind='page', summary='s', author='a', format='html', body=body,
+                          updated_at=timezone.now())
+        headings = search_entry(article)['headings']
+        self.assertEqual([(h['id'], h['title'], h['prose']) for h in headings], [
+            ('uno', 'Uno', 'Primera tarjeta.\nSegunda tarjeta.'), ('dos', 'Dos enlace', 'Fin.')])
 
     def test_search_text_keeps_text_after_an_unclosed_hidden_element(self):
         from .views import search_text

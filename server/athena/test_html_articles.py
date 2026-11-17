@@ -243,7 +243,9 @@ class HtmlArticleTests(TestCase):
         self.client.force_login(self.reader)
         entry = next(item for item in self.client.get('/search-index.json').json() if item['route'] == '#/content/demos')
         self.assertEqual(entry['text'], 'Galería de demos Texto visible de la demo.')
-        self.assertEqual(entry['headings'], [])
+        self.assertEqual(entry['headings'], [{'level': 2, 'raw': 'Galería de demos', 'title': 'Galería de demos',
+                                               'text': 'Texto visible de la demo.', 'prose': 'Texto visible de la demo.',
+                                               'id': 'uno'}])
         self.assertNotIn('script text', json.dumps(entry))
 
     def test_editor_preview_endpoint(self):

@@ -10,12 +10,12 @@
 {% if first_steps %}
 ## Primeros pasos
 
-<div class="recent-list">{% for article in first_steps %}<article class="guide-topic-row"><div class="guide-detail"><a class="guide-title" href="#/content/{{ article.slug }}">{{ article.title }}</a></div><div class="guide-topic-meta"><small>{{ article.get_kind_display }}</small><small>Actualizado <time datetime="{{ article.updated_at|date:'Y-m-d' }}">{{ article.updated_at|date:'Y-m-d' }}</time></small></div></article>{% endfor %}</div>
+<div class="recent-list">{% for article in first_steps %}<article class="guide-topic-row"><div class="guide-detail"><a class="guide-title" href="#/content/{{ article.slug }}">{{ article.title }}</a><p class="guide-summary">{{ article.summary }}</p></div><p class="item-meta"><span class="item-meta__kind">{{ article.get_kind_display }}</span>{% if article.author %}<span class="item-meta__author">{{ article.author }}</span>{% endif %}<span class="item-meta__date">Actualizado <time datetime="{{ article.updated_at|date:'Y-m-d' }}">{{ article.updated_at|date:'Y-m-d' }}</time></span></p></article>{% endfor %}</div>
 
 {% endif %}{% if recent %}
 ## Recientes
 
-<div class="recent-list">{% for article in recent %}<article class="guide-topic-row"><div class="guide-detail"><a class="guide-title" href="#/content/{{ article.slug }}">{{ article.title }}</a></div><div class="guide-topic-meta"><small>{{ article.get_kind_display }}</small><small>Actualizado <time datetime="{{ article.updated_at|date:'Y-m-d' }}">{{ article.updated_at|date:'Y-m-d' }}</time></small></div></article>{% endfor %}</div>
+<div class="recent-list">{% for article in recent %}<article class="guide-topic-row"><div class="guide-detail"><a class="guide-title" href="#/content/{{ article.slug }}">{{ article.title }}</a></div><p class="item-meta"><span class="item-meta__kind">{{ article.get_kind_display }}</span>{% if article.author %}<span class="item-meta__author">{{ article.author }}</span>{% endif %}<span class="item-meta__date">Actualizado <time datetime="{{ article.updated_at|date:'Y-m-d' }}">{{ article.updated_at|date:'Y-m-d' }}</time></span></p></article>{% endfor %}</div>
 
 <p><a href="#/updates">Ver anuncios y versiones</a></p>
 {% endif %}

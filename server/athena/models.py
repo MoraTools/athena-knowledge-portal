@@ -98,6 +98,16 @@ class Article(models.Model):
         return [tag for tag in self.tags if tag.lower() not in PLACEMENT_TAGS]
 
     @property
+    def download_row_id(self):
+        """The Descargas row id of download_file: the newest published file of that name."""
+        name = PurePath(self.download_file)
+        # Storage adds "_" and 7 characters to a name that is already taken (Storage.get_available_name).
+        stored = rf'/{re.escape(name.stem)}(_[A-Za-z0-9]{{7}})?{re.escape(name.suffix)}$'
+        slug = Download.objects.filter(published=True, file__regex=stored).order_by(
+            '-created_at').values_list('slug', flat=True).first()
+        return 'download-file-' + (slug or download_slug(self.download_file))
+
+    @property
     def access(self):
         return 'restricted' if self.is_restricted else 'public' if self.is_public else 'account'
 
