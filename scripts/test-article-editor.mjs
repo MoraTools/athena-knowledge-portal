@@ -87,7 +87,7 @@ assert.equal(options.ALLOW_DATA_ATTR, false);
 console.log('Article preview Markdown, title, image paths, draft/PDF parity, and sanitizer boundary checks passed.');
 
 // The editor uses native form controls. This DOM stub checks behavior without a new test dependency.
-function editor({ readOnly = false, serverError = null, format = null, previewUrl = '' } = {}) {
+function editor({ readOnly = false, serverError = null, format = null, previewUrl = '', tagList = null } = {}) {
   const handlers = {}, nodes = new Map(), closeEvents = [], posts = [];
   let focused = null, firstInvalid = null;
   function element(id = '', parent = null) {
@@ -137,6 +137,7 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
     fields[name] = Object.assign(element(`id_${name}`, parent), { name });
   }
   fields.kind.value = 'guide';
+  if (tagList) Object.assign(element('id_tags', panels[0]), { name: 'tags', value: '', list: { options: tagList.map(value => ({ value })) } });
   element('id_markdown_file_helptext');
   for (const id of ['desk-preview-content', 'desk-image-footer', 'desk-state', 'desk-details-state', 'desk-count',
     'desk-source-heading', 'desk-preview-status', 'desk-save-state']) element(id);
@@ -381,6 +382,15 @@ for (const file of [
   await state.form.fire('change', { target: state.fields.kind });
   assert.equal(state.nodes.get('desk-state').innerHTML, '<span class="pill gold">Publicado</span><span class="pill gold">Público</span>');
   assert.equal((await state.fields.title.fire('keydown', { key: 'Enter' })).defaultPrevented, true);
+}
+// Tag suggestions complete the last tag and skip the ones already typed.
+{
+  const state = editor({ tagList: ['Excel', 'Plantilla base'] });
+  const tags = state.nodes.get('id_tags');
+  tags.value = 'excel, Pla';
+  await tags.fire('input');
+  assert.deepEqual(tags.list.options.map(option => [option.value, Boolean(option.disabled)]),
+    [['excel, Excel', true], ['excel, Plantilla base', false]]);
 }
 console.log('HTML preview frame, sandbox, POST source, message source checks, theme and viewport messages passed.');
 console.log('Article detail tabs, read-only controls, keyboard focus, error routing, close retention and native save checks passed.');

@@ -1,4 +1,5 @@
 import re
+from collections import Counter
 
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserChangeForm, UserCreationForm, UsernameField
@@ -6,7 +7,7 @@ from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from .models import ApiKey, Article
+from .models import ApiKey, Article, readable_articles
 
 
 EMAIL_UNAVAILABLE = ('El servicio de correo de Athena aún no está configurado. Por ahora no se pueden ingresar ni guardar correos. '
@@ -58,6 +59,28 @@ class ShareImageWidget(forms.HiddenInput):
     is_hidden = False  # Keep the label and help text in the admin form.
 
 
+class TagsInput(forms.TextInput):
+    """The text field with a native list of the tags in use (admin/athena/article/field.html shows the help)."""
+    template_name = 'admin/athena/article/tags_input.html'
+    tags = ()
+
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        if context['widget']['attrs'].get('id'):
+            context['widget']['attrs']['list'] = context['widget']['attrs']['id'] + '-options'
+        context['widget']['tags'] = self.tags
+        return context
+
+
+def tag_spellings(articles):
+    """Each tag in use by its case-folded form; the most used spelling wins, then the first in order."""
+    counts = Counter(tag for tags in articles.values_list('tags', flat=True) for tag in tags)
+    spellings = {}
+    for tag, _ in sorted(counts.items(), key=lambda item: (-item[1], item[0])):
+        spellings.setdefault(tag.casefold(), tag)
+    return spellings
+
+
 ACCESS_CHOICES = [('public', 'Público'), ('account', 'Con cuenta'), ('restricted', 'Usuarios seleccionados')]
 
 
@@ -66,7 +89,7 @@ class ArticleForm(forms.ModelForm):
                                     help_text='Opcional. Reemplaza el contenido. Máximo 1 MiB.')
     pdf_file = forms.FileField(label='Adjuntar PDF', required=False, help_text='Opcional. Máximo 25 MiB.')
     remove_pdf = forms.BooleanField(label='Quitar PDF actual', required=False)
-    tags = forms.CharField(label='Etiquetas', required=False, help_text='Separe las etiquetas con comas. Con la etiqueta primeros-pasos, el artículo aparece en Primeros pasos en el inicio (hasta 5, ordenados por fecha).')
+    tags = forms.CharField(label='Etiquetas', required=False, widget=TagsInput, help_text='Separe las etiquetas con comas. Con la etiqueta primeros-pasos, el artículo aparece en Primeros pasos en el inicio (hasta 5, ordenados por fecha).')
     access = forms.ChoiceField(label='Acceso', required=False, choices=ACCESS_CHOICES, help_text=(
         'Público: si está publicado, cualquier persona lo lee sin una cuenta. Con cuenta: cualquier usuario que ingresa. '
         'Usuarios seleccionados: solo los usuarios de la lista y los superusuarios. Las imágenes y los PDF siguen este acceso.'))
@@ -92,6 +115,11 @@ class ArticleForm(forms.ModelForm):
             self.fields['format'].required = False
         if 'access' in self.fields:
             self.initial.setdefault('access', self.instance.access)
+        if 'tags' in self.fields:
+            # Only tags of articles the editor can read: a restricted article's tags stay private.
+            others = readable_articles(self.actor, Article.objects.exclude(pk=self.instance.pk)) if self.actor else Article.objects.none()
+            self.tag_spellings = tag_spellings(others)
+            self.fields['tags'].widget.tags = sorted(self.tag_spellings.values(), key=str.casefold)
         if self.instance.pk and 'slug' in self.fields:  # A view-only change form has no fields.
             self.fields['slug'].disabled = True
             self.initial['tags'] = ', '.join(self.instance.tags)
@@ -114,7 +142,14 @@ class ArticleForm(forms.ModelForm):
         return image
 
     def clean_tags(self):
-        return [tag.strip() for tag in self.cleaned_data['tags'].split(',') if tag.strip()]
+        # Trimmed, inner spaces collapsed, and a tag already in use keeps its spelling ("excel" saves as "Excel");
+        # a repeat in another case is dropped. Another article's tags exclude this one, so its own spelling can change.
+        tags = {}
+        for raw in self.cleaned_data['tags'].split(','):
+            tag = ' '.join(raw.split())
+            if tag:
+                tags.setdefault(tag.casefold(), self.tag_spellings.get(tag.casefold(), tag))
+        return list(tags.values())
 
     def clean(self):
         data = super().clean()

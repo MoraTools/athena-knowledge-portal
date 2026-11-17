@@ -315,6 +315,19 @@
       clearTimeout(timer);
       timer = setTimeout(updatePreview, 120);
     });
+    // The tag list completes the tag after the last comma: each option holds the tags typed so far plus one more,
+    // and a tag already typed is not offered again.
+    const tagsField = document.getElementById('id_tags');
+    const tagOptions = tagsField?.list ? [...tagsField.list.options].map(option => [option, option.value]) : [];
+    tagsField?.addEventListener('input', () => {
+      const typed = tagsField.value.split(',').slice(0, -1).map(tag => tag.trim()).filter(Boolean);
+      const prefix = typed.length ? `${typed.join(', ')}, ` : '';
+      const used = new Set(typed.map(tag => tag.toLowerCase()));
+      for (const [option, tag] of tagOptions) {
+        option.value = prefix + tag;
+        option.disabled = used.has(tag.toLowerCase());
+      }
+    });
     function showToolFields() { toolFields.open = value('kind', form.dataset.articleKind) === 'tool' || Boolean(toolFields.querySelector('.errors')); }
     showToolFields();
     form.addEventListener('change', event => {

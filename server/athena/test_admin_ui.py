@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -156,3 +158,39 @@ class AdminEditorTests(TestCase):
 
     def test_api_key_expiry_names_the_site_time_zone(self):
         self.assertContains(self.client.get('/admin/athena/apikey/add/'), 'Zona horaria: America/Lima.')
+
+
+class TagTests(TestCase):
+    """Tags: a native list of the tags in use, and one spelling per tag on save."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.editor = User.objects.create_user('editor', is_staff=True)
+        cls.editor.user_permissions.set(permissions(['athena.view_article', 'athena.change_article']))
+        Article.objects.create(title='Uno', slug='uno', body='x', tags=['Excel', 'Plantilla base'])
+        Article.objects.create(title='Dos', slug='dos', body='x', tags=['Excel', 'excel tips'])
+        Article.objects.create(title='Interno', slug='interno', body='x', tags=['Cliente secreto'], is_restricted=True)
+        cls.own = Article.objects.create(title='Tres', slug='tres', body='x', tags=['Demos'])
+
+    def form(self, instance=None, tags=''):
+        from .forms import ArticleForm
+        return ArticleForm({'tags': tags}, instance=instance or Article(), actor=self.editor)
+
+    def test_list_offers_readable_tags_once(self):
+        html = str(self.form()['tags'])
+        self.assertIn('list="id_tags-options"', html)
+        options = re.findall(r'<option value="([^"]*)">', html)
+        self.assertEqual(options, ['Demos', 'Excel', 'excel tips', 'Plantilla base'])
+
+    def test_save_trims_and_keeps_the_spelling_in_use(self):
+        form = self.form(tags='  excel ,Plantilla   base, EXCEL, Nuevo ,, ')
+        form.is_valid()
+        self.assertEqual(form.cleaned_data['tags'], ['Excel', 'Plantilla base', 'Nuevo'])
+        # An unreadable article's spelling is neither offered nor applied.
+        form = self.form(tags='cliente secreto')
+        form.is_valid()
+        self.assertEqual(form.cleaned_data['tags'], ['cliente secreto'])
+        # An article may change the case of a tag only it uses.
+        form = self.form(self.own, tags='DEMOS')
+        form.is_valid()
+        self.assertEqual(form.cleaned_data['tags'], ['DEMOS'])
