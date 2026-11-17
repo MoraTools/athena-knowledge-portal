@@ -1352,13 +1352,12 @@ class ReaderPageTests(TestCase):
         self.assertNotContains(page, 'Ingrese para descargar este archivo.')
         self.assertContains(self.client.get('/accounts/login/?next=/downloads/plantilla'), '<p>Ingrese para descargar este archivo.</p>', html=True)
         self.assertNotContains(self.client.get('/accounts/login/?next=/%23/guides'), 'Ingrese para descargar')
-        # A shared download link names the file from the record; an unpublished file stays "este archivo".
+        # A visitor learns nothing about downloads: a real, a guessed and the latest link all read "este archivo".
         item = Download.objects.create(title='Plantilla <3.2>', section='framework', file=ContentFile(b'x', name='plantilla.zip'))
-        Download.objects.create(title='Oculto', section='framework', published=False, file=ContentFile(b'x', name='oculto.zip'))
-        for next_path in [f'/downloads/{item.slug}', '/downloads/framework/latest']:
-            self.assertContains(self.client.get('/accounts/login/', {'next': next_path}),
-                                '<p>Ingrese para descargar Plantilla &lt;3.2&gt;.</p>', html=True)
-        self.assertContains(self.client.get('/accounts/login/?next=/downloads/oculto-zip'), '<p>Ingrese para descargar este archivo.</p>', html=True)
+        for next_path in [f'/downloads/{item.slug}', '/downloads/framework/latest', '/downloads/no-existe']:
+            page = self.client.get('/accounts/login/', {'next': next_path})
+            self.assertContains(page, '<p>Ingrese para descargar este archivo.</p>', html=True)
+            self.assertNotContains(page, 'Plantilla &lt;3.2&gt;')
         self.assertNotContains(self.client.get('/accounts/login/'), 'aria-invalid')
         # Wrong password, unknown user and an inactive account read the same; Django's own wording is gone.
         User.objects.create_user('inactive', password='Inactive-Example-1!', is_active=False)

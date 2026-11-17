@@ -190,7 +190,6 @@
     [/^Acceso restringido: (\d+) usuarios?\.$/, (n) => `Restricted access: ${plural(n, 'user')}.`], [/^hace (\d+) (min|h)$/, (n, unit) => `${n} ${unit} ago`], [/^hace (\d+) días$/, (n) => `${n} days ago`],
     [/^Buscar «(.+)» en todo Athena$/s, (query) => `Search «${query}» in all of Athena`],
     [/^Editar artículo: (.+)$/s, (title) => `Edit article: ${title}`], [/^Eliminar «(.+)»$/s, (title) => `Delete «${title}»`],
-    [/^Ingrese para descargar (.+)\.$/s, (title) => `Sign in to download ${title}.`],
     [/^(Ver|Editar|Eliminar|Descargar): (.+)$/s, (verb, name) => `${english(verb)}: ${name}`],
     [/^(creó|editó|eliminó) (.+?) · (.+)$/, (verb, noun, when) => `${english(verb)} ${english(noun)} · ${english(when)}`],
     [/^Ordenar (.+) en orden (ascendente|descendente)$/, (label, order) => `Sort ${english(label)} in ${english(order)}`],

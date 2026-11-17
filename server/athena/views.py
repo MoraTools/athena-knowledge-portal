@@ -590,15 +590,6 @@ def latest_framework(request):
 class SignInView(LoginView):
     authentication_form = SignInForm
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        # A shared download link names its file; its slug already shows the file name.
-        slug = context['next'].removeprefix('/downloads/')
-        if slug != context['next']:
-            context['download'] = (current_framework() if slug == 'framework/latest'
-                                   else Download.objects.filter(slug=slug, published=True).first())
-        return context
-
 
 @login_required
 def downloads_page(request):

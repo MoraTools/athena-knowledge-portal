@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Ingresar</h1>
 <p>Ingrese con su cuenta para consultar el contenido de su equipo, sus herramientas y descargas.</p>
-{% if next|slice:':11' == '/downloads/' %}<p>Ingrese para descargar {% if download %}{{ download.title }}{% else %}este archivo{% endif %}.</p>
+{% if next|slice:':11' == '/downloads/' %}<p>Ingrese para descargar este archivo.</p>
 {% endif %}<form method="post" class="account-form">
   {% csrf_token %}{% if form.non_field_errors %}<p class="errorlist nonfield" id="login-error" role="alert">{% for error in form.non_field_errors.as_data %}{% if error.code == 'invalid_login' %}Usuario o contraseña incorrectos.{% else %}{{ error.messages|join:' ' }}{% endif %}{% if not forloop.last %} {% endif %}{% endfor %}</p>{% endif %}
   <label for="id_username">Usuario</label>{{ form.username }}{{ form.username.errors }}
