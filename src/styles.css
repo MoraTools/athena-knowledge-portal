@@ -33,6 +33,8 @@ div#main{min-height:100vh;width:auto;padding-left:var(--rail-current);container:
 .markdown-section .search-result__meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-1);margin:0 0 2px;color:var(--text-muted);font:13px/20px var(--font-mono)}
 .search-result__meta .card-kicker{margin:0}
 .search-result__meta .tag-list{margin:0}
+.search-result{display:flex;flex-direction:column}.search-result>.search-result__meta{order:-1}
+.markdown-section .search-result__tail{display:flex;flex-wrap:wrap;align-items:center;gap:4px var(--space-2);margin:var(--space-1) 0 0}
 .markdown-section .search-result h2{margin:0;font:650 18px/24px var(--font-ui)}
 .markdown-section .search-result h2 a{color:var(--text);text-decoration:none}
 .markdown-section .search-result h2 a:is(:hover,:focus-visible){color:var(--accent-text);text-decoration:underline}
@@ -75,7 +77,12 @@ body .markdown-section h2{font:600 30px/36px var(--font-display);text-wrap:balan
 .markdown-section h1{margin:0 0 var(--space-2)}.markdown-section h2{margin:var(--space-4) 0 var(--space-2)}.markdown-section h3{margin:var(--space-4) 0 var(--space-1)}
 .markdown-section .article-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px var(--space-1);margin:calc(-1 * var(--space-1)) 0 var(--space-3);color:var(--text-muted);font:13px/1.5 var(--font-mono)}
 .article-meta time{font-variant-numeric:tabular-nums}
-.article-meta__tags{display:flex;flex-wrap:wrap;gap:4px}
+/* Meta lines draw a "·" before each item and clip the one that starts a row, so no row starts or ends with a dot. */
+.markdown-section :is(.article-meta,.search-result__meta){--sep:20px;column-gap:0;margin-left:calc(-1 * var(--sep));clip-path:inset(-8px -8px -8px calc(var(--sep) - 6px))}
+:is(.article-meta,.search-result__meta)>*::before{content:'·';content:'·' / '';display:inline-block;width:var(--sep);text-align:center}
+.article-meta>.article-meta__tags{display:flex;flex-wrap:wrap;flex-basis:100%;gap:4px;padding-left:var(--sep)}.article-meta>.article-meta__tags::before{content:none}
+.article-meta__tags a{display:inline-flex;align-items:center;text-decoration:none}
+@media(pointer:coarse){:is(.article-meta__tags,.search-result__actions,.contribute-note) a{display:inline-flex;align-items:center;min-height:44px}}
 .markdown-section .article-access{margin:calc(-1 * var(--space-1)) 0 var(--space-3);color:var(--muted);font:400 14px/1.5 var(--font-ui)}
 body .markdown-section h3{font:650 18px/24px var(--font-ui);color:var(--text)}
 .markdown-section code,.markdown-section pre{font-family:var(--font-mono)}
@@ -97,6 +104,7 @@ body .markdown-section p.tip:before{color:var(--on-accent)}
 .markdown-section td{color:var(--text)}
 .markdown-section table code{overflow-wrap:normal;white-space:nowrap}
 .markdown-section td[data-width=long]{min-width:30ch}.markdown-section td[data-width=text]{min-width:14ch}
+@container reader (max-width:600px){.markdown-section td[data-width=text]{min-width:0}}
 /* A table that scrolls fades at its right edge until the reader reaches the end (app.js sets data-scroll-more). */
 .markdown-section table[data-scroll-more]{mask-image:linear-gradient(to left,transparent,var(--bg) 48px)}
 .markdown-section th:has(.table-sort){padding-top:0;padding-bottom:0}
@@ -211,9 +219,14 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 .guide-detail p:empty{display:none}
 .guide-topic-jumps{display:flex;flex-wrap:wrap;gap:0 var(--space-3);max-width:100%;margin:0 0 var(--space-2);border-bottom:1px solid var(--line)}
 /* Only the topic name is underlined, not its count. */
-.guide-topic-jumps a{display:inline-flex;align-items:center;gap:var(--space-1);min-height:32px;max-width:24ch;font-size:16px;overflow-wrap:anywhere;text-decoration:none}
-.guide-topic-jumps a>:first-child{text-decoration:underline}
-.topic-count{color:var(--text-muted);font:13px/1 var(--font-mono);font-variant-numeric:tabular-nums}
+.guide-topic-jumps a{display:inline-flex;align-items:center;gap:var(--space-1);min-height:32px;max-width:24ch;color:var(--text-muted);font:var(--label-weight) var(--label-size)/1.3 var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform);overflow-wrap:anywhere;text-decoration:none}
+.guide-topic-jumps a:is(:hover,:focus-visible){color:var(--accent-text)}
+.topic-count{color:var(--text-subtle);font-variant-numeric:tabular-nums}
+.guide-topic-picker>summary{cursor:pointer;padding:var(--space-1) var(--space-2);color:var(--text-muted);font:var(--label-weight) var(--label-size)/1.3 var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform)}
+@media(pointer:coarse){.guide-topic-picker>summary,.guide-topic-jumps a{min-height:44px}.guide-topic-picker>summary{padding-block:15px}}
+/* Above a 600px reader the topics are an open row and the summary is hidden (app.js keeps the box open there). */
+@container reader (min-width:601px){.guide-topic-picker>summary{display:none}}
+@container reader (max-width:600px){.guide-topic-picker{margin:0 0 var(--space-2);border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}.guide-topic-picker .guide-topic-jumps{margin:0;padding:0 var(--space-2) var(--space-1);border-bottom:0}}
 .markdown-section .guide-topic h2{margin:var(--space-4) 0 0;padding-bottom:var(--space-1);border-bottom:1px solid var(--line);color:var(--text);font:600 30px/36px var(--font-display)}
 .guide-topic-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(180px,1fr);gap:var(--space-3);padding:var(--space-1) var(--space-2);border-bottom:1px solid var(--line);background:var(--surface)}
 .guide-topic-row:has(:focus-visible){background:var(--guide-row-highlight)}
@@ -224,8 +237,8 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 @container reader (max-width:600px){.guide-controls{grid-template-columns:1fr;gap:var(--space-2);padding:var(--space-2)}.guide-topic-row{grid-template-columns:1fr;gap:var(--space-1)}.guide-topic-meta{justify-content:flex-start}.guide-topic-meta span{flex:initial}.guide-topic-jumps{gap:0 var(--space-2)}}
 /* One chip for tags and status in guide rows, tool cards, the feed, search results and the article meta line. */
 .tag-list{display:flex;flex-wrap:wrap;gap:4px}
-.tag-list span,.markdown-section .status,.article-meta__tags a{display:inline-flex;align-items:center;width:auto;margin:0;padding:2px 6px;border:1px solid var(--border);border-radius:var(--radius-chip);background:var(--surface-strong);color:var(--text-muted);font:var(--chip-weight) var(--chip-size)/1.3 var(--chip-font);letter-spacing:var(--chip-tracking);text-transform:var(--chip-transform);text-decoration:none;overflow-wrap:anywhere}
-.article-meta__tags a:hover{border-color:var(--accent-edge);color:var(--accent-text)}
+.tag-list span,.markdown-section .status,.article-meta__tags a>span{display:inline-flex;align-items:center;width:auto;margin:0;padding:2px 6px;border:1px solid var(--border);border-radius:var(--radius-chip);background:var(--surface-strong);color:var(--text-muted);font:var(--chip-weight) var(--chip-size)/1.3 var(--chip-font);letter-spacing:var(--chip-tracking);text-transform:var(--chip-transform);text-decoration:none;overflow-wrap:anywhere}
+.article-meta__tags a:hover>span{border-color:var(--accent-edge);color:var(--accent-text)}
 .updates-feed{display:grid;gap:var(--space-2)}.update-item h2{font-size:2rem}.update-item h2 a{color:var(--field-bg)}
 .download-permalink{margin:0 0 var(--space-2);color:var(--muted);font-size:.9rem;overflow-wrap:anywhere}
 .catalog-list{display:grid;gap:var(--space-2);margin:0}
@@ -236,6 +249,7 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 .folder-files{list-style:none;margin:.85rem 0 0;padding:0}.folder-files li{display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0}.folder-files li small{flex:none;margin:0}
 @container reader (min-width:900px){body.has-page-tree .content{display:grid;grid-template-columns:minmax(0,1fr) 216px;align-items:start;gap:var(--space-3);max-width:var(--content-max);padding:var(--space-3) var(--space-3) var(--space-5)}body.has-page-tree .markdown-section{grid-column:1;grid-row:1;max-width:none;padding:0}.page-tree{grid-column:2;grid-row:1;position:sticky;top:calc(52px + var(--space-3));max-height:calc(100vh - 100px);margin:0;overflow:auto;background:transparent}}
 @media (min-width:1600px){body.has-page-tree .content{margin:0 auto}}
+.account-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:var(--space-2);align-items:start}
 @container reader (max-width:900px){.hero{grid-template-columns:1fr;min-height:0}.hero-copy{padding:var(--space-3)}.hero img{height:160px;grid-row:1}.account-grid{grid-template-columns:1fr}}
 @container reader (max-width:600px){.hero img{height:120px}.hero p{font-size:1rem}.portal-grid,.library-controls{grid-template-columns:1fr}.catalog-item{grid-template-columns:1fr}.contribute-note{align-items:flex-start;flex-direction:column}.search .input-wrap{grid-template-columns:1fr}.search-toolbar{align-items:stretch;flex-direction:column}.search-toolbar select{width:100%}}
 @media (max-width:768px){.brand span{font-size:27px}.access-label{font-size:9px}.markdown-section{padding:var(--space-3) var(--space-2) var(--space-4)}.page-tree{margin-left:var(--space-2);margin-right:var(--space-2)}}
@@ -267,7 +281,6 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 
 /* Mi cuenta (/#/account): controls follow the admin system (44px, 4px radius, var(--border-strong) border). */
 .markdown-section .account-meta{margin:0 0 var(--space-4);color:var(--muted);font:13px/1.5 var(--font-mono);letter-spacing:.06em;text-transform:uppercase}
-.account-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:var(--space-2);align-items:start}
 .account-panel{padding:var(--space-3);background:var(--surface)}
 .markdown-section .account-panel h2,.markdown-section .account-admin h2{margin:0 0 var(--space-2);font-size:1.6rem}
 .markdown-section .account-admin h2{margin-top:var(--space-4)}
@@ -294,6 +307,9 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 .reader-command .suite-toggles{margin-left:0}.reader-command .article-actions{margin:0}
 body.article-view .markdown-section{max-width:calc(70ch + 48px);font-size:17px;line-height:1.65}
 body.article-view.has-page-tree .markdown-section{max-width:70ch}
+.markdown-section .page-tree{margin:0 0 var(--space-2)}
+.markdown-section>:is(h1,.article-meta,.article-access,.page-tree)+.article-actions{justify-content:flex-start}
+@container reader (max-width:600px){body.article-view .markdown-section h1{font-size:32px;line-height:38px}}
 body.article-view.has-page-tree .markdown-section:has(.html-article,.html-article-frame,.pdf-viewer){max-width:var(--content-max)}
 .page-tree{border:1px solid var(--border);border-radius:var(--radius)}
 .page-tree summary,.download-archive summary{color:var(--text-muted);font:600 11px/1.3 var(--font-mono);letter-spacing:.06em}

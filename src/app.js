@@ -121,7 +121,31 @@ function buildPageTree() {
   article.before(nav);
   document.body.classList.add('has-page-tree');
   updatePageTreeLayout();
+  // An HTML article rebuilds its tree outside syncView when its outline changes.
+  placeArticleHead();
   updatePageTreeCurrent();
+}
+
+// Below a 900px reader the title and meta line come first, then the page tree box and the article actions.
+function placeArticleHead() {
+  const article = document.querySelector('.markdown-section');
+  const heading = article?.querySelector('h1');
+  const tree = document.querySelector('.page-tree');
+  const actions = article?.querySelector(':scope > .article-actions');
+  if (!heading || heading.parentElement !== article || (!tree && !actions)) return;
+  const main = document.querySelector('div#main');
+  if (main.clientWidth - parseFloat(getComputedStyle(main).paddingLeft) < 900) {
+    let anchor = heading;
+    while (anchor.nextElementSibling?.matches('.article-meta,.article-access')) anchor = anchor.nextElementSibling;
+    if (tree) {
+      anchor.after(tree);
+      anchor = tree;
+    }
+    if (actions) anchor.after(actions);
+  } else {
+    if (tree?.parentElement === article) article.before(tree);
+    if (actions && actions !== article.firstElementChild) article.prepend(actions);
+  }
 }
 
 const guideLibraries = new WeakMap();
@@ -187,7 +211,26 @@ function buildGuideTopics(library, state) {
       group.entries.push({ entry, article });
     });
   });
-  topics.prepend(jumps);
+  // Phones get the topics in a closed native box; wider readers see the open row (updateGuideTopicsLayout).
+  const picker = document.createElement('details');
+  picker.className = 'guide-topic-picker';
+  const summary = document.createElement('summary');
+  const name = document.createElement('span');
+  const count = document.createElement('span');
+  summary.append(name, ' ', count);
+  picker.append(summary, jumps);
+  state.picker = { name, count };
+  topics.prepend(picker);
+  updateGuideTopicsLayout();
+}
+
+function updateGuideTopicsLayout() {
+  const picker = document.querySelector('.guide-topic-picker');
+  if (!picker) return;
+  const layout = getComputedStyle(picker.querySelector('summary')).display === 'none' ? 'row' : 'box';
+  if (picker.dataset.layout === layout) return;
+  picker.dataset.layout = layout;
+  picker.open = layout === 'row';
 }
 
 function filterGuides() {
@@ -210,6 +253,11 @@ function filterGuides() {
     group.section.hidden = group.jump.hidden = !shown;
     group.count.textContent = new Intl.NumberFormat(currentLang()).format(shown);
   });
+  if (state.picker) {
+    state.picker.name.textContent = t('Temas');
+    const topics = [...state.groups.values()].filter((group) => !group.jump.hidden).length;
+    state.picker.count.textContent = '(' + new Intl.NumberFormat(currentLang()).format(topics) + ')';
+  }
   const count = document.querySelector('#guide-count');
   const empty = document.querySelector('.library-empty');
   if (count) count.textContent = countLabel(visible, 'resultado', 'resultados');
@@ -627,14 +675,16 @@ function createSearchResult(entry, terms) {
     const date = document.createElement('time');
     date.dateTime = entry.date;
     date.textContent = formatDate(entry.date);
-    meta.append('·', date);
+    meta.append(date);
   }
   if (entry.author) {
     const author = document.createElement('span');
     author.lang = 'es';
     author.textContent = entry.author;
-    meta.append('·', author);
+    meta.append(author);
   }
+  const tail = document.createElement('p');
+  tail.className = 'search-result__tail';
   if (entry.tags.length) {
     const tags = document.createElement('span');
     tags.className = 'tag-list';
@@ -644,7 +694,7 @@ function createSearchResult(entry, terms) {
       tag.textContent = value;
       tags.append(tag);
     });
-    meta.append(tags);
+    tail.append(tags);
   }
 
   const body = document.createElement('div');
@@ -680,7 +730,6 @@ function createSearchResult(entry, terms) {
     body.append(source);
   }
 
-  // The section and PDF links end the meta line, so a result is four lines at most.
   const actions = document.createElement('span');
   actions.className = 'search-result__actions';
   if (snippet.heading && entry.route.startsWith('#/')) {
@@ -697,9 +746,11 @@ function createSearchResult(entry, terms) {
     pdf.textContent = t('Abrir PDF');
     actions.append(pdf);
   }
-  if (actions.childElementCount) meta.append(actions);
+  if (actions.childElementCount) tail.append(actions);
 
-  article.append(meta, body);
+  // Title and excerpt come first for screen readers; CSS shows the meta line above the title.
+  article.append(body, meta);
+  if (tail.childElementCount) article.append(tail);
   return article;
 }
 
@@ -836,15 +887,17 @@ async function buildArticleMeta() {
     const author = document.createElement('span');
     author.lang = 'es';
     author.textContent = entry.author;
-    meta.append('·', author);
+    meta.append(author);
   }
   if (entry.date) {
     const updated = document.createElement('span');
-    updated.textContent = t('Actualizado');
+    const label = document.createElement('span');
+    label.textContent = t('Actualizado');
     const date = document.createElement('time');
     date.dateTime = entry.date;
     date.textContent = formatDate(entry.date);
-    meta.append('·', updated, date);
+    updated.append(label, ' ', date);
+    meta.append(updated);
   }
   if (entry.tags.length) {
     const tags = document.createElement('span');
@@ -853,10 +906,13 @@ async function buildArticleMeta() {
     entry.tags.forEach((tag) => {
       const link = document.createElement('a');
       link.href = buildSearchHash(tag, '');
-      link.textContent = tag;
+      // The link is the touch target; the chip inside it keeps the chip size.
+      const chip = document.createElement('span');
+      chip.textContent = tag;
+      link.append(chip);
       tags.append(link);
     });
-    meta.append('·', tags);
+    meta.append(tags);
   }
   // Every sync (route, language) rebuilds the line; only the newest one stays.
   heading.parentElement.querySelectorAll('.article-meta').forEach((old) => old.remove());
@@ -873,11 +929,11 @@ function markSpanishContent() {
   // API para agentes is the repository's English API.md in both interface languages.
   if (getRouteState().path === '/api' && article) article.lang = 'en';
   if (!getRouteState().path.startsWith('/content/') || !article || article.querySelector('.unavailable-page')) return;
-  // The title and what follows it, apart from Athena's own lines; the actions and a draft notice come before it.
+  // The title and what follows it, apart from Athena's own lines (on a narrow reader the tree and actions follow the title).
   let content = false;
   [...article.children].forEach((node) => {
     content ||= node.tagName === 'H1';
-    if (content && !node.matches('.article-meta,.article-access,.pdf-viewer')) node.lang = 'es';
+    if (content && !node.matches('.article-meta,.article-access,.pdf-viewer,.page-tree,.article-actions')) node.lang = 'es';
   });
 }
 
@@ -1276,6 +1332,7 @@ function syncView() {
   // The viewer belongs to the article frame that opened it.
   if (viewer?.dialog.open && !viewer.frame?.isConnected) viewer.dialog.close();
   placeArticleTools();
+  placeArticleHead();
   buildTableSorting();
   markSpanishContent();
   buildArticleMeta();
@@ -1401,6 +1458,9 @@ document.addEventListener('click', async (event) => {
     const heading = document.getElementById(topicJump.dataset.guideTopic);
     if (heading) {
       event.preventDefault();
+      // The phone box closes after a jump, like the inline page tree.
+      const picker = topicJump.closest('.guide-topic-picker');
+      if (picker?.dataset.layout === 'box') picker.open = false;
       heading.focus({ preventScroll: true });
       heading.scrollIntoView({ block: 'start' });
     }
@@ -1518,7 +1578,7 @@ window.addEventListener('scroll', queueHtmlViewport, { passive: true });
 window.addEventListener('resize', queueHtmlViewport);
 window.addEventListener('message', handleHtmlFrameMessage);
 const reader = document.querySelector('div#main');
-if (reader) new ResizeObserver(updatePageTreeLayout).observe(reader);
+if (reader) new ResizeObserver(() => { updatePageTreeLayout(); placeArticleHead(); updateGuideTopicsLayout(); }).observe(reader);
 
 const commandBar = document.querySelector('.reader-command');
 if (commandBar) {
