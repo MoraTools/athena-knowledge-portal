@@ -123,8 +123,8 @@ class RestrictedArticleTests(TestCase):
         self.assertEqual(self.client.get('/content/informe-privado.md').status_code, 404)
 
     def test_lists_home_and_search_index_hide_the_article(self):
-        for user, visible in [(None, False), (self.reader, False), (self.editor, False), (self.listed, True),
-                              (self.root, True)]:
+        users = [(None, False), (self.reader, False), (self.editor, False), (self.listed, True), (self.root, True)]
+        for user, visible in users:
             self.login(user)
             index = self.client.get('/search-index.json').content.decode()
             for text in ['Informe privado', 'Resumen confidencial', SECRET, 'informe-privado']:
@@ -135,6 +135,12 @@ class RestrictedArticleTests(TestCase):
                 with self.subTest(user=user, path=path):
                     self.assertEqual('Informe privado' in self.client.get(path).content.decode(), visible)
             self.assertEqual('Resumen HTML confidencial' in index, visible)
+        # Actualizaciones lists announcements and releases: the same restricted article as an announcement.
+        Article.objects.filter(slug='informe-privado').update(kind='announcement')
+        for user, visible in users:
+            self.login(user)
+            with self.subTest(user=user, path='/updates.md'):
+                self.assertEqual('Informe privado' in self.client.get('/updates.md').content.decode(), visible)
         # The home page counts only readable articles.
         Article.objects.exclude(is_restricted=True).delete()
         self.login(self.reader)
