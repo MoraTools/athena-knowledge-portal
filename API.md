@@ -1,4 +1,4 @@
-# Athena REST API
+# API para agentes
 
 Base URL: `https://athena.moratechnology.com/api/v1`
 OpenAPI: [schema](https://athena.moratechnology.com/api/openapi.json) · This guide: `GET /api/docs/` (no key needed)

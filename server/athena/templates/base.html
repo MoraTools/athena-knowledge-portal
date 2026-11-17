@@ -16,7 +16,7 @@
 <body class="account-page">
   <a class="skip-link" href="#account-main">Saltar al contenido</a>
   {% if user.is_authenticated %}{% portal_sidebar %}{% endif %}
-  <header class="account-command">{% if user.is_authenticated %}<button class="suite-icon command-menu rail-reveal" type="button" aria-controls="rail" aria-label="Mostrar la navegación" data-icon="menu"></button>{% endif %}{% block command %}{% endblock %}<div class="suite-toggles"><button class="suite-icon" type="button" data-suite-toggle="lang" aria-label="Switch the language to English" title="English"></button><button class="suite-icon" type="button" data-suite-toggle="theme" aria-label="Cambiar a tema claro" title="Cambiar a tema claro"></button></div></header>
+  <header class="account-command{% block command_class %}{% endblock %}">{% if user.is_authenticated %}<button class="suite-icon command-menu rail-reveal" type="button" aria-controls="rail" aria-label="Mostrar la navegación" data-icon="menu"></button>{% endif %}{% block command %}{% endblock %}<div class="suite-toggles"><button class="suite-icon" type="button" data-suite-toggle="lang" aria-label="Switch the language to English" title="English"></button><button class="suite-icon" type="button" data-suite-toggle="theme" aria-label="Cambiar a tema claro" title="Cambiar a tema claro"></button></div></header>
   <header class="account-header"><a class="brand" href="/"><span>Athena</span><small>KNOWLEDGE PORTAL</small></a></header>
   <main id="account-main" class="account-main">{% block content %}{% endblock %}</main>
   <script src="/assets/suite-i18n.js"></script>

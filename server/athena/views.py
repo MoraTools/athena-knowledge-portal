@@ -4,6 +4,7 @@ import re
 from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import quote
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -19,6 +20,7 @@ from django.utils.html import escape
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from markdown_it import MarkdownIt
 
+from .admin import role_label
 from .forms import SignInForm
 from .models import (ApiKey, Article, Download, DownloadEvent, ManagedImage, PLACEMENT_TAGS, readable_articles,
                      visible_articles)
@@ -632,6 +634,7 @@ def account_markdown(request):
     user = request.user
     return render(request, 'account.md', {
         'is_admin': user.is_staff,
+        'role': role_label(user),
         'keys': ApiKey.objects.filter(user=user).order_by('expires_at'),
     }, content_type='text/markdown; charset=utf-8')
 
@@ -728,6 +731,8 @@ def static_portal(request, path='index.html'):
         if path not in allowed:
             raise Http404
         if path == 'index.html':
+            if request.GET.get('q', '').strip():  # The account pages' search form: a plain GET, as they run no app.js.
+                return HttpResponseRedirect('/#/search?q=' + quote(request.GET['q'].strip()))
             return render(request, 'index.html')
         if path == 'README.md':
             # The library's access rule; updated_at, so an edit moves an article to the top (DL-0022).

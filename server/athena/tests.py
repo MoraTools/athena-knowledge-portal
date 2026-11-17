@@ -894,7 +894,7 @@ class PortalTests(TestCase):
         self.assertEqual(self.client.post(change, data).status_code, 403)
         self.assertEqual(self.client.get('/content/first-guide.md').status_code, 404)  # No drafts.
         self.assertEqual(self.client.get('/admin/auth/user/').status_code, 403)
-        self.assertIn('Administrador · Última sesión', self.client.get('/account.md').content.decode())
+        self.assertIn('Editor · Última sesión', self.client.get('/account.md').content.decode())  # admin.role_label
         self.assertIn('[Administración](/admin/', self.client.get('/_sidebar.md').content.decode())
 
         editor = self.directory_admin('editor', ['articles'])
@@ -1064,6 +1064,16 @@ class PortalTests(TestCase):
         self.assertIn('href="/admin/athena/apikey/add/">Crear clave</a>', page)
         for link in ['/admin/athena/article/', '/admin/athena/apikey/', '/admin/athena/download/', '/admin/auth/user/']:
             self.assertIn(f'href="{link}"', page)
+        self.assertIn('<a class="account-button" href="/#/api">API para agentes</a>', page)  # The page's one name.
+        self.assertIn('<div class="account-grid">', page)
+        # A reader without keys: one sentence (what a key is for, who gives one) in the narrow panel.
+        ApiKey.objects.filter(user=self.reader).delete()
+        self.client.force_login(self.reader)
+        page = self.client.get('/account.md').content.decode()
+        self.assertIn('<div class="account-grid no-keys">', page)
+        self.assertIn('<h2>Mis claves de API</h2>\n<p>Una clave de API permite que un script o un agente use Athena con su '
+                      'cuenta; la entrega un administrador.</p>\n', page)
+        self.assertNotIn('Pida una clave', page)
 
     def test_account_logout_requires_post_and_csrf(self):
         strict = Client(enforce_csrf_checks=True)
@@ -1090,6 +1100,14 @@ class PortalTests(TestCase):
             self.assertContains(response, f'<label for="id_{field}">{label}</label>', html=False)
         self.assertNotContains(response, ':</label>')
         self.assertNotContains(self.client.get('/accounts/login/'), 'command-crumbs')
+        # The reader's command bar: a nav for the crumbs and a search field that reaches the reader search route.
+        self.assertContains(response, '<header class="account-command reader-command">', html=False)
+        self.assertContains(response, '<nav class="command-lead" aria-label="Ruta de navegación">', html=False)
+        self.assertContains(response, '<form class="search athena-search" role="search" action="/" method="get">', html=False)
+        self.assertContains(response, 'name="q" type="search"', html=False)
+        self.assertRedirects(self.client.get('/', {'q': ' cola & pagos '}), '/#/search?q=cola%20%26%20pagos',
+                             fetch_redirect_response=False)
+        self.assertEqual(self.client.get('/', {'q': ' '}).status_code, 200)  # An empty search opens the reader.
         response = self.client.post('/accounts/password_change/', {
             'old_password': 'Reader-Example-9348!', 'new_password1': 'Changed-Reader-Pass-5521!',
             'new_password2': 'Changed-Reader-Pass-5521!'})
@@ -1437,7 +1455,9 @@ class ReaderPageTests(TestCase):
             page = self.client.get('/not-found.md').content.decode()
             self.assertIn('Puede que la dirección sea incorrecta o que el artículo tenga acceso limitado.', page)
             self.assertIn('<a class="post-link" href="#/search">Buscar en Athena</a><a class="post-link" href="#/">Ir al inicio</a>', page)
-            self.assertEqual('href="/accounts/login/"' in page, user is None)
+            # A visitor's one primary action is Ingresar, with one line on why.
+            self.assertEqual('<p class="post-actions"><a class="download-link" href="/accounts/login/">Ingresar</a>' in page, user is None)
+            self.assertEqual('Si tiene una cuenta, ingrese: puede que con ella tenga acceso.' in page, user is None)
             # The same line for unknown and restricted addresses, so it tells nothing about the article.
             self.assertEqual('Si necesita acceso, pídalo a un administrador de Athena.' in page, user is not None)
             self.assertNotIn('rivado', page)
@@ -1496,6 +1516,8 @@ class ReaderPageTests(TestCase):
                 return None
             self.assertLess(page.index('## Primeros pasos'), page.index('## Recientes'))
             part = page[page.index('## Primeros pasos'):page.index('## Recientes')]
+            # The Recientes date cell in every row.
+            self.assertEqual(part.count('<small>Actualizado <time datetime="'), part.count('class="guide-topic-row"'))
             return re.findall(r'<a class="guide-title" href="#/content/([^"]+)">', part)
 
         def make(slug, day, tags, **fields):
@@ -1514,7 +1536,7 @@ class ReaderPageTests(TestCase):
         self.assertEqual(first_steps(), ['primero', 'mayusculas'])  # Visitors: public articles only.
         self.assertEqual(first_steps(self.reader), ['primero', 'mayusculas', 'con-cuenta', 'mas-5', 'mas-6'])  # At most 5.
         self.assertEqual(first_steps(self.listed), ['restringido', 'primero', 'mayusculas', 'con-cuenta', 'mas-5'])
-        self.assertIn('<small>Guía</small></div></article>', home(self.reader))  # Type only: a start path has no dates.
+        self.assertIn('<small>Guía</small><small>Actualizado <time datetime="', home(self.reader))  # Round 3 #4: the Recientes cell.
 
     def test_downloads_mark_the_framework_file_that_latest_serves(self):
         def make(title, section, minutes):

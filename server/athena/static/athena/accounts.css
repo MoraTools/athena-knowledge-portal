@@ -1,6 +1,9 @@
 /* Sign-in (centred, no rail) and password pages (inside the portal rail, like the reader). */
 .account-header { max-width: 650px; margin: 0 auto; padding: var(--space-4) var(--space-3) 0; }
-.account-header .brand { display: inline-flex; }
+/* The rail's lockup (rail.css .rail-brand): left-aligned, muted subtitle, so the wordmark, subtitle and form share one edge. */
+.account-header .brand { display: inline-flex; align-items: flex-start; text-align: left; line-height: 1; letter-spacing: normal; }
+.account-header .brand span { letter-spacing: .14em; }
+.account-header .brand small { margin: 8px 0 0; color: var(--text-subtle); font: 600 10px/1 var(--font-mono); letter-spacing: .08em; }
 .account-main { width: 100%; min-width: 0; max-width: 650px; margin: 0 auto; padding: var(--space-4) var(--space-3); overflow-wrap: anywhere; }
 /* With the rail: the reader's page offset, width cap and padding (src/styles.css div#main, .markdown-section). */
 body:has(#rail) { padding-left: var(--rail-current); transition: padding-left var(--rail-dur) var(--rail-ease); }
@@ -30,7 +33,7 @@ html[data-rail=hidden] body:has(#rail) .account-header { display: block; }
 .account-help { padding-top: var(--space-3); border-top: 1px solid var(--border); }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
-.account-command{position:sticky;top:0;z-index:30;display:flex;align-items:center;height:52px;padding:0 24px;border-bottom:1px solid var(--border);background:var(--surface)}
+.account-command{position:sticky;top:0;z-index:30;display:flex;align-items:center;height:52px;padding:0 24px;border-bottom:1px solid var(--border);background:var(--bg)}
 .account-command .suite-toggles{margin-left:auto}
 body:has(#rail) .account-command{margin:0;gap:12px}
 .account-form .errorlist{border:1px solid var(--crit)}
