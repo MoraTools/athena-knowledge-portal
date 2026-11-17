@@ -301,9 +301,10 @@ function filterGuides() {
     if (topic) showGuideTopic(topic.section.children[0]);
   }
   if (state.picker) {
-    state.picker.name.textContent = t('Temas');
+    // The closed phone box names an active topic filter, so the first screen says the list is filtered.
     const topics = [...state.groups.values()].filter((group) => !group.jump.hidden).length;
-    state.picker.count.textContent = '(' + new Intl.NumberFormat(currentLang()).format(topics) + ')';
+    state.picker.name.textContent = topic ? t('Tema:') + ' ' + topic.section.children[0].textContent : t('Temas');
+    state.picker.count.textContent = '(' + (topic ? topic.count.textContent : new Intl.NumberFormat(currentLang()).format(topics)) + ')';
   }
   const count = document.querySelector('#guide-count');
   const empty = document.querySelector('.library-empty');
@@ -817,7 +818,7 @@ function createSearchResult(entry, terms) {
     pdf.href = entry.pdf;
     pdf.target = '_blank';
     pdf.rel = 'noreferrer';
-    pdf.textContent = t('Abrir PDF');
+    pdf.textContent = t('Abrir PDF original');
     actions.append(pdf);
   }
   if (actions.childElementCount) tail.append(actions);
@@ -937,9 +938,9 @@ function buildPdfViewer() {
   viewer.className = 'pdf-viewer';
   const actions = document.createElement('p');
   actions.className = 'pdf-viewer__actions';
-  [['Descargar PDF', src + '?download=1', ''], ['Abrir en pestaña nueva', src, '_blank']].forEach(([label, href, target]) => {
+  // Both actions name the attached file "PDF original" (as cards and search do); Descargar is the view's one gold primary.
+  [['Descargar PDF original', src + '?download=1', ''], ['Abrir PDF original', src, '_blank']].forEach(([label, href, target]) => {
     const a = document.createElement('a');
-    // Descargar PDF is the view's one gold primary; Abrir en pestaña nueva is secondary.
     a.className = target ? 'pdf-link' : 'download-link';
     a.href = href;
     a.textContent = t(label);
@@ -956,6 +957,12 @@ function buildPdfViewer() {
   frame.loading = 'lazy';
   viewer.append(actions, frame);
   (link.closest('.article-pdf') || link).replaceWith(viewer);
+  // A PDF-only guide has no text of its own, so it has no page to copy.
+  const article = document.querySelector('.markdown-section');
+  const head = ':is(h1,.article-meta,.article-access,.article-actions,.page-tree,.pdf-viewer,.article-tools,.article-context)';
+  if (article && ![...article.children].some((node) => !node.matches(head) && node.textContent.trim())) {
+    article.querySelector('.article-actions button.copy-page:not(.copy-link)')?.remove();
+  }
 }
 
 // One meta line under the article title, from the reader's search index (drafts are not in it, so they get none).

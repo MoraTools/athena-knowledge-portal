@@ -498,10 +498,9 @@ context.buildPdfViewer();
 assert.equal(citationsReplaced, 0);
 assert.equal(viewer.className, 'pdf-viewer');
 assert.equal(viewer.children[1].src, '/pdf/guide.pdf#zoom=page-width&pagemode=none&view=FitH&navpanes=0', 'The viewer opens at page width.');
-assert.equal(viewer.children[0].children[0].href, '/pdf/guide.pdf?download=1');
-assert.equal(viewer.children[0].children[1].target, '_blank');
-assert.deepEqual(viewer.children[0].children.map((link) => link.className), ['download-link', 'pdf-link'],
-  'Descargar PDF is the gold primary; Abrir en pestaña nueva is secondary.');
+assert.deepEqual(viewer.children[0].children.map((link) => [link.textContent, link.href, link.target, link.className]),
+  [['Descargar PDF original', '/pdf/guide.pdf?download=1', undefined, 'download-link'], ['Abrir PDF original', '/pdf/guide.pdf', '_blank', 'pdf-link']],
+  'Both actions name the original; Descargar PDF original is the gold primary, Abrir PDF original the secondary.');
 const originalViewer = viewer;
 context.buildPdfViewer();
 assert.equal(viewer, originalViewer, 'Repeated sync keeps one viewer.');
@@ -513,6 +512,18 @@ viewer = null;
 context.document.querySelectorAll = () => [externalPdf, crossArticlePdf];
 context.buildPdfViewer();
 assert.equal(viewer, null, 'An article without its own attachment does not embed another PDF.');
+// A PDF-only guide (no text besides its head) has no Copiar página; a guide with text keeps it.
+for (const [text, expected] of [['', true], ['Texto de la guía', false]]) {
+  let copyRemoved = false;
+  const node = (head, content) => ({ matches: () => head, textContent: content });
+  const article = { children: [node(true, 'Guía'), node(true, 'Copiar enlace'), node(false, text)],
+    querySelector: (selector) => selector === '.article-actions button.copy-page:not(.copy-link)' ? { remove() { copyRemoved = true; } } : null };
+  viewer = null;
+  context.document.querySelectorAll = () => [ownPdf];
+  context.document.querySelector = (selector) => ({ '.markdown-section .pdf-viewer': viewer, '.markdown-section': article })[selector] || null;
+  context.buildPdfViewer();
+  assert.equal(copyRemoved, expected, text ? 'A guide with text keeps Copiar página.' : 'A PDF-only guide has no Copiar página.');
+}
 context.document.querySelector = () => null;
 context.document.querySelectorAll = () => [];
 
@@ -936,12 +947,14 @@ assert.equal(guides.count.textContent, '1 resultado');
 const filterJumps = guides.topics.children[0].children[1];
 assert.equal(filterJumps.children[0].href, '#/guides', 'A topic filter has a way back to all topics.');
 assert.equal(filterJumps.children[0].textContent, 'Todos los temas');
+assert.equal(guides.topics.children[0].children[0].textContent, 'Tema: Seguridad (1)', 'The closed phone box names the active topic.');
 assert.equal(filterJumps.children[0].hidden, false);
 assert.equal(filterJumps.children.find((jump) => jump.textContent.startsWith('café ')).children.at(-1).textContent, '2', 'A topic counts the guides with its tag.');
 context.location.hash = '#/guides';
 context.syncView();
 assert.equal(filterJumps.children[0].hidden, true, 'All topics shows only while a topic filter is on.');
 assert.ok(seguridad.hidden, 'Without a filter each guide shows once, under its first topic.');
+assert.match(guides.topics.children[0].children[0].textContent, /^Temas \(\d+\)$/);
 assert.equal(guides.count.textContent, '4 resultados');
 context.location.hash = '#/guides';
 guides = guidePage([entries[2]]);
