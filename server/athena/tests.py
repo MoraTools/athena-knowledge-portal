@@ -1203,9 +1203,9 @@ class DownloadTests(TestCase):
         self.assertIn('[Descargas](/downloads.md)', sidebar)
         self.assertNotIn('Archivo', sidebar)
         entries = [e for e in self.client.get('/search-index.json').json() if e['kind'] == 'download']
-        self.assertEqual([(e['title'], e['section'], e['route']) for e in entries],
-                         [('Framework actual', 'Framework', '/downloads/' + self.item.slug),
-                          ('Versión 2025', 'Versiones anteriores', '/downloads/old-zip')])
+        self.assertEqual([(e['title'], e['section'], e['route'], e['prose']) for e in entries],
+                         [('Framework actual', 'Framework', '/downloads/' + self.item.slug, self.item.note),
+                          ('Versión 2025', 'Versiones anteriores', '/downloads/old-zip', '')])
 
     def test_downloads_page_filter(self):
         Download.objects.create(title='Versión 2025', section='previous', note='Solo lectura', file=ContentFile(b'old', name='old.zip'))
@@ -1429,6 +1429,7 @@ class ReaderPageTests(TestCase):
                           body='# T\n\nUse \\*todo\\* and `code` **bold**.\n\n```powershell\n$ruta = "C:\\\\Bots"\n```\n\n<!-- hidden -->\n')
         entry = search_entry(article)
         self.assertEqual(entry['text'], 'T Use *todo* and code bold. $ruta = "C:\\\\Bots"')
+        self.assertEqual(entry['prose'], 'T Use *todo* and … bold.')  # Excerpts come from prose: no code, no paths.
         self.assertNotIn('powershell', json.dumps(entry))
         self.assertEqual(html_text('<p>Demo <button>Pantalla completa ▶</button><span aria-hidden="true">✓<b>x</b></span>'
                                    '<video controls>Sin video</video><img aria-hidden="true" alt=""> fin</p>'), 'Demo fin')
@@ -1444,11 +1445,25 @@ class ReaderPageTests(TestCase):
         # The text is the stored body; the sections follow the reader's body, with its title heading and PDF link.
         self.assertEqual(entry['text'], 'Intro con negrita y código. Instalar Paso uno. $ruta = "C:\\\\Bots" visible '
                                         'Detalles a b 1 2 Notas & avisos Cita final.')
+        self.assertEqual(entry['prose'], 'Intro con negrita y …. Instalar Paso uno. visible Detalles a b 1 2 Notas & avisos Cita final.')
         self.assertEqual(entry['headings'], [
-            {'level': 1, 'raw': 'Guía &lt;A&amp;B&gt;', 'title': 'Guía <A&B>', 'text': 'Intro con negrita y código.'},
-            {'level': 2, 'raw': 'Instalar', 'title': 'Instalar', 'text': 'Paso uno. $ruta = "C:\\\\Bots" visible'},
-            {'level': 2, 'raw': 'Detalles', 'title': 'Detalles', 'text': 'a b 1 2'},
-            {'level': 3, 'raw': 'Notas &amp; avisos', 'title': 'Notas & avisos', 'text': 'Cita final. Abrir PDF original'}])
+            {'level': 1, 'raw': 'Guía &lt;A&amp;B&gt;', 'title': 'Guía <A&B>', 'text': 'Intro con negrita y código.',
+             'prose': 'Intro con negrita y ….'},
+            {'level': 2, 'raw': 'Instalar', 'title': 'Instalar', 'text': 'Paso uno. $ruta = "C:\\\\Bots" visible',
+             'prose': 'Paso uno. visible'},
+            {'level': 2, 'raw': 'Detalles', 'title': 'Detalles', 'text': 'a b 1 2', 'prose': 'a b 1 2'},
+            {'level': 3, 'raw': 'Notas &amp; avisos', 'title': 'Notas & avisos', 'text': 'Cita final. Abrir PDF original',
+             'prose': 'Cita final. Abrir PDF original'}])
+
+    def test_search_prose_skips_code_and_keeps_text_after_unclosed_code(self):
+        from .views import html_texts
+        self.assertEqual(html_texts('<p>a <code>x</code> b</p><pre><code>y</code></pre><p>c</p>'), ('a x b y c', 'a … b c'))  # "…" only for inline code
+        # Hidden text stays out of both; code inside hidden text and hidden text inside code too.
+        self.assertEqual(html_texts('<p>a <span aria-hidden="true">h <code>x</code></span> <code>y <button>z</button></code> b</p>'),
+                         ('a y b', 'a … b'))
+        # An HTML article with an unclosed code element loses no prose after it.
+        self.assertEqual(html_texts('<p>a <code>x</p><h2>Later</h2><p>text</p>'), ('a x Later text', 'a x Later text'))
+        self.assertEqual(html_texts('<pre>a <span aria-hidden="true">h</pre> b'), ('a h b', 'b'))
 
     def test_search_text_keeps_text_after_an_unclosed_hidden_element(self):
         from .views import search_text

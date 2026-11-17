@@ -183,33 +183,50 @@ def article_image(request, image_id):
 
 
 class HtmlText(HTMLParser):
-    """Readable text of an article: headings and prose, without scripts, styles, templates, controls or hidden text."""
+    """Readable text of an article: headings and prose, without scripts, styles, templates, controls or hidden text.
+
+    One pass gives two texts: parts (everything readable, for matching) and prose (the same without code blocks
+    and with "…" for inline code, the source of result excerpts).
+    """
     SKIP = {'script', 'style', 'template', 'noscript', 'title', 'svg', 'button', 'video'}
+    CODE = {'pre', 'code'}
     INLINE = {'a', 'abbr', 'b', 'code', 'em', 'i', 'kbd', 'mark', 's', 'small', 'span', 'strong', 'sub', 'sup', 'u'}
     VOID = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'}
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        # skips: open skipped elements as [tag, its open count, text and spacing held since it opened].
-        self.parts, self.skips = [], []
+        # skips: open skipped elements as [tag, its open count, text held since it opened, prose held, hides text].
+        # A code element holds only prose: its text stays in parts.
+        self.parts, self.prose, self.skips = [], [], []
 
     def out(self):
-        return self.skips[-1][2] if self.skips else self.parts
+        text = next((skip[2] for skip in reversed(self.skips) if skip[4]), self.parts)
+        return text, self.skips[-1][3] if self.skips else self.prose
+
+    def space(self, tag):
+        if tag not in self.INLINE:
+            for target in self.out():
+                target.append(' ')
 
     def release(self, depth):
         # A skipped element that never closes hides nothing: its held text goes back in place.
         while len(self.skips) > depth:
-            held = self.skips.pop()[2]
-            self.out().extend(held)
+            _, _, text, prose, hides = self.skips.pop()
+            out_text, out_prose = self.out()
+            if hides:
+                out_text.extend(text)
+            out_prose.extend(prose)
 
     def handle_starttag(self, tag, attrs):
-        if tag not in self.VOID and (tag in self.SKIP or ('aria-hidden', 'true') in attrs):
-            self.skips.append([tag, 1, []])
+        hides = tag in self.SKIP or ('aria-hidden', 'true') in attrs
+        if tag not in self.VOID and (hides or tag in self.CODE):
+            if not hides:
+                self.space(tag)
+            self.skips.append([tag, 1, [], [], hides])
             return
         if self.skips and tag == self.skips[-1][0]:
             self.skips[-1][1] += 1
-        if tag not in self.INLINE:
-            self.out().append(' ')
+        self.space(tag)
 
     def handle_endtag(self, tag):
         depth = next((i for i in range(len(self.skips) - 1, -1, -1) if self.skips[i][0] == tag), None)
@@ -217,24 +234,31 @@ class HtmlText(HTMLParser):
             self.release(depth + 1)
             self.skips[depth][1] -= 1
             if not self.skips[depth][1]:
-                self.skips.pop()  # Closed normally: drop what it held.
-                return
-        if tag not in self.INLINE:
-            self.out().append(' ')
+                if self.skips.pop()[4]:  # Closed normally: drop what it held.
+                    return
+                if tag == 'code' and not any(skip[0] == 'pre' for skip in self.skips):
+                    self.out()[1].append('…')  # Dropped inline code keeps its place, so the sentence still reads.
+        self.space(tag)
 
     def handle_data(self, data):
-        self.out().append(data)
+        for target in self.out():
+            target.append(data)
 
     def close(self):
         super().close()
         self.release(0)
 
 
-def html_text(body):
+def html_texts(body):
+    """(text, prose) of an HTML body; see HtmlText."""
     parser = HtmlText()
     parser.feed(body)
     parser.close()
-    return re.sub(r'\s+', ' ', ''.join(parser.parts)).strip()
+    return tuple(re.sub(r'\s+', ' ', ''.join(parts)).strip() for parts in (parser.parts, parser.prose))
+
+
+def html_text(body):
+    return html_texts(body)[0]
 
 
 def search_text(body):
@@ -245,9 +269,10 @@ def search_text(body):
 def search_entry(article):
     if article.format == 'html':
         # Headings live inside the sandboxed frame; results link to the article itself.
+        text, prose = html_texts(article.body)
         return {'title': article.title, 'kind': article.kind, 'summary': article.summary, 'author': article.author,
                 'date': timezone.localdate(article.updated_at).isoformat(), 'tags': article.tags, 'route': '#/content/' + article.slug,
-                'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '', 'text': html_text(article.body),
+                'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '', 'text': text, 'prose': prose,
                 'headings': []}
     # One parse and one render per article: the text is the stored body, the sections come from the reader's body.
     prefix, body, suffix = article_parts(article)
@@ -256,17 +281,19 @@ def search_entry(article):
     tokens = MARKDOWN.parse(prefix) + body_tokens + MARKDOWN.parse(suffix)
     starts = [i for i, token in enumerate(tokens) if token.type == 'heading_open'] + [len(tokens)]
 
-    def text(part):
-        return html_text(MARKDOWN.renderer.render(part, MARKDOWN.options, env))
+    def texts(part):
+        return html_texts(MARKDOWN.renderer.render(part, MARKDOWN.options, env))
 
+    text, prose = texts(body_tokens)
+    sections = [(a, *texts(tokens[a + 3:b])) for a, b in zip(starts, starts[1:])]
     return {
         'title': article.title, 'kind': article.kind, 'summary': article.summary,
         'author': article.author, 'date': timezone.localdate(article.updated_at).isoformat(), 'tags': article.tags,
         'route': '#/content/' + article.slug, 'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '',
-        'text': text(body_tokens), 'headings': [
-            {'level': int(tokens[a].tag[1:]), 'raw': tokens[a + 1].content, 'title': text([tokens[a + 1]]),
-             'text': text(tokens[a + 3:b])}
-            for a, b in zip(starts, starts[1:])
+        'text': text, 'prose': prose, 'headings': [
+            {'level': int(tokens[a].tag[1:]), 'raw': tokens[a + 1].content, 'title': texts([tokens[a + 1]])[0],
+             'text': section_text, 'prose': section_prose}
+            for a, section_text, section_prose in sections
         ],
     }
 
@@ -277,7 +304,8 @@ def download_entry(download):
         'title': download.title, 'kind': 'download', 'section': section,
         'summary': f'Archivo aprobado de {filesizeformat(download.size)} en {section}.',
         'author': '', 'date': '', 'tags': [section, Path(download.filename).suffix.lstrip('.').upper()],
-        'route': '/downloads/' + download.slug, 'pdf': '', 'text': f'{download.filename} {download.note}', 'headings': [],
+        'route': '/downloads/' + download.slug, 'pdf': '', 'text': f'{download.filename} {download.note}',
+        'prose': download.note, 'headings': [],
     }
 
 
