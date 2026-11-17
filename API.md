@@ -83,6 +83,7 @@ Read-only keys see published references. Editors with an edit-capable key also s
 An image with no saved reference is visible only to its uploader while that account can still edit articles.
 Other authors can reuse an image only after an article they can read uses it. A public article makes its referenced images public.
 Unused images have a 24-hour grace period before cleanup. If an image is no longer available, upload it again before saving.
+Tags are trimmed on save, and a tag already in use takes its existing spelling (`excel` is saved as `Excel`).
 Download sections: `framework`, `packages`, `exercises`, `previous`. Uploads are published at once and keep the original file name.
 The proxy accepts up to 512 MB on `/api/`. Each result has `size`, `sha256`, and `url`; the `url` works only in a signed-in browser session.
 API version 1.11.0: PATCH a download with a JSON object of one or more of `title`, `section`, `note`. It needs `change_download`.
