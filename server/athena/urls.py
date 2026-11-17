@@ -3,7 +3,7 @@ from django.contrib.auth import views as auth
 from django.urls import path, re_path
 from django.views.generic import RedirectView
 
-from . import api, views
+from . import api, forms, views
 
 urlpatterns = [
     path('healthz', views.health),
@@ -14,7 +14,7 @@ urlpatterns = [
     path('accounts/logout/', auth.LogoutView.as_view()),
     # Mi cuenta is a reader page; PasswordChangeView keeps this session valid (update_session_auth_hash).
     path('accounts/profile/', RedirectView.as_view(url='/#/account')),
-    path('accounts/password_change/', auth.PasswordChangeView.as_view(success_url='/#/account')),
+    path('accounts/password_change/', auth.PasswordChangeView.as_view(form_class=forms.AccountPasswordForm, success_url='/#/account')),
     path('request-access', RedirectView.as_view(url='/accounts/login/')),
     path('request-access.html', RedirectView.as_view(url='/accounts/login/')),
     path('api/', api.index),

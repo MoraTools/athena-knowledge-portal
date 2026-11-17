@@ -152,7 +152,7 @@ class PortalTests(TestCase):
         self.assertContains(self.client.get('/api.md'), '## Quick start')
         self.assertNotIn('API para agentes', self.client.get('/_sidebar.md').content.decode())
         self.client.force_login(self.admin)
-        self.assertIn('  - [Administrar Athena](/admin/ ":ignore")\n  - [API para agentes](/api.md)',
+        self.assertIn('  - [Administración](/admin/ ":ignore")\n  - [API para agentes](/api.md)',
                       self.client.get('/_sidebar.md').content.decode())
 
     def test_api_docs_stream_current_utf8_file_and_close_it(self):
@@ -781,6 +781,13 @@ class PortalTests(TestCase):
                 with self.assertRaises(ValueError, msg=url):
                     fetcher.fetch(url)
             fetch.assert_called_once()
+        # The four theme fonts are the only local files a PDF may read.
+        from .views import FONT_DIR, PDF_FONTS
+        self.assertEqual(sorted(path.name for path in PDF_FONTS.values()), sorted(path.name for path in FONT_DIR.glob('*.woff2')))
+        for url in PDF_FONTS:
+            self.assertTrue(fetcher.fetch(url).read().startswith(b'wOF2'), url)
+        with self.assertRaises(ValueError):
+            fetcher.fetch((FONT_DIR / 'LICENSE.md').as_uri())
 
     def test_admin_index_lists_last_activity(self):
         self.client.force_login(self.admin)
@@ -844,7 +851,7 @@ class PortalTests(TestCase):
         self.assertEqual(self.client.get('/content/first-guide.md').status_code, 404)  # No drafts.
         self.assertEqual(self.client.get('/admin/auth/user/').status_code, 403)
         self.assertIn('Administrador · Última sesión', self.client.get('/account.md').content.decode())
-        self.assertIn('Administrar Athena', self.client.get('/_sidebar.md').content.decode())
+        self.assertIn('[Administración](/admin/', self.client.get('/_sidebar.md').content.decode())
 
         editor = self.directory_admin('editor', ['articles'])
         self.client.force_login(editor)
@@ -915,16 +922,16 @@ class PortalTests(TestCase):
         self.assertIn('- Participar\n  - [Contribuir](/content/contributing.md)\n', sidebar)
         self.assertIn('- Cuenta\n  - [Mi cuenta](/account.md)\n', sidebar)
         self.assertNotIn('Administración', sidebar)
-        self.assertNotIn('Administrar Athena', sidebar)
+        self.assertNotIn('[Administración](/admin/', sidebar)
         self.assertEqual([group for group, _ in sidebar_links(self.reader)], ['Biblioteca', 'Participar', 'Cuenta'])
         self.client.force_login(self.admin)
         self.assertTrue(self.client.get('/_sidebar.md').content.decode().endswith(
-            '- Administración\n  - [Administrar Athena](/admin/ ":ignore")\n  - [API para agentes](/api.md)\n'))
+            '- Administración\n  - [Administración](/admin/ ":ignore")\n  - [API para agentes](/api.md)\n'))
         self.assertEqual(sidebar_links(self.admin), [
             ('Biblioteca', [('Inicio', '/'), ('Guías', '/#/guides'), ('Actualizaciones', '/#/updates'),
                             ('Herramientas', '/#/tools'), ('Descargas', '/#/downloads')]),
             ('Participar', [('Contribuir', '/#/content/contributing')]), ('Cuenta', [('Mi cuenta', '/#/account')]),
-            ('Administración', [('Administrar Athena', '/admin/'), ('API para agentes', '/#/api')])])
+            ('Administración', [('Administración', '/admin/'), ('API para agentes', '/#/api')])])
         item = '<a class="rail-item" href="{}"{}><span class="rail-label">{}</span></a>'.format
         reader_links = [item('/', '', 'Inicio'), item('/#/guides', '', 'Guías'), item('/#/content/contributing', '', 'Contribuir'),
                         item('/#/account', '', 'Mi cuenta')]
@@ -944,9 +951,9 @@ class PortalTests(TestCase):
             admin_group = page[page.index('>Administración</p>'):]
             self.assertLess(admin_group.index('>API para agentes</span>'), admin_group.index('>Artículos</span>'))
             self.assertEqual(page.count('aria-current="page"'), 1)
-        self.assertContains(response, item('/admin/', '', 'Administrar Athena'))
+        self.assertContains(response, item('/admin/', '', 'Administración'))
         self.assertContains(self.client.get('/admin/auth/user/'), item('/admin/auth/user/', ' aria-current="page"', 'Usuarios'))
-        self.assertContains(self.client.get('/admin/'), item('/admin/', ' aria-current="page"', 'Administrar Athena'))
+        self.assertContains(self.client.get('/admin/'), item('/admin/', ' aria-current="page"', 'Administración'))
         self.assertContains(self.client.get('/admin/athena/article/add/'),
                             item('/admin/athena/article/', ' aria-current="page"', 'Artículos'))
         self.assertNotContains(self.client.get('/admin/auth/user/add/?_popup=1'), 'class="rail"')
@@ -1031,6 +1038,14 @@ class PortalTests(TestCase):
         response = self.client.get('/accounts/password_change/')
         self.assertContains(response, 'class="rail"')
         self.assertContains(response, '<a class="rail-item" href="/#/account" aria-current="page">', html=False)
+        # The reader's crumb row, and plain labels without Django's colon.
+        self.assertContains(response, '<div class="command-crumbs"><a href="/">Athena</a><span aria-hidden="true">›</span><a href="/#/account">Mi cuenta</a>'
+                                      '<span aria-hidden="true">›</span><span aria-current="page">Cambiar contraseña</span></div>', html=False)
+        for field, label in [('old_password', 'Contraseña actual'), ('new_password1', 'Contraseña nueva'),
+                             ('new_password2', 'Repita la contraseña nueva')]:
+            self.assertContains(response, f'<label for="id_{field}">{label}</label>', html=False)
+        self.assertNotContains(response, ':</label>')
+        self.assertNotContains(self.client.get('/accounts/login/'), 'command-crumbs')
         response = self.client.post('/accounts/password_change/', {
             'old_password': 'Reader-Example-9348!', 'new_password1': 'Changed-Reader-Pass-5521!',
             'new_password2': 'Changed-Reader-Pass-5521!'})
@@ -1501,9 +1516,22 @@ class ReaderPageTests(TestCase):
                          'Antes después Later text')
 
     def test_pdf_export_has_the_reader_meta_line_and_address(self):
-        article = Article(title='Guía', slug='guia', author='Ana & Co', published=True, body='# Guía\n\nTexto',
-                          updated_at=datetime(2026, 11, 14, 15, tzinfo=LIMA))
+        from weasyprint import HTML
+        article = Article(title='Guía', slug='guia', author='Ana & Co', published=True, body='# Guía\n\nTexto `x`\n\n## Parte',
+                          tags=['Colas', 'Excel'], updated_at=datetime(2026, 9, 27, 15, tzinfo=LIMA))
         html = article_html(article, 'https://athena.test')
-        self.assertIn('<h1>Guía</h1>\n<p class="article-meta">Ana &amp; Co · Actualizado 14/11/2026</p>', html)
+        # The reader's order and date ('27 sept 2026', as Intl writes it); tags as plain text.
+        self.assertIn('<h1>Guía</h1>\n<p class="article-meta">Guía · Ana &amp; Co · Actualizado 27 sept 2026 · Colas, Excel</p>', html)
+        article.author, article.tags, article.updated_at = '', [], datetime(2026, 11, 14, 15, tzinfo=LIMA)
+        self.assertIn('<p class="article-meta">Guía · Actualizado 14 nov 2026</p>', article_html(article, 'https://athena.test'))
         self.assertIn('html { string-set: address "https://athena.test/#/content/guia · " }', html)
+        self.assertIn('@bottom-left { content: string(title);', html)  # The title next to the address.
         self.assertIn('content: string(address) counter(page)', html)
+        # Theme A: the local Inter and Cormorant files, and no colour outside the suite tokens.
+        style = html[html.index('<style>'):html.index('</style>')]
+        self.assertNotRegex(style[style.index('@page'):], r'#[0-9a-fA-F]{3}')
+        fetcher, fetched = pdf_fetcher(), []
+        fetch = fetcher.fetch
+        fetcher.fetch = lambda url, headers=None: fetched.append(url) or fetch(url, headers)
+        self.assertTrue(HTML(string=html, base_url='https://athena.test/content/guia.pdf', url_fetcher=fetcher).write_pdf().startswith(b'%PDF-'))
+        self.assertTrue({'inter-latin.woff2', 'cormorant-300-700-latin.woff2'} <= {url.rsplit('/', 1)[-1] for url in fetched}, fetched)

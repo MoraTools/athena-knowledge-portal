@@ -1,7 +1,7 @@
 import re
 
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm, UserChangeForm, UserCreationForm, UsernameField
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserChangeForm, UserCreationForm, UsernameField
 from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -20,6 +20,16 @@ class SignInForm(AuthenticationForm):
             # The sign-in error names no field, so both fields point to it (#login-error in registration/login.html).
             for name in ('username', 'password'):
                 self.fields[name].widget.attrs.update({'aria-invalid': 'true', 'aria-describedby': 'login-error'})
+
+
+class AccountPasswordForm(PasswordChangeForm):
+    """Cambiar contraseña with the sign-in form's plain labels (no colon)."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, label_suffix='', **kwargs)
+        self.fields['old_password'].label = 'Contraseña actual'
+        self.fields['new_password1'].label = 'Contraseña nueva'
+        self.fields['new_password2'].label = 'Repita la contraseña nueva'
+        self.fields['new_password2'].help_text = 'Escriba otra vez la contraseña nueva.'
 
 
 def disable_email_field(field):

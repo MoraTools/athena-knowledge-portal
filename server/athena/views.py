@@ -15,7 +15,6 @@ from django.shortcuts import get_object_or_404, render
 from django.template.defaultfilters import filesizeformat
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.formats import date_format
 from django.utils.html import escape
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from markdown_it import MarkdownIt
@@ -370,23 +369,32 @@ def article_markdown(request, slug):
 MARKDOWN = MarkdownIt('commonmark', {'html': True}).enable(['table', 'strikethrough'])
 # The only resources an exported PDF may load; everything else (file:, other hosts, the site itself) is skipped.
 PDF_RESOURCES = ('data:', 'https://raw.githubusercontent.com/')
-PDF_STYLE = """
+# Theme A in print: the light tokens and the local Inter and Cormorant files of suite-tokens.css (one source).
+SUITE_TOKENS = (settings.BASE_DIR / 'src/assets/suite-tokens.css').read_text(encoding='utf-8')
+FONT_DIR = settings.BASE_DIR / 'src/fonts'
+PDF_FONTS = {(FONT_DIR / name).as_uri(): FONT_DIR / name for name in re.findall(r"url\('/fonts/([\w.-]+)'\)", SUITE_TOKENS)}
+PDF_STYLE = (''.join(re.findall(r'@font-face\{[^}]*\}', SUITE_TOKENS)).replace("url('/fonts/", f"url('{FONT_DIR.as_uri()}/")
+             + ':root{' + re.search(r':root:not\(\[data-theme\]\)[^{]*\{([^}]*)\}', SUITE_TOKENS)[1] + '}' + """
 @page { size: A4; margin: 2cm;
-  @bottom-center { content: string(address) counter(page) " / " counter(pages); font: 9pt "DejaVu Sans", sans-serif; color: #555 } }
-.article-meta { margin: -.2em 0 1.2em; font-size: 9pt }
-body { font: 10.5pt/1.5 "DejaVu Sans", sans-serif; color: #111; background: #fff }
-h1, h2, h3, h4, h5, h6 { color: #000; font-weight: bold; line-height: 1.25; margin: 1.2em 0 .5em; break-after: avoid }
-h1 { font-size: 20pt; margin-top: 0 } h2 { font-size: 15pt } h3 { font-size: 12.5pt } h4, h5, h6 { font-size: 11pt }
-a { color: #1a55b0 }
-code, pre { font-family: "DejaVu Sans Mono", monospace; font-size: 9pt; background: #f2f2f2 }
+  @bottom-left { content: string(title); font: 8pt "DejaVu Sans Mono", monospace; color: var(--text-muted) }
+  @bottom-right { content: string(address) counter(page) " / " counter(pages); font: 8pt "DejaVu Sans Mono", monospace;
+    color: var(--text-muted); text-align: right } }
+body > h1:first-of-type { string-set: title content() }
+.article-meta { margin: -.2em 0 1.4em; font: 9pt/1.5 "DejaVu Sans Mono", monospace; color: var(--text-muted) }
+body { font: 10.5pt/1.55 Inter, sans-serif; color: var(--text) }
+h1, h2, h3, h4, h5, h6 { color: var(--text); font-weight: 650; line-height: 1.3; margin: 1.2em 0 .5em; break-after: avoid }
+h1, h2 { font-family: Cormorant, serif; font-weight: 600 }
+h1 { font-size: 26pt; line-height: 1.15; margin-top: 0 } h2 { font-size: 18pt } h3 { font-size: 12.5pt } h4, h5, h6 { font-size: 11pt }
+a { color: var(--accent-text) }
+code, pre { font-family: "DejaVu Sans Mono", monospace; font-size: 9pt; background: var(--surface-strong) }
 code { padding: 0 .2em }
-pre { padding: .6em .8em; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid }
+pre { padding: .6em .8em; border: 1px solid var(--border); border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid }
 pre code { padding: 0 }
 img { max-width: 100%; break-inside: avoid }
 table { border-collapse: collapse; margin: .8em 0 }
-th, td { border: .5pt solid #999; padding: .3em .5em; text-align: left; vertical-align: top }
-blockquote { margin: .8em 0; padding: 0 1em; border-left: 3pt solid #bbb; color: #333 }
-"""
+th, td { border: .5pt solid var(--border-strong); padding: .3em .5em; text-align: left; vertical-align: top }
+blockquote { margin: .8em 0; padding: 0 1em; border-left: 3pt solid var(--border); color: var(--text-muted) }
+""")
 
 
 def export_href(href, origin):
@@ -407,15 +415,20 @@ def video_link(match):
     return f'<a href="{escape(unescape(source[1] or source[2] or ""))}">Ver video</a>' if source else ''
 
 
+# The reader's dates (Intl, es): '14 nov 2026', '27 sept 2026'; Django's Spanish short month for September is 'sep'.
+READER_MONTHS = ('ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic')
+
+
 def article_html(article, origin):
     body = PDF_VIDEO.sub(video_link, MARKDOWN.render(article_body(article)))
     body = re.sub(r'\bhref="([^"]*)"', lambda m: f'href="{export_href(m[1], escape(origin))}"', body)
-    # The reader's meta line under the h1, and the article address in the page footer.
-    meta = [escape(article.author)] if article.author else []
+    # The reader's meta line under the h1 (type · author · Actualizado <date> · tags), and the address in the footer.
+    meta = [article.get_kind_display(), article.author]
     if article.updated_at:
-        meta.append(f'Actualizado {date_format(timezone.localdate(article.updated_at))}')
-    if meta:
-        body = body.replace('</h1>', f'</h1>\n<p class="article-meta">{" · ".join(meta)}</p>', 1)
+        day = timezone.localdate(article.updated_at)
+        meta.append(f'Actualizado {day.day} {READER_MONTHS[day.month - 1]} {day.year}')
+    meta.append(', '.join(article.tags))
+    body = body.replace('</h1>', f'</h1>\n<p class="article-meta">{escape(" · ".join(filter(None, meta)))}</p>', 1)
     address = f'{origin}/#/content/{article.slug} · '.replace('\\', '\\\\').replace('"', '\\"')
     return (f'<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>{escape(article.title)}</title>'
             f'<meta name="author" content="{escape(article.author)}"><style>{PDF_STYLE}html {{ string-set: address "{address}" }}'
@@ -432,6 +445,8 @@ def pdf_fetcher(image_versions=None):
 
     class AllowlistFetcher(URLFetcher):
         def fetch(self, url, headers=None):
+            if url in PDF_FONTS:
+                return URLFetcherResponse(url, PDF_FONTS[url].read_bytes(), {'Content-Type': 'font/woff2'})
             image_id = image_id_from_url(url)
             if image_id and str(image_id) in allowed:
                 image = ManagedImage.objects.filter(pk=image_id, sha256=allowed[str(image_id)]).exclude(format='mp4').first()
@@ -658,7 +673,7 @@ def sidebar_markdown(user):
         links = [link for link in links if SIDEBAR_LINK.match(link)[2] not in hidden]
         links += ['[Ingresar](/accounts/login/)']
     if user.is_staff:
-        links += ['[Administrar Athena](/admin/ ":ignore")', '[API para agentes](/api.md)']
+        links += ['[Administración](/admin/ ":ignore")', '[API para agentes](/api.md)']
     groups = {group: [] for group in SIDEBAR_GROUPS}
     for link in links:
         groups[SIDEBAR_GROUP.get(SIDEBAR_LINK.match(link)[2], 'Biblioteca')].append(link)
