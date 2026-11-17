@@ -701,6 +701,58 @@ const readerCss = readFileSync(new URL('../src/styles.css', import.meta.url), 'u
 // The article action row starts at the h1 edge on every article type (round 4 #4).
 assert.match(readerCss, /^\.article-actions\{display:flex;flex-wrap:wrap;justify-content:flex-start;/m);
 assert.doesNotMatch(readerCss, /article-actions\{[^}]*flex-end/);
+// Round 4 #3: list rows use the article meta voice: mono 13 px, tabular figures, the same " · " separators.
+assert.match(readerCss, /\.markdown-section \.item-meta\{display:flex;flex-wrap:wrap;align-items:baseline;[^}]*font:13px\/1\.5 var\(--font-mono\);font-variant-numeric:tabular-nums/);
+assert.match(readerCss, /:is\(\.article-meta,\.search-result__meta,\.item-meta\)>\*::before\{content:'·'/);
+// Round 4 #31: Herramientas card titles in the Inter row voice; underline on hover and focus only.
+assert.match(readerCss, /\.markdown-section \.library-card h2\{margin:0;font:650 18px\/24px var\(--font-ui\)\}/);
+assert.match(readerCss, /\.markdown-section :is\(\.timeline-card,\.library-card\) :is\(h2,h3\) a\{color:var\(--text\);text-decoration:none\}/);
+// Round 4 #29: short inline code stays on one line; a value over 40 characters may wrap anywhere.
+{
+  const codes = ['run-tests', 'x'.repeat(41), 'y'.repeat(40)].map((text) => ({ textContent: text, classes: new Set(),
+    classList: { toggle(name, on) { on ? codes.find((code) => code.classList === this).classes.add(name) : codes.find((code) => code.classList === this).classes.delete(name); } } }));
+  const querySelectorAll = context.document.querySelectorAll;
+  context.document.querySelectorAll = (selector) => (selector === '.markdown-section :not(pre) > code' ? codes : []);
+  context.markLongCode?.();
+  assert.deepEqual(codes.map((code) => code.classes.has('long')), [false, true, false], 'Only inline code over 40 characters is long.');
+  context.document.querySelectorAll = querySelectorAll;
+  assert.match(readerCss, /\.markdown-section :not\(pre\)>code\{white-space:nowrap\}\.markdown-section :not\(pre\)>code\.long\{white-space:normal;overflow-wrap:anywhere\}/);
+}
+// Round 4 #30: a Markdown figure is a button that opens the image viewer with its caption.
+{
+  const src = context.location.origin + '/article-images/0b0e5f3a-1111-4222-8333-944455556666/';
+  const em = { tagName: 'EM', textContent: 'Figura 1. Flujo de un proceso.' };
+  const caption = { matches: (selector) => selector === 'p', children: [em], firstElementChild: em, textContent: ' Figura 1. Flujo de un proceso. ' };
+  const img = { alt: 'Flujo de cinco pasos', parentElement: { nextElementSibling: caption }, getAttribute: (name) => (name === 'src' ? src : null),
+    replaceWith(node) { this.replacedBy = node; } };
+  const created = [];
+  const createElement = context.document.createElement;
+  context.document.createElement = (tag) => {
+    const node = { tagName: tag.toUpperCase(), attributes: {}, listeners: {}, children: [], setAttribute(name, value) { this.attributes[name] = value; },
+      append(...nodes) { this.children.push(...nodes); }, addEventListener(name, handler) { this.listeners[name] = handler; } };
+    created.push(node);
+    return node;
+  };
+  const querySelectorAll = context.document.querySelectorAll;
+  context.document.querySelectorAll = (selector) => (selector === '.markdown-section p > img[src*="/article-images/"]' ? [img] : []);
+  const opened = [];
+  const openViewer = context.openViewer;
+  context.openViewer = (...args) => opened.push(args);
+  context.buildFigureZoom?.();
+  const button = img.replacedBy;
+  assert.ok(button && button.tagName === 'BUTTON' && button.type === 'button' && button.className === 'figure-zoom' && button.children[0] === img,
+    'The image sits in a button in its place.');
+  assert.equal(button.attributes['aria-label'], 'Ampliar imagen: Flujo de cinco pasos');
+  button.listeners.click();
+  assert.equal(opened.length, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(opened[0].slice(1))), [[{ src: '/article-images/0b0e5f3a-1111-4222-8333-944455556666/', caption: 'Figura 1. Flujo de un proceso.', alt: 'Flujo de cinco pasos' }], 0],
+    'One item: the managed image path, the caption line and the alt text.');
+  assert.equal(opened[0][0], button, 'Closing the viewer returns the focus to the figure button.');
+  Object.assign(context, { openViewer });
+  context.document.createElement = createElement;
+  context.document.querySelectorAll = querySelectorAll;
+  assert.match(readerCss, /\.figure-zoom\{[^}]*cursor:zoom-in/);
+}
 // The active Guías topic has a shape cue, not only gold text (round 4 #23): the editor tabs' 2 px accent bottom rule.
 assert.match(readerCss, /\.guide-topic-jumps a\[aria-current\]\{box-shadow:inset 0 -2px 0 var\(--accent\)/);
 assert.doesNotMatch(readerCss, /mask-image/, 'No reader table is masked.');
@@ -871,13 +923,22 @@ function guidePage(entries, legacy = false) {
     download.setAttribute('href', '#/downloads');
     const status = new Element('p', 'Estable');
     detail.append(link, summary, tagList, status, pdf, site, download);
+    // The server meta line (contract 1): kind, author, Actualizado <date>.
+    const meta = new Element('p');
+    meta.className = 'item-meta';
+    const kind = new Element('span', 'Guía');
+    kind.className = 'item-meta__kind';
     const author = new Element('span', entry.author);
-    author.className = 'guide-author';
+    author.className = 'item-meta__author guide-author';
+    const date = new Element('span');
+    date.className = 'item-meta__date';
     const time = new Element('time', entry.date);
     time.setAttribute('datetime', entry.date);
-    row.append(detail, author, time);
+    date.append('Actualizado ', time);
+    meta.append(kind, author, date);
+    row.append(detail, meta);
     const queryRow = row.querySelector.bind(row);
-    row.querySelector = (selector) => ({ '.guide-detail': detail, '.guide-author': author, time })[selector] || queryRow(selector);
+    row.querySelector = (selector) => ({ '.guide-detail': detail, '.item-meta': meta })[selector] || queryRow(selector);
     row.querySelectorAll = (selector) => selector === '.tag-list span' ? tags : [];
     return row;
   });
@@ -940,16 +1001,22 @@ checkTopicCounts('Unfiltered');
 assert.ok(groupFor('café').children.at(-1).children[0].textContent === 'Ver las 2 guías de café', 'café lists 1 of its 2 guides.');
 const copiedDetail = groupFor('RPA').children[1].children[0];
 const copiedTags = copiedDetail.querySelectorAll('.tag-list span').map((tag) => tag.textContent);
-assert.deepEqual(copiedTags, ['RPA', 'Café', 'CAFE', 'A|B <tema> "x"', 'Helios', 'Seguridad'], 'Other tags stay chips as literal text; the placement tag is no chip.');
+assert.deepEqual(copiedTags, ['Café', 'CAFE', 'A|B <tema> "x"', 'Helios', 'Seguridad'],
+  'Other tags stay chips as literal text; the placement tag and the chip that repeats the section topic (round 4 #3) are no chips.');
+assert.deepEqual(groupFor('café').children.filter((node) => node.className === 'guide-topic-row')
+  .map((row) => row.children[0].querySelectorAll('.tag-list span').map((tag) => tag.textContent)), [['RPA', 'A|B <tema> "x"', 'Helios', 'Seguridad'], ['RPA avanzado']],
+  'Under café no row repeats the café chip, in any spelling.');
 assert.equal(guides.rows[0].querySelectorAll('.tag-list span').length, 7, 'The hidden source record keeps every tag.');
 assert.deepEqual(copiedDetail.children.filter((child) => child.tagName === 'A').map((link) => link.getAttribute('href')),
   ['#/content/guide-0', '/pdf/guide-0.pdf', 'https://example.test/guide-0', '#/downloads'], 'Topic copies keep every rendered conditional action.');
 assert.match(copiedDetail.textContent, /Estable/);
 assert.notEqual(copiedDetail, guides.rows[0].children[0], 'Topic details are copies of the source record.');
-assert.equal(groupFor('RPA').children[1].children[1].children[0].textContent, entries[0].author);
-const rowDate = groupFor('RPA').children[1].children[1].children[1];
-assert.equal(rowDate.children.find((node) => node.tagName === 'TIME').getAttribute('datetime'), entries[0].date);
-assert.ok(rowDate.textContent.startsWith('Actualizado '), 'A Guías row date reads "Actualizado <date>" like the other reader lists.');
+// Round 4 #3: a topic row copies the server meta line (kind · author · Actualizado <date>) instead of building its own.
+const copiedMeta = groupFor('RPA').children[1].children[1];
+assert.equal(copiedMeta.className, 'item-meta', 'A topic row carries the item-meta line.');
+assert.notEqual(copiedMeta, guides.rows[0].children[1], 'The meta line is a copy of the source record.');
+assert.deepEqual(copiedMeta.children.map((node) => node.textContent), ['Guía', entries[0].author, 'Actualizado ' + entries[0].date]);
+assert.equal(copiedMeta.children[2].children.find((node) => node.tagName === 'TIME').getAttribute('datetime'), entries[0].date);
 assert.deepEqual(rowsOf(groupFor('Sin etiqueta')).map((row) => row.children[0].children[0].textContent),
   entries.slice(2).map((entry) => entry.title), 'Topic rows retain the server order.');
 const firstCopies = topicSections.map((section) => [...section.children]);

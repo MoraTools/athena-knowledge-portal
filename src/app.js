@@ -228,17 +228,10 @@ function buildGuideTopics(library, state) {
       const article = document.createElement('article');
       article.className = 'guide-topic-row';
       const detail = entry.row.querySelector('.guide-detail').cloneNode(true);
-      detail.querySelectorAll('.tag-list span').forEach((tag) => { if (!isTopicTag(tag.textContent)) tag.remove(); });
-      const meta = document.createElement('div');
-      meta.className = 'guide-topic-meta';
-      const author = document.createElement('span');
-      author.textContent = entry.row.querySelector('.guide-author').textContent;
-      // The row date reads like the other reader lists: "Actualizado <date>". A small, not a span (author content), and
-      // Spanish source text, so suite-i18n.js translates it on every language switch, as on the home rows.
-      const date = document.createElement('small');
-      date.append('Actualizado ', entry.row.querySelector('time').cloneNode(true));
-      meta.append(author, date);
-      article.append(detail, meta);
+      // The section heading names the topic, so its chip is left out; placement tags are no chips.
+      detail.querySelectorAll('.tag-list span').forEach((tag) => { if (!isTopicTag(tag.textContent) || normalize(tag.textContent) === key) tag.remove(); });
+      // The server meta line (kind · author · Actualizado <date>), as on the home rows and Herramientas cards.
+      article.append(detail, entry.row.querySelector('.item-meta').cloneNode(true));
       section.append(article);
       group.entries.push({ entry, article, primary });
     });
@@ -1045,7 +1038,7 @@ async function buildArticleMeta() {
 }
 
 // The interface may be English; articles, their titles, excerpts and tags are Spanish.
-const SPANISH_CONTENT = '[data-article-title],.guide-title,.guide-summary,.guide-author,.guide-topic-meta>span,.guide-topic h2,'
+const SPANISH_CONTENT = '[data-article-title],.guide-title,.guide-summary,.item-meta__author,.guide-topic h2,'
   + '.guide-topic-jumps a,.tag-list,.library-card>:is(h2,h3),.library-card>p:not([class]),.post-summary,.catalog-item>div';
 
 function markSpanishContent() {
@@ -1451,6 +1444,30 @@ function labelArticleActions() {
   });
 }
 
+// Short inline code stays on one line (styles.css); a value over 40 characters may wrap anywhere, as in the PDF export.
+function markLongCode() {
+  document.querySelectorAll('.markdown-section :not(pre) > code').forEach((code) => code.classList.toggle('long', code.textContent.length > 40));
+}
+
+// A Markdown figure opens the image viewer, as HTML article images do. Its caption is the italic line under it.
+function buildFigureZoom() {
+  document.querySelectorAll('.markdown-section p > img[src*="/article-images/"]').forEach((img) => {
+    const next = img.parentElement.nextElementSibling;
+    const em = next?.matches('p') && next.children.length === 1 && next.firstElementChild;
+    const caption = em?.tagName === 'EM' && next.textContent.trim() === em.textContent.trim() ? em.textContent.trim() : '';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'figure-zoom';
+    button.setAttribute('aria-label', t('Ampliar imagen') + (img.alt ? ': ' + img.alt : ''));
+    img.replaceWith(button);
+    button.append(img);
+    button.addEventListener('click', () => {
+      const items = viewerItems([{ src: img.getAttribute('src'), caption, alt: img.alt }]);
+      if (items) openViewer(button, items, 0);
+    });
+  });
+}
+
 // The copy and check icons of 'Copiar página' (src/config.js); .copied shows the check.
 const COPY_ICONS = '<svg class="copy-page__copy" aria-hidden="true" viewBox="0 0 24 24"><path d="M8 7V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M5 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z"/></svg>'
   + '<svg class="copy-page__check" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>';
@@ -1515,6 +1532,8 @@ function syncView() {
   if (viewer?.dialog.open && !viewer.frame?.isConnected) viewer.dialog.close();
   placeArticleTools();
   labelArticleActions();
+  markLongCode();
+  buildFigureZoom();
   buildCodeCopy();
   buildPermalinkCopy();
   placeArticleHead();

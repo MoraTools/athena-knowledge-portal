@@ -157,7 +157,7 @@
     'Lectura: leer los artículos publicados, sus PDF y las descargas.': 'Read: read published articles, their PDFs and the downloads.',
     'Administrar artículos: crear y editar artículos y descargas, si el usuario tiene ese permiso.': 'Manage articles: create and edit articles and downloads, if the user has that permission.',
     'Administrar usuarios y artículos: además, administrar usuarios, si el usuario es Administrador.': 'Manage users and articles: also manage users, if the user is an Administrator.',
-    'Vence pronto': 'Expires soon', 'Vencida': 'Expired',
+    'Vence pronto': 'Expires soon', 'Vencida': 'Expired', 'Ampliar imagen': 'Zoom image',
     'Restablecer contraseña': 'Reset password', 'Confirmar contraseña': 'Confirm password',
     'No puedes eliminar tu propia cuenta': 'You cannot delete your own account', 'Solo un administrador con todos los permisos puede editar esta cuenta.': 'Only an administrator with all permissions can edit this account.',
     'Copie la clave ahora. Athena guarda solo su hash y': 'Copy the key now. Athena stores only its hash and', 'no volverá a mostrarla': 'will not show it again',
@@ -184,7 +184,7 @@
   };
   const sourceText = new WeakMap();
   const sourceAttributes = new WeakMap();
-  const content = '[data-article-title],.guide-title,.guide-summary,.guide-author,.guide-topic-meta>span,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div,.image-viewer__caption';
+  const content = '[data-article-title],.guide-title,.guide-summary,.guide-author,.item-meta__author,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div,.image-viewer__caption';
   const articleUI = '.article-actions,.article-tools,.article-access,.pdf-viewer__actions,.page-tree summary,.pagination-item,.unavailable-page';
   // Admin user content: titles, names, authors, usernames, the Markdown source and the raw key.
   const adminContent = '#result_list tbody :is(.field-title,.field-name,.field-author,.field-user,.field-username,.field-filename,.field-path),.actionlist .download-file,.actionlist a,.actionlist strong,.directory-table tbody th,.directory-panel header h2,.desk-user,.key-created code,textarea,.readonly a';
@@ -217,6 +217,7 @@
     [/^Ordenar (.+) en orden (ascendente|descendente)$/, (label, order) => `Sort ${english(label)} in ${english(order)}`],
     [/^Clave de API · (.+) · (.+) · vence$/s, (name, scope) => `API key · ${name} · ${english(scope)} · expires`],
     [/^Ver las (\S+) guías de (.+)$/s, (n, topic) => `See all ${n} guides on ${topic}`],
+    [/^Ampliar imagen: (.+)$/s, (alt) => `Zoom image: ${alt}`],
     [/^› (.+)$/s, (rest) => `› ${english(rest)}`], [/^· (.+)$/s, (rest) => `· ${english(rest)}`],
     [/^Subiendo (\d+) imág?(?:en|enes)\. Puede seguir escribiendo; espere para guardar\.$/, (n) => `Uploading ${plural(n, 'image')}. You can keep writing; wait before you save.`],
     [/^(.+) importado\. Puede editar el Markdown antes de guardar\.$/s, (name) => `${name} imported. You can edit the Markdown before you save.`],
