@@ -35,7 +35,7 @@
     'Busque una guía, herramienta, actualización, descarga o PDF.': 'Search for a guide, tool, update, download or PDF.',
     'Buscando…': 'Searching…', 'Sin resultados': 'No results', 'Pruebe menos palabras, cambie el tipo de contenido o revise la escritura.': 'Try fewer words, change the content type or check the spelling.',
     'No se pudo cargar la búsqueda': 'Search could not be loaded', 'Revise la conexión e intente de nuevo.': 'Check the connection and try again.',
-    'Reintentar': 'Try again', 'Quitar filtro': 'Clear filter', 'Recientes': 'Recent', 'Temas': 'Topics',
+    'Reintentar': 'Try again', 'Quitar filtro': 'Clear filter', 'Recientes': 'Recent', 'Temas': 'Topics', 'No se pudo cargar Athena.': 'Athena could not load.', 'Volver a cargar': 'Reload',
     'Borradores:': 'Drafts:', 'Solo editores': 'Editors only', 'al publicar:': 'when published:', 'Cambios sin guardar': 'Unsaved changes', 'Guardado': 'Saved', 'Esta acción no se puede deshacer.': 'This action cannot be undone.', 'Buscar artículos': 'Search articles', 'Todos': 'All', 'Zona horaria: America/Lima.': 'Time zone: America/Lima.', 'Actualizado': 'Updated', 'Versión actual': 'Current version',
     'Ingrese para descargar este archivo.': 'Sign in to download this file.', 'Ver todas las actualizaciones': 'See all updates',
     'Si necesita acceso, pídalo a un administrador de Athena.': 'If you need access, ask an Athena administrator.',
