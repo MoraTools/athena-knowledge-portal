@@ -7,6 +7,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect, JsonResponse
@@ -19,6 +20,7 @@ from django.utils.html import escape
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from markdown_it import MarkdownIt
 
+from .forms import SignInForm
 from .models import ApiKey, Article, Download, DownloadEvent, ManagedImage, readable_articles, visible_articles
 from .notify import notify_download
 
@@ -568,6 +570,19 @@ def latest_framework(request):
     if item is None:
         raise Http404
     return send_download(request, item)
+
+
+class SignInView(LoginView):
+    authentication_form = SignInForm
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # A shared download link names its file; its slug already shows the file name.
+        slug = context['next'].removeprefix('/downloads/')
+        if slug != context['next']:
+            context['download'] = (current_framework() if slug == 'framework/latest'
+                                   else Download.objects.filter(slug=slug, published=True).first())
+        return context
 
 
 @login_required

@@ -1,7 +1,7 @@
 import re
 
 from django import forms
-from django.contrib.auth.forms import UserChangeForm, UserCreationForm, UsernameField
+from django.contrib.auth.forms import AuthenticationForm, UserChangeForm, UserCreationForm, UsernameField
 from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -11,6 +11,15 @@ from .models import ApiKey, Article
 
 EMAIL_UNAVAILABLE = ('El servicio de correo de Athena aún no está configurado. Por ahora no se pueden ingresar ni guardar correos. '
                      'Para recuperar su contraseña, contacte al administrador.')
+
+
+class SignInForm(AuthenticationForm):
+    def add_error(self, field, error):
+        super().add_error(field, error)
+        if field is None:
+            # The sign-in error names no field, so both fields point to it (#login-error in registration/login.html).
+            for name in ('username', 'password'):
+                self.fields[name].widget.attrs.update({'aria-invalid': 'true', 'aria-describedby': 'login-error'})
 
 
 def disable_email_field(field):

@@ -10,7 +10,7 @@ urlpatterns = [
     path('robots.txt', views.robots),
     path('admin/r/<int:content_type_id>/<path:object_id>/', views.admin_view_on_site),
     path('admin/', admin.site.urls),
-    path('accounts/login/', auth.LoginView.as_view()),
+    path('accounts/login/', views.SignInView.as_view()),
     path('accounts/logout/', auth.LogoutView.as_view()),
     # Mi cuenta is a reader page; PasswordChangeView keeps this session valid (update_session_auth_hash).
     path('accounts/profile/', RedirectView.as_view(url='/#/account')),

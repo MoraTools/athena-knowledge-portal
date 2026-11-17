@@ -10,6 +10,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.utils.cache import patch_cache_control, patch_vary_headers
 
+from .forms import SignInForm
 from .models import LoginAttempt
 
 
@@ -20,7 +21,7 @@ MAX_FAILURES = 5
 def locked_response(request, remaining):
     """The normal login page, with the wait as a form error, instead of a bare 429."""
     minutes = math.ceil(remaining.total_seconds() / 60)
-    form = AuthenticationForm(request, initial={'username': request.POST.get('username', '')})
+    form = SignInForm(request, initial={'username': request.POST.get('username', '')})
     form.cleaned_data = {}  # Unbound, so the password is never checked; add_error expects this attribute.
     form.add_error(None, f'Demasiados intentos. Intente de nuevo en {minutes} minuto{"" if minutes == 1 else "s"}.')
     context = {'form': form, 'next': request.POST.get('next', '')}

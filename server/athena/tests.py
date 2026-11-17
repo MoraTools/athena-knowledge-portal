@@ -1000,6 +1000,8 @@ class PortalTests(TestCase):
         self.assertRegex(page, r'<td data-sort-value="\d{4}-\d{2}-\d{2}T[^"]+">\d{2}/\d{2}/\d{4}</td>')
         self.assertNotIn('admin-key', page)  # Only the user's own keys.
         self.assertIn('Pida una clave a un administrador.', page)
+        self.assertIn('<h2>Mis claves de API</h2>\n<p>Una clave de API permite que un script o un agente use Athena con su cuenta. '
+                      'No la necesita para leer guías ni descargar archivos.</p>', page)
         self.assertNotIn('/admin/', page)
         # Docsify injects this form; it posts normally with the token rendered here.
         self.assertRegex(page, r'<form method="post" action="/accounts/logout/"><input type="hidden" name="csrfmiddlewaretoken" value="\w+">')
@@ -1335,6 +1337,14 @@ class ReaderPageTests(TestCase):
         self.assertNotContains(page, 'Ingrese para descargar este archivo.')
         self.assertContains(self.client.get('/accounts/login/?next=/downloads/plantilla'), '<p>Ingrese para descargar este archivo.</p>', html=True)
         self.assertNotContains(self.client.get('/accounts/login/?next=/%23/guides'), 'Ingrese para descargar')
+        # A shared download link names the file from the record; an unpublished file stays "este archivo".
+        item = Download.objects.create(title='Plantilla <3.2>', section='framework', file=ContentFile(b'x', name='plantilla.zip'))
+        Download.objects.create(title='Oculto', section='framework', published=False, file=ContentFile(b'x', name='oculto.zip'))
+        for next_path in [f'/downloads/{item.slug}', '/downloads/framework/latest']:
+            self.assertContains(self.client.get('/accounts/login/', {'next': next_path}),
+                                '<p>Ingrese para descargar Plantilla &lt;3.2&gt;.</p>', html=True)
+        self.assertContains(self.client.get('/accounts/login/?next=/downloads/oculto-zip'), '<p>Ingrese para descargar este archivo.</p>', html=True)
+        self.assertNotContains(self.client.get('/accounts/login/'), 'aria-invalid')
         # Wrong password, unknown user and an inactive account read the same; Django's own wording is gone.
         User.objects.create_user('inactive', password='Inactive-Example-1!', is_active=False)
         errors = []
@@ -1342,8 +1352,11 @@ class ReaderPageTests(TestCase):
             response = self.client.post('/accounts/login/', {'username': username, 'password': password})
             self.assertEqual(response.status_code, 200)
             self.assertNotContains(response, 'introduzca')
-            errors.append(re.search(r'<ul class="errorlist nonfield">.*?</ul>', response.content.decode(), re.S)[0])
-        self.assertEqual(errors, ['<ul class="errorlist nonfield"><li>Usuario o contraseña incorrectos.</li></ul>'] * 3)
+            errors.append(re.search(r'<p class="errorlist nonfield".*?</p>', response.content.decode(), re.S)[0])
+            # Both fields point to the error, which is announced when the page loads.
+            for name in ['username', 'password']:
+                self.assertRegex(response.content.decode(), rf'<input [^>]*aria-invalid="true" aria-describedby="login-error"[^>]*id="id_{name}"')
+        self.assertEqual(errors, ['<p class="errorlist nonfield" id="login-error" role="alert">Usuario o contraseña incorrectos.</p>'] * 3)
         for _ in range(2):  # The fifth failure locks; the lockout keeps its own message (DL-0010).
             self.client.post('/accounts/login/', {'username': 'reader', 'password': 'wrong'})
         locked = self.client.post('/accounts/login/', {'username': 'reader', 'password': 'Reader-Example-9348!'})
@@ -1367,6 +1380,8 @@ class ReaderPageTests(TestCase):
             self.assertIn('Puede que la dirección sea incorrecta o que el artículo tenga acceso limitado.', page)
             self.assertIn('<a class="post-link" href="#/search">Buscar en Athena</a><a class="post-link" href="#/">Ir al inicio</a>', page)
             self.assertEqual('href="/accounts/login/"' in page, user is None)
+            # The same line for unknown and restricted addresses, so it tells nothing about the article.
+            self.assertEqual('Si necesita acceso, pídalo a un administrador de Athena.' in page, user is not None)
             self.assertNotIn('rivado', page)
 
     def test_home_recent_uses_the_library_access_rule_and_last_update(self):
@@ -1402,6 +1417,12 @@ class ReaderPageTests(TestCase):
             self.assertEqual(recent(user), [a.slug for a in visible_articles(user or AnonymousUser()).order_by('-updated_at', 'title')[:5]])
         page = self.client.get('/README.md').content.decode()
         self.assertIn('## Recientes', page)
+        self.assertIn('</div>\n\n<p><a href="#/updates">Ver todas las actualizaciones</a></p>', page)
+        # One hero line for visitors and signed-in users.
+        self.client.logout()
+        self.assertIn('<p>Guías, herramientas y conocimiento compartido por el equipo.</p>', self.client.get('/README.md').content.decode())
+        self.assertIn('<p>Guías, herramientas y conocimiento compartido por el equipo.</p>', page)  # page: signed in.
+        self.assertNotIn('feed', page)
         self.assertIn(f'<small>Guía</small><small>Actualizado <time datetime="{timezone.localdate(old.updated_at).isoformat()}">', page)
 
     def test_downloads_mark_the_framework_file_that_latest_serves(self):

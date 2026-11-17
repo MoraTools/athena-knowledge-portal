@@ -1,7 +1,7 @@
 <section class="hero">
   <div class="hero-copy">
     <h1>Athena</h1>
-    <p>{% if user.is_authenticated %}Centro de conocimiento, herramientas y feed de actualizaciones para desarrolladores.{% else %}Guías, herramientas y conocimiento compartido por el equipo.{% endif %}</p>
+    <p>Guías, herramientas y conocimiento compartido por el equipo.</p>
   </div>
   <img src="/assets/athena-dither-2.webp" alt="" width="900" height="900">
 </section>
@@ -11,6 +11,8 @@
 ## Recientes
 
 <div class="recent-list">{% for article in recent %}<article class="guide-topic-row"><div class="guide-detail"><a class="guide-title" href="#/content/{{ article.slug }}">{{ article.title }}</a></div><div class="guide-topic-meta"><small>{{ article.get_kind_display }}</small><small>Actualizado <time datetime="{{ article.updated_at|date:'Y-m-d' }}">{{ article.updated_at|date:'Y-m-d' }}</time></small></div></article>{% endfor %}</div>
+
+<p><a href="#/updates">Ver todas las actualizaciones</a></p>
 {% endif %}
 ## Explorar
 
