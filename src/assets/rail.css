@@ -43,7 +43,7 @@ html[data-rail=compact] .rail-brand small { max-height: 0; margin: 0; opacity: 0
 .rail-group { margin: 0 0 14px; }
 .rail .rail-group-label {
   max-height: 20px; margin: 0 0 6px; padding: 0 0 0 10px; overflow: hidden; background: none; color: var(--text-subtle);
-  font: 600 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+  font: 600 11px/16px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; /* room for the accent of Ó */
   transition: opacity .18s var(--rail-ease), max-height var(--rail-dur) var(--rail-ease), margin var(--rail-dur) var(--rail-ease);
 }
 html[data-rail=compact] .rail-group { margin: 0 0 6px; padding: 0 0 6px; border-bottom: 1px solid var(--border); }
@@ -114,6 +114,10 @@ html.rail-resizing, html.rail-resizing * { cursor: col-resize !important; transi
   .rail { width: var(--rail-w); transform: translateX(-100%); transition: transform var(--rail-dur) var(--rail-ease), visibility var(--rail-dur); }
   html[data-rail=expanded] .rail { transform: none; box-shadow: var(--shadow-overlay); transition: transform var(--rail-dur) var(--rail-ease), visibility 0s; }
   html:not([data-rail=expanded]) .rail { visibility: hidden; }
+  /* Scrim under the open drawer; a click on it lands on body, which closes the drawer (rail.js). */
+  html[data-rail=expanded] body::before { content: ""; position: fixed; inset: 0; z-index: 39; background: color-mix(in srgb, var(--rail) 40%, transparent); }
+  /* The nav scrolls, so an outer outline would be clipped. */
+  .rail .rail-item:focus-visible { outline-offset: -2px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .rail, .rail *, .rail-tip, .rail-reveal, .rail-resize::after { transition: none !important; }

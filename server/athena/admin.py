@@ -1,13 +1,15 @@
 import unicodedata
 from urllib.parse import urlencode
 
+from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin.options import IS_POPUP_VAR
 from django.contrib.admin.utils import unquote
+from django.contrib.admin.widgets import RelatedFieldWidgetWrapper
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
+from django.db import models, transaction
 from django.http import Http404
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
@@ -89,6 +91,11 @@ class RowControlsAdmin(admin.ModelAdmin):
         def controls(obj):
             return self.controls(request, obj)
         return [controls if name == 'controls' else name for name in super().get_list_display(request)]
+
+    def delete_view(self, request, object_id, extra_context=None):
+        obj = self.get_object(request, unquote(object_id))
+        title = {'title': f'Eliminar «{obj}»'} if obj else {}
+        return super().delete_view(request, object_id, {**title, **(extra_context or {})})
 
 
 @admin.register(User)
@@ -387,6 +394,10 @@ class ApiKeyAdmin(RowControlsAdmin):
     form = ApiKeyForm
     list_display = ['name', 'user', 'scope', 'expires_at', 'created', 'controls']
     fields = ['name', 'user', 'scope', 'expires_at']
+    # One native date and time control. Django reads the value in the site time zone, as the split widget did.
+    formfield_overrides = {models.DateTimeField: {
+        'form_class': forms.DateTimeField,
+        'widget': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M')}}
 
     @admin.display(description='Creada', ordering='created_at')
     def created(self, obj):
@@ -406,6 +417,12 @@ class ApiKeyAdmin(RowControlsAdmin):
             kwargs['queryset'] = User.objects.filter(is_superuser=False).exclude(
                 user_permissions__in=disallowed).exclude(groups__permissions__in=disallowed)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        field = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if isinstance(getattr(field, 'widget', None), RelatedFieldWidgetWrapper):
+            field.widget = field.widget.widget  # A plain select: accounts are managed in the user directory.
+        return field
 
     def has_change_permission(self, request, obj=None):
         return super().has_change_permission(request, obj) and (

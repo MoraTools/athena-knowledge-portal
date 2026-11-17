@@ -13,8 +13,8 @@ Archivos aprobados. Solo para usuarios de Athena.
 {% endif %}{% if key == 'previous' %}<details class="download-archive"><summary>Mostrar {{ items|length }} archivo{{ items|length|pluralize }}</summary>
 {% endif %}<div class="catalog-list">
 {% for item in items %}<article class="catalog-item" data-search="{{ item.title }} {{ item.filename }} {{ label }} {{ item.note }}">
-<div><strong>{{ item.title }}</strong><small>{{ item.size|filesizeformat }}</small><code>{{ item.filename }}</code>{% if item.note %}<p>{{ item.note }}</p>{% endif %}</div>
-<a class="download-link" href="/downloads/{{ item.slug }}" download>Descargar</a>
+<div><strong>{{ item.title }}</strong><small>{{ item.size|filesizeformat }} · <time datetime="{{ item.created_at|date:'Y-m-d' }}">{{ item.created_at|date:'Y-m-d' }}</time></small><code>{{ item.filename }}</code>{% if item.note %}<p>{{ item.note }}</p>{% endif %}</div>
+{% if key != 'framework' %}<a class="download-link" href="/downloads/{{ item.slug }}" download>Descargar</a>{% elif item.pk == current_pk %}<p class="post-actions"><span class="status">Versión actual</span><a class="download-link" href="/downloads/{{ item.slug }}" download>Descargar</a></p>{% else %}<a class="account-button" href="/downloads/{{ item.slug }}" download>Descargar</a>{% endif %}
 </article>
 {% endfor %}</div>{% if key == 'previous' %}
 </details>{% endif %}

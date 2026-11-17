@@ -14,7 +14,8 @@ from django.shortcuts import get_object_or_404, render
 from django.template.defaultfilters import filesizeformat
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.html import escape, strip_tags
+from django.utils.formats import date_format
+from django.utils.html import escape
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from markdown_it import MarkdownIt
 
@@ -182,28 +183,34 @@ def article_image(request, image_id):
 
 
 class HtmlText(HTMLParser):
-    """Readable text of an HTML article: headings and prose, without scripts, styles, or templates."""
-    SKIP = {'script', 'style', 'template', 'noscript', 'title', 'svg'}
+    """Readable text of an article: headings and prose, without scripts, styles, templates, controls or hidden text."""
+    SKIP = {'script', 'style', 'template', 'noscript', 'title', 'svg', 'button', 'video'}
     INLINE = {'a', 'abbr', 'b', 'code', 'em', 'i', 'kbd', 'mark', 's', 'small', 'span', 'strong', 'sub', 'sup', 'u'}
+    VOID = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'}
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.parts, self.skipping = [], 0
+        self.parts, self.skip = [], None  # skip: [tag that opened the skipped part, its open count]
 
     def handle_starttag(self, tag, attrs):
-        if tag in self.SKIP:
-            self.skipping += 1
+        if self.skip:
+            self.skip[1] += tag == self.skip[0]
+        elif tag not in self.VOID and (tag in self.SKIP or ('aria-hidden', 'true') in attrs):
+            self.skip = [tag, 1]
         elif tag not in self.INLINE:
             self.parts.append(' ')
 
     def handle_endtag(self, tag):
-        if tag in self.SKIP:
-            self.skipping = max(0, self.skipping - 1)
+        if self.skip:
+            if tag == self.skip[0]:
+                self.skip[1] -= 1
+                if not self.skip[1]:
+                    self.skip = None
         elif tag not in self.INLINE:
             self.parts.append(' ')
 
     def handle_data(self, data):
-        if not self.skipping:
+        if not self.skip:
             self.parts.append(data)
 
 
@@ -215,9 +222,8 @@ def html_text(body):
 
 
 def search_text(body):
-    body = re.sub(r'<!--.*?-->', ' ', body, flags=re.S)
-    body = re.sub(r'!?\[([^\]]*)\]\([^)]*\)', r'\1', body)
-    return re.sub(r'\s+', ' ', unescape(strip_tags(body)).translate(str.maketrans('', '', '`*~'))).strip()
+    # Rendered, so fence info strings, backslash escapes and Markdown marks never reach an excerpt.
+    return html_text(MARKDOWN.render(body))
 
 
 def search_entry(article):
@@ -237,7 +243,7 @@ def search_entry(article):
         'route': '#/content/' + article.slug, 'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '',
         'text': search_text(article.body), 'headings': [
             {'level': int(heading.tag[1:]), 'raw': inline.content,
-             'title': search_text(MARKDOWN.renderer.render([inline], MARKDOWN.options, {})),
+             'title': html_text(MARKDOWN.renderer.render([inline], MARKDOWN.options, {})),
              'text': search_text(''.join(lines[heading.map[1]:headings[i + 1][0].map[0] if i + 1 < len(headings) else len(lines)]))}
             for i, (heading, inline) in enumerate(headings)
         ],
@@ -310,7 +316,8 @@ MARKDOWN = MarkdownIt('commonmark', {'html': True}).enable(['table', 'strikethro
 PDF_RESOURCES = ('data:', 'https://raw.githubusercontent.com/')
 PDF_STYLE = """
 @page { size: A4; margin: 2cm;
-  @bottom-center { content: counter(page) " / " counter(pages); font: 9pt "DejaVu Sans", sans-serif; color: #555 } }
+  @bottom-center { content: string(address) counter(page) " / " counter(pages); font: 9pt "DejaVu Sans", sans-serif; color: #555 } }
+.article-meta { margin: -.2em 0 1.2em; font-size: 9pt }
 body { font: 10.5pt/1.5 "DejaVu Sans", sans-serif; color: #111; background: #fff }
 h1, h2, h3, h4, h5, h6 { color: #000; font-weight: bold; line-height: 1.25; margin: 1.2em 0 .5em; break-after: avoid }
 h1 { font-size: 20pt; margin-top: 0 } h2 { font-size: 15pt } h3 { font-size: 12.5pt } h4, h5, h6 { font-size: 11pt }
@@ -347,9 +354,16 @@ def video_link(match):
 def article_html(article, origin):
     body = PDF_VIDEO.sub(video_link, MARKDOWN.render(article_body(article)))
     body = re.sub(r'\bhref="([^"]*)"', lambda m: f'href="{export_href(m[1], escape(origin))}"', body)
+    # The reader's meta line under the h1, and the article address in the page footer.
+    meta = [escape(article.author)] if article.author else []
+    if article.updated_at:
+        meta.append(f'Actualizado {date_format(timezone.localdate(article.updated_at))}')
+    if meta:
+        body = body.replace('</h1>', f'</h1>\n<p class="article-meta">{" · ".join(meta)}</p>', 1)
+    address = f'{origin}/#/content/{article.slug} · '.replace('\\', '\\\\').replace('"', '\\"')
     return (f'<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>{escape(article.title)}</title>'
-            f'<meta name="author" content="{escape(article.author)}"><style>{PDF_STYLE}</style></head>'
-            f'<body>{body}</body></html>')
+            f'<meta name="author" content="{escape(article.author)}"><style>{PDF_STYLE}html {{ string-set: address "{address}" }}'
+            f'</style></head><body>{body}</body></html>')
 
 
 def pdf_fetcher(image_versions=None):
@@ -488,10 +502,15 @@ def download(request, slug):
     return send_download(request, get_object_or_404(Download, slug=slug, published=True))
 
 
+def current_framework():
+    """The newest published file in Framework, whatever its name or version; Descargas marks it as current."""
+    return Download.objects.filter(section='framework', published=True).order_by('-created_at', '-pk').first()
+
+
 @login_required
 def latest_framework(request):
-    """Permanent link: the newest published file in Framework, whatever its name or version."""
-    item = Download.objects.filter(section='framework', published=True).order_by('-created_at', '-pk').first()
+    """Permanent link: the current Framework file."""
+    item = current_framework()
     if item is None:
         raise Http404
     return send_download(request, item)
@@ -501,8 +520,10 @@ def latest_framework(request):
 def downloads_page(request):
     published = Download.objects.filter(published=True)
     sections = [(key, label, [d for d in published if d.section == key]) for key, label in Download.SECTIONS]
+    current = current_framework()
     return render(request, 'downloads.md', {
         'sections': [s for s in sections if s[2]],
+        'current_pk': current.pk if current else None,
         'latest_url': request.build_absolute_uri(reverse(latest_framework)),
     }, content_type='text/markdown; charset=utf-8')
 
@@ -555,8 +576,8 @@ def sidebar_markdown(user):
     file = settings.BASE_DIR / 'dist/_sidebar.md'
     mtime = file.stat().st_mtime
     if _sidebar_cache[0] != mtime:
-        # Archivo is now the "Versiones anteriores" section of Descargas.
-        _sidebar_cache = (mtime, [m[0].replace(f'[{m[1]}]', '[Feed]', 1) if m[2] == '/updates.md' else m[0]
+        # Archivo is now the "Versiones anteriores" section of Descargas; the feed has one name, as in its h1 and crumbs.
+        _sidebar_cache = (mtime, [m[0].replace(f'[{m[1]}]', '[Actualizaciones]', 1) if m[2] == '/updates.md' else m[0]
                                  for m in SIDEBAR_LINK.finditer(file.read_text(encoding='utf-8-sig')) if m[1] != 'Archivo'])
     links = list(_sidebar_cache[1])
     if user.is_authenticated:
@@ -616,8 +637,11 @@ def static_portal(request, path='index.html'):
         if path == 'index.html':
             return render(request, 'index.html')
         if path == 'README.md':
+            # The library's access rule; updated_at, so an edit moves an article to the top (DL-0022).
+            recent = visible_articles(request.user).defer('body', 'pdf').order_by('-updated_at', 'title')[:5]
             return render(request, 'home.md', {
-                'has_articles': visible_articles(request.user).exists(),
+                'has_articles': bool(recent),
+                'recent': recent,
                 'show_contribute': contributing_visible(request.user),
             }, content_type='text/markdown; charset=utf-8')
         if path in ('search.md', 'not-found.md'):

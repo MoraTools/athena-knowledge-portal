@@ -164,18 +164,21 @@
   .article-desk #desk-preview-content h1 { font-size: 32px; line-height: 38px; margin-bottom: var(--space-2); }
   .desk-workspace[data-active-pane=source] .desk-preview, .desk-workspace[data-active-pane=preview] .desk-source { display: none; }
   .desk-errors { padding: var(--space-2); }
+  /* The Markdown | HTML switch and the Editar tab already name the pane; the heading stays for screen readers. */
+  .article-desk #desk-source-heading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 @container admin-page (max-width: 480px) {
   /* Row 1: the back link and the toggles at the far right; the actions wrap to row 2. */
-  .desk-back { flex: 1 0 calc(100% - 88px); }
+  .desk-back { flex: 1 0 calc(100% - 88px - 44px - var(--space-1)); }
   .desk-header .suite-toggles { order: 1; margin-left: 0; }
   .desk-header :is(.desk-details, .desk-overflow, .desk-save) { order: 2; }
   .desk-header .desk-details { margin-right: auto; }
   .desk-mobile-tabs { flex-wrap: wrap; }
 }
 @media (max-width: 1024px) {
-  .desk-image-footer { padding-left: 76px; }
-  .article-desk #article_form { padding-bottom: 80px; }
+  /* The rail button takes the start of the header row, so it never covers the text. */
+  .article-desk .rail-reveal { position: absolute; top: var(--space-1); left: var(--space-2); transform: none; }
+  .desk-back { margin-left: calc(44px + var(--space-1)); }
 }
 @media (max-width: 480px) {
   .desk-dialog { width: calc(100% - var(--space-2)); max-height: calc(100dvh - var(--space-2)); }

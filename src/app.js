@@ -1,6 +1,7 @@
 const t = (text) => window.AthenaI18n?.t(text) || text;
 const currentLang = () => document.documentElement.lang || 'es';
 const countLabel = (count, single, plural) => new Intl.NumberFormat(currentLang()).format(count) + ' ' + t(count === 1 ? single : plural);
+const formatDate = (value) => new Intl.DateTimeFormat(currentLang(), { dateStyle: 'medium' }).format(new Date(value + 'T12:00:00'));
 const sortLabel = (label, descending = false) => t('Ordenar') + ' ' + t(label) + ' ' + t('en orden') + ' ' + t(descending ? 'descendente' : 'ascendente');
 
 let pageTreeItems = [];
@@ -91,7 +92,8 @@ function buildPageTree() {
       href: heading.querySelector('a.anchor')?.getAttribute('href') || '#' + heading.id, top: rect(heading)
     }));
   }
-  if (!entries.length) return;
+  // A title alone is no outline.
+  if (!entries.some((entry) => entry.level > 1)) return;
 
   const nav = document.createElement('nav');
   nav.className = 'page-tree';
@@ -101,6 +103,7 @@ function buildPageTree() {
   const summary = document.createElement('summary');
   summary.textContent = t('En esta página');
   const list = document.createElement('ol');
+  list.lang = 'es';
 
   entries.forEach((entry) => {
     const item = document.createElement('li');
@@ -143,7 +146,6 @@ function buildGuideTopics(library, state) {
   const topics = library.querySelector('#guide-topics');
   const jumps = document.createElement('nav');
   jumps.className = 'guide-topic-jumps';
-  jumps.tabIndex = 0;
   jumps.setAttribute('aria-label', t('Temas de las guías'));
   state.groups = new Map();
   state.rows.forEach((entry) => {
@@ -162,10 +164,14 @@ function buildGuideTopics(library, state) {
         const jump = document.createElement('a');
         jump.href = '#/guides?id=' + heading.id;
         jump.dataset.guideTopic = heading.id;
-        jump.textContent = label;
+        const name = document.createElement('span');
+        name.textContent = label;
+        const count = document.createElement('span');
+        count.className = 'topic-count';
+        jump.append(name, ' ', count);
         jumps.append(jump);
         topics.append(section);
-        group = { section, jump, entries: [] };
+        group = { section, jump, count, entries: [] };
         state.groups.set(key, group);
       }
       const article = document.createElement('article');
@@ -202,11 +208,34 @@ function filterGuides() {
       if (!article.hidden) shown += 1;
     });
     group.section.hidden = group.jump.hidden = !shown;
+    group.count.textContent = new Intl.NumberFormat(currentLang()).format(shown);
   });
   const count = document.querySelector('#guide-count');
   const empty = document.querySelector('.library-empty');
   if (count) count.textContent = countLabel(visible, 'resultado', 'resultados');
-  if (empty) empty.hidden = visible !== 0;
+  if (empty) {
+    empty.hidden = visible !== 0;
+    showFilterActions(empty);
+  }
+}
+
+// An empty page filter offers the same words to all of Athena, or the unfiltered page.
+function showFilterActions(empty) {
+  empty.querySelector('.state-actions')?.remove();
+  const query = document.querySelector('#athena-search-input')?.value.trim() || '';
+  if (empty.hidden || !query) return;
+  const actions = document.createElement('span');
+  actions.className = 'state-actions';
+  const search = document.createElement('a');
+  search.href = buildSearchHash(query, '');
+  search.textContent = t('Buscar «' + query + '» en todo Athena');
+  const clear = document.createElement('button');
+  clear.type = 'button';
+  clear.className = 'account-button';
+  clear.dataset.clearFilter = '';
+  clear.textContent = t('Quitar filtro');
+  actions.append(search, clear);
+  empty.append(' ', actions);
 }
 
 function filterDownloads() {
@@ -229,12 +258,20 @@ function filterDownloads() {
   const count = document.querySelector('#download-count');
   const empty = document.querySelector('.download-empty');
   if (count) count.textContent = countLabel(visible, 'archivo', 'archivos');
-  if (empty) empty.hidden = visible !== 0;
+  if (empty) {
+    empty.hidden = visible !== 0;
+    showFilterActions(empty);
+  }
 }
 
 function buildTableSorting() {
   const collator = new Intl.Collator(currentLang(), { numeric: true, sensitivity: 'base' });
   document.querySelectorAll('.markdown-section table').forEach((table) => {
+    if (table.getAttribute('tabindex') === null && table.getAttribute('role') !== 'presentation' && !table.parentElement.closest('table')) {
+      table.tabIndex = 0;
+      const name = table.tHead?.rows[0]?.cells[0]?.textContent.trim();
+      if (!table.caption && name) table.setAttribute('aria-label', name);
+    }
     if (table.dataset.sortReady || table.dataset.sortable === 'false' || table.getAttribute('role') === 'presentation'
       || table.parentElement.closest('table') || table.querySelector('table')
       || table.tHead?.rows.length !== 1 || table.tBodies.length !== 1) return;
@@ -318,7 +355,7 @@ function buildRail() {
         } else if (line.startsWith('- ')) {
           const group = document.createElement('div');
           group.className = 'rail-group';
-          const heading = document.createElement('h2');
+          const heading = document.createElement('div');
           heading.className = 'rail-group-label';
           heading.id = 'rail-group-' + (nav.children.length + 1);
           heading.textContent = line.slice(2).trim();
@@ -524,7 +561,7 @@ function searchKindLabel(kind) {
   }[kind] || kind);
 }
 
-function createSearchState(title, text) {
+function createSearchState(title, text, ...actions) {
   const state = document.createElement('div');
   state.className = 'search-state';
   const heading = document.createElement('strong');
@@ -532,29 +569,48 @@ function createSearchState(title, text) {
   const copy = document.createElement('p');
   copy.textContent = t(text);
   state.append(heading, copy);
+  if (actions.length) {
+    const row = document.createElement('p');
+    row.className = 'state-actions';
+    row.append(...actions);
+    state.append(row);
+  }
   return state;
+}
+
+function stateLink(label, href) {
+  const link = document.createElement('a');
+  link.href = href;
+  link.textContent = t(label);
+  return link;
 }
 
 function createSearchResult(entry, terms) {
   const article = document.createElement('article');
   article.className = 'search-result';
 
-  const meta = document.createElement('div');
+  const meta = document.createElement('p');
   meta.className = 'search-result__meta';
-  const kind = document.createElement('p');
+  const kind = document.createElement('span');
   kind.className = 'card-kicker';
   kind.textContent = searchKindLabel(entry.kind);
   meta.append(kind);
-
-  const facts = [entry.date ? new Intl.DateTimeFormat(currentLang(), { dateStyle: 'medium' }).format(new Date(entry.date + 'T12:00:00')) : '', entry.author].filter(Boolean);
-  if (facts.length) {
-    const details = document.createElement('small');
-    details.textContent = facts.join(' · ');
-    meta.append(details);
+  if (entry.date) {
+    const date = document.createElement('time');
+    date.dateTime = entry.date;
+    date.textContent = formatDate(entry.date);
+    meta.append('·', date);
+  }
+  if (entry.author) {
+    const author = document.createElement('span');
+    author.lang = 'es';
+    author.textContent = entry.author;
+    meta.append('·', author);
   }
   if (entry.tags.length) {
-    const tags = document.createElement('p');
+    const tags = document.createElement('span');
     tags.className = 'tag-list';
+    tags.lang = 'es';
     entry.tags.forEach((value) => {
       const tag = document.createElement('span');
       tag.textContent = value;
@@ -574,8 +630,10 @@ function createSearchResult(entry, terms) {
     titleLink.rel = 'noreferrer';
   }
   title.append(titleLink);
+  title.lang = 'es';
   const summary = document.createElement('p');
   summary.className = 'search-result__summary';
+  summary.lang = 'es';
   appendHighlighted(summary, entry.summary, terms);
   body.append(title, summary);
 
@@ -583,6 +641,7 @@ function createSearchResult(entry, terms) {
   if (snippet.text) {
     const excerpt = document.createElement('p');
     excerpt.className = 'search-result__excerpt';
+    excerpt.lang = 'es';
     appendHighlighted(excerpt, snippet.text, terms);
     body.append(excerpt);
   }
@@ -593,7 +652,8 @@ function createSearchResult(entry, terms) {
     body.append(source);
   }
 
-  const actions = document.createElement('p');
+  // The section and PDF links end the meta line, so a result is four lines at most.
+  const actions = document.createElement('span');
   actions.className = 'search-result__actions';
   if (snippet.heading && entry.route.startsWith('#/')) {
     const section = document.createElement('a');
@@ -609,7 +669,7 @@ function createSearchResult(entry, terms) {
     pdf.textContent = t('Abrir PDF');
     actions.append(pdf);
   }
-  if (actions.childElementCount) body.append(actions);
+  if (actions.childElementCount) meta.append(actions);
 
   article.append(meta, body);
   return article;
@@ -650,7 +710,11 @@ async function renderSearchPage() {
 
     count.textContent = countLabel(matches.length, 'resultado', 'resultados');
     if (!matches.length) {
-      results.replaceChildren(createSearchState('Sin resultados', 'Pruebe menos palabras, cambie el tipo de contenido o revise la escritura.'));
+      // Descargas only where the rail offers it (signed-in readers).
+      const sections = [['Guías', '#/guides'], ['Herramientas', '#/tools'], ['Descargas', '#/downloads']]
+        .filter(([, href]) => href !== '#/downloads' || document.querySelector('.rail-nav a[href="#/downloads"]'));
+      results.replaceChildren(createSearchState('Sin resultados', 'Pruebe menos palabras, cambie el tipo de contenido o revise la escritura.',
+        ...sections.map(([label, href]) => stateLink(label, href))));
       return;
     }
     const fragment = document.createDocumentFragment();
@@ -659,7 +723,13 @@ async function renderSearchPage() {
   } catch {
     if (version !== searchRenderVersion || !results.isConnected) return;
     count.textContent = '';
-    results.replaceChildren(createSearchState('No se pudo cargar la búsqueda', 'Recargue la página para intentarlo de nuevo.'));
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'account-button';
+    retry.textContent = t('Reintentar');
+    // loadSearchIndex forgets a failed request, so this asks the server again.
+    retry.addEventListener('click', renderSearchPage);
+    results.replaceChildren(createSearchState('No se pudo cargar la búsqueda', 'Revise la conexión e intente de nuevo.', retry));
   }
 }
 
@@ -713,6 +783,73 @@ function buildPdfViewer() {
   frame.loading = 'lazy';
   viewer.append(actions, frame);
   (link.closest('.article-pdf') || link).replaceWith(viewer);
+  const article = viewer.parentElement?.closest?.('.markdown-section');
+  if (article && ![...article.children].some((node) => node !== viewer && node.textContent.trim()
+    && !node.matches('.article-actions,h1,.article-meta,.article-access'))) viewer.classList.add('pdf-viewer--full');
+}
+
+// One meta line under the article title, from the reader's search index (drafts are not in it, so they get none).
+async function buildArticleMeta() {
+  const route = getRouteState().path;
+  const heading = document.querySelector('.markdown-section h1');
+  if (!route.startsWith('/content/') || !heading || document.querySelector('.unavailable-page')) return;
+  let entry;
+  try {
+    entry = (await loadSearchIndex()).find((item) => item.route === '#' + route);
+  } catch {
+    return;
+  }
+  if (!entry || !heading.isConnected) return;
+  const meta = document.createElement('p');
+  meta.className = 'article-meta';
+  const kind = document.createElement('span');
+  kind.textContent = searchKindLabel(entry.kind);
+  meta.append(kind);
+  if (entry.author) {
+    const author = document.createElement('span');
+    author.lang = 'es';
+    author.textContent = entry.author;
+    meta.append('·', author);
+  }
+  if (entry.date) {
+    const updated = document.createElement('span');
+    updated.textContent = t('Actualizado');
+    const date = document.createElement('time');
+    date.dateTime = entry.date;
+    date.textContent = formatDate(entry.date);
+    meta.append('·', updated, date);
+  }
+  if (entry.tags.length) {
+    const tags = document.createElement('span');
+    tags.className = 'article-meta__tags';
+    tags.lang = 'es';
+    entry.tags.forEach((tag) => {
+      const link = document.createElement('a');
+      link.href = buildSearchHash(tag, '');
+      link.textContent = tag;
+      tags.append(link);
+    });
+    meta.append('·', tags);
+  }
+  // Every sync (route, language) rebuilds the line; only the newest one stays.
+  heading.parentElement.querySelectorAll('.article-meta').forEach((old) => old.remove());
+  heading.after(meta);
+}
+
+// The interface may be English; articles, their titles, excerpts and tags are Spanish.
+const SPANISH_CONTENT = '[data-article-title],.guide-title,.guide-summary,.guide-author,.guide-topic-meta>span,.guide-topic h2,'
+  + '.guide-topic-jumps a,.tag-list,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div';
+
+function markSpanishContent() {
+  document.querySelectorAll(SPANISH_CONTENT).forEach((node) => { node.lang = 'es'; });
+  const article = document.querySelector('.markdown-section');
+  if (!getRouteState().path.startsWith('/content/') || !article || article.querySelector('.unavailable-page')) return;
+  // The title and what follows it, apart from Athena's own lines; the actions and a draft notice come before it.
+  let content = false;
+  [...article.children].forEach((node) => {
+    content ||= node.tagName === 'H1';
+    if (content && !node.matches('.article-meta,.article-access,.pdf-viewer')) node.lang = 'es';
+  });
 }
 
 // HTML articles: the server leaves a .html-article marker; the document runs in a sandboxed, opaque-origin frame.
@@ -1110,6 +1247,8 @@ function syncView() {
   if (viewer?.dialog.open && !viewer.frame?.isConnected) viewer.dialog.close();
   placeArticleTools();
   buildTableSorting();
+  markSpanishContent();
+  buildArticleMeta();
   updateSignInLinks();
   if (path === '/search') renderSearchPage();
   window.AthenaI18n?.translate();
@@ -1212,6 +1351,12 @@ document.addEventListener('click', async (event) => {
     main.focus({ preventScroll: true });
     main.scrollIntoView({ block: 'start' });
     return;
+  }
+  if (event.target.closest('[data-clear-filter]')) {
+    const input = document.querySelector('#athena-search-input');
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.focus();
   }
   if (event.target.closest('#search-scope')) {
     searchScope = '';

@@ -6,7 +6,6 @@
 {% block content_subtitle %}{% endblock %}
 {% block responsive %}{{ block.super }}
 <link rel="stylesheet" href="{% static 'athena/article-editor.css' %}">
-<script>if (!matchMedia('(max-width: 1024px)').matches) document.documentElement.dataset.rail = 'compact';</script>
 {% endblock %}
 {% block content %}
 <div id="content-main">
@@ -43,11 +42,12 @@
       <div class="suite-toggles"><button class="suite-icon" type="button" data-suite-toggle="lang" aria-label="Switch the language to English" title="English"></button><button class="suite-icon" type="button" data-suite-toggle="theme" aria-label="Cambiar a tema claro" title="Cambiar a tema claro"></button></div>
     </header>
     {% if errors %}<div class="desk-errors" role="alert"><p class="errornote">Corrija los campos indicados.</p>{{ adminform.form.non_field_errors }}<button class="button" type="button" data-open-details>Revisar detalles</button></div>{% endif %}
+    <h1 class="visually-hidden">{% if add %}Nuevo artículo{% else %}Editar artículo: {{ original.title }}{% endif %}</h1>
     <div class="desk-title">
       {% for fieldset in adminform %}{% for line in fieldset %}{% for field in line %}{% if field.field.name == 'title' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}{% endfor %}
     </div>
     <div class="desk-mobile-tabs" role="tablist" aria-label="Contenido del artículo">
-      <button class="button" type="button" role="tab" id="desk-source-tab" aria-controls="desk-source" aria-selected="true" data-pane="source">{% if original.format == 'html' %}HTML{% else %}Markdown{% endif %}</button>
+      <button class="button" type="button" role="tab" id="desk-source-tab" aria-controls="desk-source" aria-selected="true" data-pane="source">Editar</button>
       <button class="button" type="button" role="tab" id="desk-preview-tab" aria-controls="desk-preview" aria-selected="false" tabindex="-1" data-pane="preview">Vista previa</button>
     </div>
     <div class="desk-workspace" data-active-pane="source">

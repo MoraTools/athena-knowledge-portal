@@ -35,7 +35,7 @@ class AdminAuthRegressionTests(TestCase):
 
     def key_data(self, owner, scope='admin'):
         return {'name': 'agent', 'user': owner.pk, 'scope': scope,
-                'expires_at_0': '2099-01-01', 'expires_at_1': '00:00:00'}
+                'expires_at': '2099-01-01T00:00'}
 
     def issue_key(self, owner, scope='admin'):
         key = ApiKey(user=owner, scope=scope, name='existing')
@@ -100,7 +100,7 @@ class AdminAuthRegressionTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(ApiKey.objects.count(), 2)
         response = self.client.post(f'/admin/athena/apikey/{safe.pk}/change/', {
-            'name': 'Renamed', 'expires_at_0': '2098-01-01', 'expires_at_1': '00:00:00'})
+            'name': 'Renamed', 'expires_at': '2098-01-01T00:00'})
         self.assertEqual(response.status_code, 302)
         safe.refresh_from_db()
         self.assertEqual(safe.name, 'Renamed')

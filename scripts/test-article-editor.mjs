@@ -104,7 +104,7 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
       getAttribute(name) { return this.attributes[name] ?? null; },
       hasAttribute(name) { return name in this.attributes; },
       querySelector() { return null; }, querySelectorAll() { return []; },
-      append() {}, scrollIntoView() {}, focus() { focused = this; },
+      append() {}, scrollIntoView() {}, focus() { if (!this.unfocusable) focused = this; },
       contains(target) { for (let node = target; node; node = node.parent) if (node === this) return true; return false; },
       closest(selector) { for (let node = this; node; node = node.parent) if (selector === '.desk-detail-panel' && node.panel) return node; return null; },
       showModal() { this.open = true; },
@@ -162,7 +162,7 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
     '[data-close-details]': close, '.desk-workspace': workspace };
   vm.runInNewContext(readFileSync(new URL('../server/athena/static/athena/article-editor.js', import.meta.url), 'utf8'), {
     window: { addEventListener(type, callback) { handlers[type] = callback; } },
-    document: { documentElement: { dataset: { theme: 'dark' }, lang: 'es' },
+    document: { documentElement: { dataset: { theme: 'dark' }, lang: 'es' }, get activeElement() { return focused; },
       body: { append(node) { node.isConnected = true; } },
       createElement(tag) {
         const node = element('');
@@ -218,13 +218,45 @@ for (const readOnly of [false, true]) {
   assert.deepEqual(state.panels.map(panel => panel.hidden), [true, true, false]);
   assert.equal(state.focused(), state.fields.markdown_file);
   state.invalidate('date');
-  await state.form.fire('invalid', { target: state.fields.date });
+  assert.equal((await state.form.fire('submit')).defaultPrevented, true);
   assert.equal(state.focused(), state.fields.date);
   assert.deepEqual(state.panels.map(panel => panel.hidden), [true, false, true]);
-  const hiddenError = await state.form.fire('invalid', { target: state.fields.pdf_file });
-  assert.equal(hiddenError.defaultPrevented, true);
+  // Outside a submit an invalid event changes nothing, as when a widget calls checkValidity().
+  const widgetCheck = await state.form.fire('invalid', { target: state.fields.pdf_file });
+  assert.equal(widgetCheck.defaultPrevented, false);
   assert.equal(state.focused(), state.fields.date);
+  assert.deepEqual(state.panels.map(panel => panel.hidden), [true, false, true]);
+}
+// Django's SelectFilter2 calls checkValidity() on its selects at load and on every change: Detalles stays closed.
+{
+  const state = editor();
+  state.invalidate('is_public');
+  state.form.checkValidity();
+  await state.form.fire('invalid', { target: state.fields.is_public });
+  assert.equal(state.dialog.open, false);
+  assert.equal(state.focused(), null);
+  assert.deepEqual(state.panels.map(panel => panel.hidden), [false, true, true]);
+  // A real submit with that field invalid opens Detalles on its tab, with focus on the field.
   assert.equal((await state.form.fire('submit')).defaultPrevented, true);
+  assert.equal(state.dialog.open, true);
+  assert.equal(state.detailTabs[1].getAttribute('aria-selected'), 'true');
+  assert.deepEqual(state.panels.map(panel => panel.hidden), [true, false, true]);
+  assert.equal(state.focused(), state.fields.is_public);
+}
+// Focus follows the selected tab: on a click, and when the invalid field cannot take focus.
+{
+  const state = editor();
+  await state.mainOpener.fire('click');
+  assert.equal(state.focused(), state.detailTabs[0]);
+  await state.detailTabs[2].fire('click');
+  assert.equal(state.detailTabs[2].getAttribute('aria-selected'), 'true');
+  assert.equal(state.focused(), state.detailTabs[2]);
+  state.dialog.close();
+  state.fields.date.unfocusable = true;
+  state.invalidate('date');
+  assert.equal((await state.form.fire('submit')).defaultPrevented, true);
+  assert.equal(state.detailTabs[1].getAttribute('aria-selected'), 'true');
+  assert.equal(state.focused(), state.detailTabs[1]);
 }
 {
   const state = editor();

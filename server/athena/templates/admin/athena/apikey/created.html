@@ -1,5 +1,5 @@
 {% extends 'admin/base_site.html' %}{% load static %}
-{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Inicio</a> &rsaquo; <a href="{% url 'admin:athena_apikey_changelist' %}">Claves de API</a> &rsaquo; {{ original.name }}</div>{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Administración</a> &rsaquo; <a href="{% url 'admin:athena_apikey_changelist' %}">Claves de API</a> &rsaquo; {{ original.name }}</div>{% endblock %}
 {% block content %}
 <div class="key-created">
   <p class="key-warning">Copie la clave ahora. Athena guarda solo su hash y <strong>no volverá a mostrarla</strong>.</p>

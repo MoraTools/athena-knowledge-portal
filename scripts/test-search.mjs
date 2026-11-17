@@ -276,6 +276,7 @@ class Element {
   removeAttribute(name) { this.attributes.delete(name); }
   append(...children) {
     children.forEach((child) => {
+      if (typeof child === 'string') child = { textContent: child };
       if (child.parentElement) child.parentElement.childNodes = child.parentElement.childNodes.filter((node) => node !== child);
       child.parentElement = this;
       this.childNodes.push(child);
@@ -312,16 +313,23 @@ let pageTree;
 const outlineHeading = new Element('h1', 'Reader guide');
 outlineHeading.id = 'reader-guide';
 outlineHeading.getBoundingClientRect = () => ({ top: 0 });
+const outlineSection = new Element('h2', 'Steps');
+outlineSection.id = 'steps';
+outlineSection.getBoundingClientRect = () => ({ top: 400 });
+let outlineHeadings = [outlineHeading];
 const outlineArticle = {
   parentElement: { clientWidth: 1000 },
   querySelector: () => null,
-  querySelectorAll: () => [outlineHeading],
+  querySelectorAll: () => outlineHeadings,
   before(nav) { nav.parentElement = this.parentElement; nav.remove = () => { pageTree = null; }; pageTree = nav; }
 };
 context.document.createElement = (tag) => new Element(tag);
 context.document.querySelector = (selector) => ({ '.markdown-section': outlineArticle, '.page-tree': pageTree })[selector] || null;
 context.getComputedStyle = () => ({ position: outlineArticle.parentElement.clientWidth >= 900 ? 'sticky' : 'static' });
 context.location.hash = '#/content/guide';
+context.buildPageTree();
+assert.equal(pageTree, undefined, 'A page with only its title gets no outline.');
+outlineHeadings = [outlineHeading, outlineSection];
 for (const width of [700, 899, 900, 1320]) {
   outlineArticle.parentElement.clientWidth = width;
   context.buildPageTree();
@@ -499,6 +507,10 @@ buttons.forEach((button, index) => {
   assert.equal(columns[index].childNodes.length, 1, 'Repeated sync must not nest controls.');
 });
 assert.ok(skipped.every((item) => !item.dataset.sortReady), 'Structural and interactive tables stay intact.');
+assert.equal(records.tabIndex, 0, 'A table that scrolls in its own box takes keyboard focus.');
+assert.equal(records.getAttribute('aria-label'), 'Nombre', 'The focusable table is named by its first header.');
+assert.equal(merged.tabIndex, 0, 'Tables that cannot sort still scroll by keyboard.');
+assert.ok(layout.tabIndex === undefined && nestedChild.tabIndex === undefined, 'Layout and nested tables take no focus.');
 assert.deepEqual(proseTable.tHead.rows[0].cells.map((cell) => cell.dataset.longText), [undefined, undefined, 'true']);
 assert.ok(columns.every((header) => !header.dataset.longText), 'Short account columns keep their natural width.');
 const order = () => records.tBodies[0].rows.map((row) => originalRows.indexOf(row)).join(',');
@@ -539,6 +551,42 @@ tables = [table(['New render'], [['2'], ['1']])];
 context.syncView();
 tables[0].tHead.rows[0].cells[0].querySelector('button').click();
 assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify render initializes independently.');
+
+// The article meta line comes from the reader's own index record of the current route.
+{
+  const title = new Element('h1', 'Guide');
+  const section = new Element('div');
+  section.append(title);
+  section.querySelectorAll = (selector) => selector === '.article-meta' ? section.children.filter((node) => node.className === 'article-meta') : [];
+  context.document.createElement = (tag) => Object.assign(new Element(tag), { remove() { section.childNodes = section.childNodes.filter((node) => node !== this); } });
+  title.after = (node) => section.childNodes.splice(section.childNodes.indexOf(title) + 1, 0, node);
+  title.isConnected = true;
+  context.location.hash = '#/content/guide';
+  context.document.querySelector = (selector) => selector === '.markdown-section h1' ? title : null;
+  context.fetch = async (url) => ({ ok: url === '/search-index.json', json: async () => [
+    { route: '#/content/other', kind: 'tool', title: 'Other', author: 'X', date: '2026-01-01', tags: [] },
+    { route: '#/content/guide', kind: 'guide', title: 'Guide', author: 'Ana Pérez', date: '2026-11-15', tags: ['RPA', 'Colas'] }
+  ] });
+  vm.runInContext('searchIndexPromise = undefined', context);
+  await context.buildArticleMeta();
+  await context.buildArticleMeta();
+  const metas = section.children.filter((node) => node.className === 'article-meta');
+  assert.equal(metas.length, 1, 'Repeated syncs keep one meta line.');
+  assert.equal(section.children[1], metas[0], 'The meta line follows the article title.');
+  const [kind, , author, , updated, date, , tagLinks] = metas[0].children;
+  assert.equal(kind.textContent, 'Guía');
+  assert.equal(author.textContent, 'Ana Pérez');
+  assert.equal(author.lang, 'es');
+  assert.equal(updated.textContent, 'Actualizado');
+  assert.equal(date.dateTime, '2026-11-15');
+  assert.deepEqual(tagLinks.children.map((link) => link.href), ['#/search?q=RPA', '#/search?q=Colas']);
+  context.location.hash = '#/content/draft';
+  section.childNodes = [title];
+  await context.buildArticleMeta();
+  assert.equal(section.children.length, 1, 'An article missing from the index (a draft) gets no meta line.');
+  context.document.querySelector = () => null;
+  vm.runInContext('searchIndexPromise = undefined', context);
+}
 
 if (process.argv.includes('--reader-integration')) {
   const directoryInput = { value: '', addEventListener(name, handler) { this[name] = handler; } };
@@ -673,6 +721,7 @@ assert.ok(groupFor('Sin etiqueta').children.slice(1).every((row) => row.hidden),
 assert.ok(['RPA', 'CAFE', 'Helios', 'Seguridad'].every((label) => !groupFor(label).children[1].hidden), 'A matching guide stays visible in each of its topics.');
 const jumps = guides.topics.children[0];
 assert.equal(jumps.children.filter((jump) => !jump.hidden).length, 5, 'A matching guide keeps each of its topic jumps.');
+assert.equal(jumps.children.find((jump) => jump.textContent.startsWith('RPA ')).children.at(-1).textContent, '1', 'A topic jump counts its visible guides.');
 const activeJump = jumps.children.find((jump) => !jump.hidden);
 const activeHeading = groupFor('RPA').children[0];
 let jumpFocused = false;
@@ -697,6 +746,10 @@ guides.query.value = 'no existe';
 handlers.input({ target: guides.query });
 assert.equal(guides.count.textContent, '0 resultados');
 assert.equal(guides.empty.hidden, false);
+const emptyActions = guides.empty.children.at(-1);
+assert.equal(emptyActions.children[0].href, '#/search?q=no+existe', 'An empty filter offers the same words in all of Athena.');
+assert.equal(emptyActions.children[0].textContent, 'Buscar «no existe» en todo Athena');
+assert.ok('clearFilter' in emptyActions.children[1].dataset, 'An empty filter can be removed in one step.');
 assert.ok(topicSections.every((section) => section.hidden));
 assert.ok(jumps.children.every((jump) => jump.hidden));
 const oldTopics = guides.topics;
@@ -772,7 +825,7 @@ function railViewport(width, preference, storedWidth = null) {
   const click = (selector) => events.click({ target: { closest: () => ({ matches: (candidate) => candidate === selector }) } });
   const key = (name, shiftKey = false) => handle.listeners.keydown({ key: name, shiftKey, preventDefault() {} });
   const resize = (next) => { context.innerWidth = next; windowEvents.resize(); };
-  return { root, media, writes, click, handle, key, resize, events, railElement, width: () => style.get('--rail-drag') };
+  return { root, media, writes, click, handle, key, resize, events, railElement, body: context.document.body, width: () => style.get('--rail-drag') };
 }
 for (const width of [320, 768, 1024]) {
   const drawer = railViewport(width, 'compact');
@@ -786,6 +839,19 @@ for (const width of [320, 768, 1024]) {
   drawer.media.change();
   assert.equal(drawer.root.dataset.rail, 'compact', 'Returning to desktop restores the stored preference.');
 }
+// The open drawer makes the rest of the page inert (reader and admin), and only while it is open.
+const inertDrawer = railViewport(390, 'expanded');
+const page = { inert: false };
+inertDrawer.body.children = [inertDrawer.railElement, page];
+inertDrawer.railElement.parentElement = inertDrawer.body;
+inertDrawer.click('.rail-reveal');
+assert.deepEqual([page.inert, inertDrawer.railElement.inert], [true, undefined], 'The page behind the drawer is inert.');
+inertDrawer.click('.rail-toggle');
+assert.equal(page.inert, false, 'Closing the drawer restores the page.');
+inertDrawer.click('.rail-reveal');
+inertDrawer.media.matches = false;
+inertDrawer.media.change();
+assert.equal(page.inert, false, 'A desktop width never leaves the page inert.');
 const desktopRail = railViewport(1025, 'compact');
 assert.equal(desktopRail.root.dataset.rail, 'compact');
 desktopRail.click('.rail-toggle');

@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
-from django.contrib.auth.models import Permission, User
+from django.contrib.auth.models import AnonymousUser, Permission, User
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
@@ -20,7 +20,7 @@ from django.utils import timezone
 
 from .admin import since
 from .forms import ArticleForm, DirectoryUserForm, EMAIL_UNAVAILABLE
-from .models import ApiKey, Article, Download, LoginAttempt
+from .models import ApiKey, Article, Download, LoginAttempt, visible_articles
 from .views import article_html, pdf_fetcher, sidebar_links
 
 LIMA = timezone.get_fixed_timezone(-300)  # settings.TIME_ZONE has no daylight saving time.
@@ -188,7 +188,7 @@ class PortalTests(TestCase):
         self.client.force_login(self.admin)
         self.assertContains(self.client.get('/admin/athena/apikey/'), 'Verifique una clave con <code>GET /api/v1/me/</code>')
         response = self.client.post('/admin/athena/apikey/add/', {
-            'name': 'agent', 'user': self.admin.pk, 'scope': 'admin', 'expires_at_0': '2099-01-01', 'expires_at_1': '00:00:00'}, follow=True)
+            'name': 'agent', 'user': self.admin.pk, 'scope': 'admin', 'expires_at': '2099-01-01T00:00'}, follow=True)
         self.assertContains(response, 'Clave creada')
         self.assertContains(response, 'export ATHENA_API_KEY=athena_')
         self.assertContains(response, 'curl -H "Authorization: Bearer $ATHENA_API_KEY" https://testserver/api/v1/me/')
@@ -921,7 +921,7 @@ class PortalTests(TestCase):
         self.assertTrue(self.client.get('/_sidebar.md').content.decode().endswith(
             '- Administración\n  - [Administrar Athena](/admin/ ":ignore")\n  - [API para agentes](/api.md)\n'))
         self.assertEqual(sidebar_links(self.admin), [
-            ('Biblioteca', [('Inicio', '/'), ('Guías', '/#/guides'), ('Feed', '/#/updates'),
+            ('Biblioteca', [('Inicio', '/'), ('Guías', '/#/guides'), ('Actualizaciones', '/#/updates'),
                             ('Herramientas', '/#/tools'), ('Descargas', '/#/downloads')]),
             ('Participar', [('Contribuir', '/#/content/contributing')]), ('Cuenta', [('Mi cuenta', '/#/account')]),
             ('Administración', [('Administrar Athena', '/admin/'), ('API para agentes', '/#/api')])])
@@ -939,9 +939,9 @@ class PortalTests(TestCase):
             for link in reader_links + [item('/#/api', '', 'API para agentes'), '>Artículos</span></a>', '>Claves de API</span></a>']:
                 self.assertContains(response, link, html=False)
             page = response.content.decode()
-            labels = re.findall(r'<h2 class="rail-group-label"[^>]*>([^<]+)</h2>', page)
+            labels = re.findall(r'<p class="rail-group-label"[^>]*>([^<]+)</p>', page)
             self.assertEqual(labels, ['Biblioteca', 'Participar', 'Cuenta', 'Administración'])
-            admin_group = page[page.index('>Administración</h2>'):]
+            admin_group = page[page.index('>Administración</p>'):]
             self.assertLess(admin_group.index('>API para agentes</span>'), admin_group.index('>Artículos</span>'))
             self.assertEqual(page.count('aria-current="page"'), 1)
         self.assertContains(response, item('/admin/', '', 'Administrar Athena'))
@@ -966,14 +966,14 @@ class PortalTests(TestCase):
                                        '- [Updates guide](/content/updates-guide.md)\n', encoding='utf-8')
                     self.client.force_login(self.reader)
                     reader = self.client.get('/_sidebar.md')
-                    self.assertContains(reader, '[Feed](/updates.md "Feed timeline")')
-                    self.assertNotContains(reader, f'[{label}](/updates.md')
+                    self.assertContains(reader, '[Actualizaciones](/updates.md "Feed timeline")')
+                    self.assertNotContains(reader, '[Updates](/updates.md')
                     self.assertContains(reader, '[Updates guide](/content/updates-guide.md)')
-                    self.assertIn(('Feed', '/#/updates'), dict(sidebar_links(self.admin))['Biblioteca'])
+                    self.assertIn(('Actualizaciones', '/#/updates'), dict(sidebar_links(self.admin))['Biblioteca'])
                     self.client.force_login(self.admin)
                     admin = self.client.get('/admin/')
-                    self.assertContains(admin, '<a class="rail-item" href="/#/updates"><span class="rail-label">Feed</span></a>')
-                    self.assertNotContains(admin, f'>{label}</span>')
+                    self.assertContains(admin, '<a class="rail-item" href="/#/updates"><span class="rail-label">Actualizaciones</span></a>')
+                    self.assertNotContains(admin, '>Updates</span>')
 
     def test_changelist_uses_text_pills(self):
         Article.objects.create(title='Draft', slug='draft', summary='Draft', author='Author')
@@ -1059,6 +1059,46 @@ class PortalTests(TestCase):
         response = self.client.get('/admin/athena/article/')
         self.assertNotContains(response, '<a class="site-brand" href="/">ATHENA</a>')
         self.assertNotContains(response, 'ATHENA <span>')
+
+    def test_api_key_expiry_is_one_native_field_in_the_site_zone(self):
+        from django import forms
+        self.client.force_login(self.admin)
+        page = self.client.get('/admin/athena/apikey/add/').content.decode()
+        self.assertRegex(page, r'<label[^>]* for="id_expires_at"[^>]*>Vence')
+        self.assertRegex(page, r'<input type="datetime-local" name="expires_at" value="\d{4}-\d\d-\d\dT\d\d:\d\d"')
+        for gone in ['expires_at_0', 'calendarlink', 'clocklink', 'add_id_user', 'change_id_user', 'view_id_user']:
+            self.assertNotIn(gone, page)
+        old = forms.SplitDateTimeField().clean(['2099-01-01', '00:00:00'])  # The split widget's parsing.
+        self.client.post('/admin/athena/apikey/add/', {'name': 'zone', 'user': self.admin.pk, 'scope': 'read',
+                                                       'expires_at': '2099-01-01T00:00'})
+        key = ApiKey.objects.get(name='zone')
+        self.assertEqual(key.expires_at, old)
+        self.assertEqual(key.expires_at, datetime(2099, 1, 1, tzinfo=LIMA))
+        response = self.client.post(f'/admin/athena/apikey/{key.pk}/change/', {'name': 'zone', 'expires_at': ''})
+        self.assertContains(response, 'Este campo es obligatorio.')
+        past = self.client.post(f'/admin/athena/apikey/{key.pk}/change/', {'name': 'zone', 'expires_at': '2020-01-01T08:30'})
+        self.assertEqual(past.status_code, 302)
+        key.refresh_from_db()
+        self.assertEqual(key.expires_at, datetime(2020, 1, 1, 8, 30, tzinfo=LIMA))
+
+    def test_admin_pages_have_h1_and_administracion_root(self):
+        self.client.force_login(self.admin)
+        key = ApiKey.objects.create(user=self.admin, name='crumbs', digest='d' * 64, password_digest='p' * 64)
+        root = '<a href="/admin/">Administración</a>'
+        for path in ['/admin/athena/article/', '/admin/athena/apikey/add/', f'/admin/athena/apikey/{key.pk}/change/',
+                     f'/admin/athena/article/{self.article.pk}/delete/', f'/admin/athena/article/{self.article.pk}/history/',
+                     '/admin/athena/', f'/admin/auth/user/{self.reader.pk}/password/']:
+            page = self.client.get(path).content.decode()
+            self.assertIn(root, page, path)
+            self.assertNotIn('>Inicio</a>', page, path)
+            self.assertEqual(page.count('<h1'), 1, path)
+        delete = self.client.get(f'/admin/athena/article/{self.article.pk}/delete/')
+        self.assertContains(delete, '<h1>Eliminar «First guide»</h1>', html=True)
+        edit = self.client.get(f'/admin/athena/article/{self.article.pk}/change/')
+        self.assertContains(edit, '<h1 class="visually-hidden">Editar artículo: First guide</h1>', html=True)
+        self.assertContains(self.client.get('/admin/athena/article/add/'), '<h1 class="visually-hidden">Nuevo artículo</h1>', html=True)
+        self.assertNotContains(edit, '<script>')  # The admin CSP allows no inline script.
+        self.assertContains(edit, 'data-pane="source">Editar</button>')
 
     def test_relative_last_login(self):
         now = timezone.now()
@@ -1236,3 +1276,127 @@ class RobotsTests(TestCase):
         self.assertIn(b'Disallow: /', response.content)
         self.assertEqual(response['X-Robots-Tag'], 'noindex, nofollow, noarchive')
         self.assertEqual(self.client.get('/accounts/login/')['X-Robots-Tag'], 'noindex, nofollow, noarchive')
+
+
+@override_settings(SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False)
+class ReaderPageTests(TestCase):
+    """Server-rendered reader pages: sign-in, unavailable, home Recientes, Descargas, search text and the PDF meta line."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.reader = User.objects.create_user('reader', password='Reader-Example-9348!')
+        cls.listed = User.objects.create_user('listed')
+
+    def setUp(self):
+        self.enterContext(override_settings(DATA_DIR=Path(self.enterContext(tempfile.TemporaryDirectory()))))
+
+    def test_sign_in_page_plain_heading_download_context_and_one_error_text(self):
+        page = self.client.get('/accounts/login/')
+        self.assertContains(page, '<h1>Ingresar</h1>', html=True)
+        self.assertNotContains(page, 'El conocimiento del equipo')
+        self.assertNotContains(page, 'Ingrese para descargar este archivo.')
+        self.assertContains(self.client.get('/accounts/login/?next=/downloads/plantilla'), '<p>Ingrese para descargar este archivo.</p>', html=True)
+        self.assertNotContains(self.client.get('/accounts/login/?next=/%23/guides'), 'Ingrese para descargar')
+        # Wrong password, unknown user and an inactive account read the same; Django's own wording is gone.
+        User.objects.create_user('inactive', password='Inactive-Example-1!', is_active=False)
+        errors = []
+        for username, password in [('reader', 'wrong'), ('nobody', 'wrong'), ('inactive', 'Inactive-Example-1!')]:
+            response = self.client.post('/accounts/login/', {'username': username, 'password': password})
+            self.assertEqual(response.status_code, 200)
+            self.assertNotContains(response, 'introduzca')
+            errors.append(re.search(r'<ul class="errorlist nonfield">.*?</ul>', response.content.decode(), re.S)[0])
+        self.assertEqual(errors, ['<ul class="errorlist nonfield"><li>Usuario o contraseña incorrectos.</li></ul>'] * 3)
+        for _ in range(2):  # The fifth failure locks; the lockout keeps its own message (DL-0010).
+            self.client.post('/accounts/login/', {'username': 'reader', 'password': 'wrong'})
+        locked = self.client.post('/accounts/login/', {'username': 'reader', 'password': 'Reader-Example-9348!'})
+        self.assertEqual(locked.status_code, 429)
+        self.assertContains(locked, 'Demasiados intentos. Intente de nuevo en 15 minutos.', status_code=429)
+        self.assertNotContains(locked, 'Usuario o contraseña incorrectos.', status_code=429)
+
+    def test_unavailable_article_is_one_view_for_unknown_draft_and_restricted(self):
+        Article.objects.create(title='Borrador', slug='borrador', summary='s', author='a', body='# Borrador')
+        restricted = Article.objects.create(title='Privado', slug='privado', summary='s', author='a', body='# Privado',
+                                            published=True, is_restricted=True)
+        restricted.allowed_users.set([self.listed])
+        for user in [None, self.reader]:
+            self.client.logout()
+            if user:
+                self.client.force_login(user)
+            for suffix in ['.md', '.pdf']:
+                responses = [self.client.get(f'/content/{slug}{suffix}') for slug in ['no-existe', 'borrador', 'privado']]
+                self.assertEqual({(r.status_code, r.content) for r in responses}, {(404, responses[0].content)}, (user, suffix))
+            page = self.client.get('/not-found.md').content.decode()
+            self.assertIn('Puede que la dirección sea incorrecta o que el artículo tenga acceso limitado.', page)
+            self.assertIn('<a class="post-link" href="#/search">Buscar en Athena</a><a class="post-link" href="#/">Ir al inicio</a>', page)
+            self.assertEqual('href="/accounts/login/"' in page, user is None)
+            self.assertNotIn('rivado', page)
+
+    def test_home_recent_uses_the_library_access_rule_and_last_update(self):
+        def make(slug, **fields):
+            return Article.objects.create(title=slug, slug=slug, summary='s', author='a', body='# ' + slug,
+                                          **{'published': True, **fields})
+        old = make('old-public', is_public=True)
+        make('private')
+        make('draft', published=False, is_public=True)
+        restricted = make('restricted', is_restricted=True, is_public=True)
+        restricted.allowed_users.set([self.listed])
+        for i in range(4):
+            make(f'public-{i}', is_public=True)
+        old.summary = 'edited'
+        old.save()  # An edit moves the article to the top (DL-0022).
+
+        def recent(user):
+            self.client.logout()
+            if user:
+                self.client.force_login(user)
+            page = self.client.get('/README.md').content.decode()
+            return re.findall(r'<a class="guide-title" href="#/content/([^"]+)">', page)
+        self.assertEqual(recent(None), ['old-public', 'public-3', 'public-2', 'public-1', 'public-0'])
+        self.assertEqual(recent(self.reader), ['old-public', 'public-3', 'public-2', 'public-1', 'public-0'])
+        Article.objects.filter(slug__startswith='public-').update(published=False)
+        self.assertEqual(recent(None), ['old-public'])
+        self.assertEqual(recent(self.reader), ['old-public', 'private'])
+        self.assertEqual(recent(self.listed), ['old-public', 'restricted', 'private'])
+        for user in [None, self.reader, self.listed]:
+            self.client.logout()
+            if user:
+                self.client.force_login(user)
+            self.assertEqual(recent(user), [a.slug for a in visible_articles(user or AnonymousUser()).order_by('-updated_at', 'title')[:5]])
+        page = self.client.get('/README.md').content.decode()
+        self.assertIn('## Recientes', page)
+        self.assertIn(f'<small>Guía</small><small>Actualizado <time datetime="{timezone.localdate(old.updated_at).isoformat()}">', page)
+
+    def test_downloads_mark_the_framework_file_that_latest_serves(self):
+        def make(title, section, minutes):
+            item = Download.objects.create(title=title, section=section, file=ContentFile(b'x', name=title + '.zip'))
+            Download.objects.filter(pk=item.pk).update(created_at=timezone.now() - timedelta(minutes=minutes))
+            return Download.objects.get(pk=item.pk)
+        current, older = make('nuevo', 'framework', 1), make('anterior', 'framework', 5)
+        package = make('paquete', 'packages', 1)
+        Download.objects.filter(pk=make('oculto', 'framework', 0).pk).update(published=False)
+        self.client.force_login(self.reader)
+        page = self.client.get('/downloads.md').content.decode()
+        self.assertIn(f'<p class="post-actions"><span class="status">Versión actual</span><a class="download-link" href="/downloads/{current.slug}" download>Descargar</a></p>', page)
+        self.assertIn(f'<a class="account-button" href="/downloads/{older.slug}" download>Descargar</a>', page)
+        self.assertIn(f'<a class="download-link" href="/downloads/{package.slug}" download>Descargar</a>', page)
+        self.assertEqual(page.count('Versión actual'), 1)  # Only Framework has a rule for "current".
+        self.assertIn(f'<small>1\xa0byte · <time datetime="{timezone.localdate(current.created_at).isoformat()}">', page)
+        self.assertIn(current.filename, self.client.get('/downloads/framework/latest')['Content-Disposition'])
+
+    def test_search_text_drops_fences_escapes_and_controls(self):
+        from .views import html_text, search_entry
+        article = Article(title='T', slug='t', kind='guide', summary='s', author='a', published=True, updated_at=timezone.now(),
+                          body='# T\n\nUse \\*todo\\* and `code` **bold**.\n\n```powershell\n$ruta = "C:\\\\Bots"\n```\n\n<!-- hidden -->\n')
+        entry = search_entry(article)
+        self.assertEqual(entry['text'], 'T Use *todo* and code bold. $ruta = "C:\\\\Bots"')
+        self.assertNotIn('powershell', json.dumps(entry))
+        self.assertEqual(html_text('<p>Demo <button>Pantalla completa ▶</button><span aria-hidden="true">✓<b>x</b></span>'
+                                   '<video controls>Sin video</video><img aria-hidden="true" alt=""> fin</p>'), 'Demo fin')
+
+    def test_pdf_export_has_the_reader_meta_line_and_address(self):
+        article = Article(title='Guía', slug='guia', author='Ana & Co', published=True, body='# Guía\n\nTexto',
+                          updated_at=datetime(2026, 11, 14, 15, tzinfo=LIMA))
+        html = article_html(article, 'https://athena.test')
+        self.assertIn('<h1>Guía</h1>\n<p class="article-meta">Ana &amp; Co · Actualizado 14/11/2026</p>', html)
+        self.assertIn('html { string-set: address "https://athena.test/#/content/guia · " }', html)
+        self.assertIn('content: string(address) counter(page)', html)

@@ -1,0 +1,13 @@
+{% extends 'admin/app_index.html' %}{% load i18n %}
+{# Breadcrumb root: Administración, since the portal home is the reader's Inicio. #}
+{% block nav-breadcrumbs %}
+  <nav aria-label="{% translate 'Breadcrumbs' %}">
+    <div class="breadcrumbs">
+      <a href="{% url 'admin:index' %}">Administración</a>
+      &rsaquo;
+      {% for app in app_list %}
+        {{ app.name }}
+      {% endfor %}
+    </div>
+  </nav>
+{% endblock %}

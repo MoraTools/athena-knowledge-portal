@@ -30,8 +30,8 @@
   };
   // Icons follow the link label from /_sidebar.md and the admin model names.
   const LABEL_ICONS = {
-    Home: 'home', Guides: 'book', Tools: 'tool', Downloads: 'download', Contribute: 'plus', 'My account': 'user', 'Sign in': 'user', 'Manage Athena': 'gear', 'API for agents': 'code', Articles: 'file', 'API keys': 'key', 'Logged downloads': 'log', Users: 'users',
-    Inicio: 'home', 'Guías': 'book', Feed: 'clock', Herramientas: 'tool', Descargas: 'download',
+    Home: 'home', Guides: 'book', Updates: 'clock', Tools: 'tool', Downloads: 'download', Contribute: 'plus', 'My account': 'user', 'Sign in': 'user', 'Manage Athena': 'gear', 'API for agents': 'code', Articles: 'file', 'API keys': 'key', 'Logged downloads': 'log', Users: 'users',
+    Inicio: 'home', 'Guías': 'book', Actualizaciones: 'clock', Herramientas: 'tool', Descargas: 'download',
     Contribuir: 'plus', 'Mi cuenta': 'user', Ingresar: 'user', 'Administrar Athena': 'gear', 'API para agentes': 'code',
     'Artículos': 'file', 'Claves de API': 'key', 'Descargas registradas': 'log', Usuarios: 'users'
   };
@@ -92,6 +92,17 @@
     setWidth(next, true);
   });
 
+  // While the narrow drawer is open, everything beside the rail (on its path up to body) is inert.
+  let inert = false;
+  function setInert(on) {
+    const rail = document.querySelector('.rail');
+    if (!rail || on === inert) return;
+    inert = on;
+    for (let node = rail; node.parentElement && node !== document.body; node = node.parentElement) {
+      for (const sibling of node.parentElement.children) if (sibling !== node) sibling.inert = on;
+    }
+  }
+
   function set(state, remember = !narrow.matches) {
     root.dataset.rail = state;
     if (remember) {
@@ -106,6 +117,7 @@
     }
     document.querySelector('.command-menu, .rail-reveal:not(body:has(.reader-command, .account-command)>.rail-reveal)')?.setAttribute('aria-expanded', String(state !== 'hidden'));
     tip.classList.remove('is-visible');
+    setInert(narrow.matches && state === 'expanded');
     const rail = document.querySelector('.rail');
     if (state === 'hidden' && rail?.contains(document.activeElement)) document.querySelector('.command-menu, .rail-reveal:not(body:has(.reader-command, .account-command)>.rail-reveal)')?.focus();
   }

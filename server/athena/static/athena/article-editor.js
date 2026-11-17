@@ -71,6 +71,7 @@
     let dirty = false;
     let submitting = false;
     let importing = false;
+    let validating = false;
     let timer;
     const ACCESS_LABELS = { public: 'Público', account: 'Con cuenta', restricted: 'Restringido' };
     const value = (name, fallback = '') => form.elements.namedItem(name)?.value ?? fallback;
@@ -87,7 +88,7 @@
       detailPanels.forEach(panel => { panel.hidden = panel.id !== tab.getAttribute('aria-controls'); });
     }
     detailTabs.forEach((tab, index) => {
-      tab.addEventListener('click', () => showDetailTab(tab));
+      tab.addEventListener('click', () => { showDetailTab(tab); tab.focus(); });  // Safari does not focus clicked buttons.
       tab.addEventListener('keydown', event => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
@@ -108,7 +109,9 @@
       opener = button && overflow.contains(button) ? overflow.querySelector('summary') : button || document.querySelector('[data-open-details]');
       overflow.open = false;
       if (!dialog.open) dialog.showModal();
-      (target || detailTabs.find(tab => tab.getAttribute('aria-selected') === 'true')).focus();
+      target?.focus();
+      // A field that cannot take focus leaves it on the selected tab, never on the dialog's first tab.
+      if (!target || document.activeElement !== target) detailTabs.find(tab => tab.getAttribute('aria-selected') === 'true').focus();
       target?.scrollIntoView({ block: 'center' });
     }
     dialog.close();
@@ -124,7 +127,6 @@
     const htmlPreviewUrl = source.dataset.htmlPreviewUrl;
     const previewStatus = document.getElementById('desk-preview-status');
     const sourceHeading = document.getElementById('desk-source-heading');
-    const sourceTab = document.querySelector('[data-pane="source"]');
     const format = () => value('format', form.dataset.format || 'markdown');
     let htmlFrame = null;
     let htmlForm = null;
@@ -235,7 +237,6 @@
       const pdfName = pdf?.name || (checked('remove_pdf') ? '' : form.dataset.pdfName);
       const label = format() === 'html' ? 'HTML' : 'Markdown';
       sourceHeading.textContent = label;
-      if (sourceTab) sourceTab.textContent = label;
       if (format() === 'html') {
         showHtmlPreview();
         return;
@@ -315,7 +316,10 @@
       if (importing) { event.preventDefault(); event.stopImmediatePropagation(); }
     }, true);
 
+    // Only this form's own submit check routes errors: widgets such as Django's SelectFilter2 call checkValidity()
+    // on load and on every change, and those invalid events must not open Detalles.
     form.addEventListener('invalid', event => {
+      if (!validating) return;
       const firstInvalid = form.querySelector('input:invalid, select:invalid, textarea:invalid');
       if (event.target !== firstInvalid) { event.preventDefault(); return; }
       if (dialog.contains(event.target)) openDetails(null, event.target.id);
@@ -331,9 +335,12 @@
         openDetails(null, 'id_markdown_file');
         return;
       }
-      if (!form.checkValidity()) {
+      validating = true;
+      const valid = form.checkValidity();
+      if (!valid) form.reportValidity();
+      validating = false;
+      if (!valid) {
         event.preventDefault();
-        form.reportValidity();
         return;
       }
       if (!event.defaultPrevented && !source.hasAttribute('aria-busy')) submitting = true;

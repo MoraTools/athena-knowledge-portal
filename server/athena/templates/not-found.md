@@ -4,6 +4,7 @@
 
 No se puede mostrar esta página.
 
-{% if not user.is_authenticated %}<p>Si tiene una cuenta, ingrese para consultar el contenido de su equipo.</p><p><a class="post-link" href="/accounts/login/">Ingresar</a></p>{% endif %}
-<p><a href="#/guides">Volver a las guías</a></p>
+Puede que la dirección sea incorrecta o que el artículo tenga acceso limitado.
+
+<p class="post-actions"><a class="post-link" href="#/search">Buscar en Athena</a><a class="post-link" href="#/">Ir al inicio</a>{% if not user.is_authenticated %}<a class="post-link" href="/accounts/login/">Ingresar</a>{% endif %}</p>
 </section>
