@@ -130,6 +130,7 @@ for (const body of readerCases) {
   const markdown = '# Migrated guide\n\n' + body;
   const html = new context.window.DocsifyCompiler(context.window.$docsify, router).compile(markdown);
   const renderedIds = [...html.matchAll(/<h([23]) id="([^"]+)"/g)].map((match) => match[2]);
+  assert.doesNotMatch(html, /class="anchor"/, 'Headings keep their ids without a self-link tab stop.');
   const legacy = spawnSync(process.execPath, ['--input-type=module', '--eval', legacyParser,
     join(root, 'node_modules/marked/lib/marked.esm.js')], { input: JSON.stringify(markdown), encoding: 'utf8' });
   assert.equal(legacy.status, 0, legacy.stderr);
@@ -273,7 +274,11 @@ class Element {
   get cells() { return this.childNodes.filter((child) => ['TD', 'TH'].includes(child.tagName)); }
   setAttribute(name, value) { this.attributes.set(name, value); }
   getAttribute(name) { return this.attributes.get(name) ?? null; }
-  removeAttribute(name) { this.attributes.delete(name); }
+  removeAttribute(name) { this.attributes.delete(name); if (name === 'tabindex') delete this.tabIndex; }
+  get previousElementSibling() {
+    const siblings = this.parentElement?.childNodes.filter((node) => node.tagName) || [];
+    return siblings[siblings.indexOf(this) - 1] || null;
+  }
   append(...children) {
     children.forEach((child) => {
       if (typeof child === 'string') child = { textContent: child };
@@ -337,7 +342,7 @@ for (const width of [700, 899, 900, 1320]) {
   assert.equal(details.open, width >= 900, 'The outline opens only when the content area supports a side column.');
   assert.equal(details.children[0].tagName, 'SUMMARY');
   const link = details.children[1].children[0].children[0];
-  assert.equal(link.href, '#reader-guide');
+  assert.equal(link.href, '#/content/guide?id=reader-guide', 'Tree links use the reader route of the heading id.');
   assert.equal(link.getAttribute('aria-current'), 'location');
   details.open = !details.open;
   context.updatePageTreeCurrent();
@@ -405,7 +410,7 @@ context.document.querySelectorAll = (selector) => selector === '.markdown-sectio
 context.buildPdfViewer();
 assert.equal(citationsReplaced, 0);
 assert.equal(viewer.className, 'pdf-viewer');
-assert.equal(viewer.children[1].src, '/pdf/guide.pdf');
+assert.equal(viewer.children[1].src, '/pdf/guide.pdf#zoom=page-width&pagemode=none&view=FitH&navpanes=0', 'The viewer opens at page width.');
 assert.equal(viewer.children[0].children[0].href, '/pdf/guide.pdf?download=1');
 assert.equal(viewer.children[0].children[1].target, '_blank');
 const originalViewer = viewer;
@@ -414,7 +419,7 @@ assert.equal(viewer, originalViewer, 'Repeated sync keeps one viewer.');
 viewer = null;
 ownPdf.closest = () => null;
 context.buildPdfViewer();
-assert.equal(viewer.children[1].src, '/pdf/guide.pdf', 'A link outside a paragraph cannot stop view sync.');
+assert.equal(viewer.children[1].src.split('#')[0], '/pdf/guide.pdf', 'A link outside a paragraph cannot stop view sync.');
 viewer = null;
 context.document.querySelectorAll = () => [externalPdf, crossArticlePdf];
 context.buildPdfViewer();
@@ -489,6 +494,12 @@ earlierTime.setAttribute('datetime', '2027-01-01T03:00:00+02:00');
 offsetDates.tBodies[0].rows[1].cells[0].append(earlierTime);
 const earlierRow = offsetDates.tBodies[0].rows[1];
 const proseTable = table(['Method', 'Path', 'Result'], [['GET', '/me/', 'The current account, its key, expiry date, and the full set of allowed API operations.']]);
+// Only a table wider than its box is a tab stop; it takes the name of the heading before it.
+const recordsHeading = new Element('h2', 'Claves de API');
+recordsHeading.id = 'claves-de-api';
+records.parentElement.prepend(recordsHeading);
+Object.assign(records, { scrollWidth: 900, clientWidth: 600, scrollLeft: 0 });
+Object.assign(merged, { scrollWidth: 500, clientWidth: 300, scrollLeft: 0 });
 let tables = [records, emptyTable, footer, offsetDates, proseTable, ...skipped];
 context.document.querySelector = () => null;
 context.document.querySelectorAll = (selector) => selector === '.markdown-section table' ? tables : [];
@@ -508,11 +519,23 @@ buttons.forEach((button, index) => {
 });
 assert.ok(skipped.every((item) => !item.dataset.sortReady), 'Structural and interactive tables stay intact.');
 assert.equal(records.tabIndex, 0, 'A table that scrolls in its own box takes keyboard focus.');
-assert.equal(records.getAttribute('aria-label'), 'Nombre', 'The focusable table is named by its first header.');
+assert.equal(records.getAttribute('aria-labelledby'), 'claves-de-api', 'The scroll region is named by the heading before it.');
+assert.equal(records.getAttribute('aria-label'), null);
+assert.equal(records.dataset.scrollMore, 'true', 'A cut table shows the right-edge cue.');
+records.scrollLeft = 300;
+records.listeners.scroll.forEach((handler) => handler());
+assert.equal(records.dataset.scrollMore, undefined, 'The cue goes at the end of the scroll.');
+records.clientWidth = 900;
+records.listeners.scroll.forEach((handler) => handler());
+assert.equal(records.tabIndex, undefined, 'A table that fits again is no tab stop.');
+assert.equal(records.listeners.scroll.length, 1, 'Repeated sync adds one scroll listener.');
 assert.equal(merged.tabIndex, 0, 'Tables that cannot sort still scroll by keyboard.');
+assert.ok([emptyTable, footer, proseTable].every((item) => item.tabIndex === undefined), 'Tables that fit take no focus.');
 assert.ok(layout.tabIndex === undefined && nestedChild.tabIndex === undefined, 'Layout and nested tables take no focus.');
-assert.deepEqual(proseTable.tHead.rows[0].cells.map((cell) => cell.dataset.longText), [undefined, undefined, 'true']);
-assert.ok(columns.every((header) => !header.dataset.longText), 'Short account columns keep their natural width.');
+assert.deepEqual(proseTable.tBodies[0].rows[0].cells.map((cell) => cell.dataset.width), [undefined, undefined, 'long'],
+  'A long-text column gets the wide floor; short columns keep their natural width.');
+assert.deepEqual(records.tBodies[0].rows.map((row) => row.cells[2].dataset.width), [undefined, undefined, undefined, undefined]);
+assert.ok(records.tBodies[0].rows.every((row) => row.cells[0].dataset.width === 'text'), 'A medium text column gets the text floor.');
 const order = () => records.tBodies[0].rows.map((row) => originalRows.indexOf(row)).join(',');
 context.document.activeElement = buttons[0];
 buttons[0].click();

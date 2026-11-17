@@ -24,6 +24,11 @@ window.$docsify = {
         }
         return this.origin.link.call(this, { ...token, href });
       },
+      heading(token) {
+        // Docsify wraps each heading in a link to itself, one tab stop per heading; keep the heading and its id only.
+        return this.origin.heading.call(this, token)
+          .replace(/^(<h\d[^>]*>)<a [^>]*class="anchor"[^>]*><span>([\s\S]*)<\/span><\/a>(<\/h\d>)/, '$1$2$3');
+      },
       image(token) {
         // Docsify treats a leading slash as relative to the article directory.
         const href = token.href.startsWith('/article-images/') ? new URL(token.href, location.origin).href : token.href;

@@ -72,7 +72,7 @@ function buildPageTree() {
 
   const route = getRouteState().path;
   const article = document.querySelector('.markdown-section');
-  if (!route.startsWith('/content/') || !article || article.querySelector('.unavailable-page')) return;
+  if (!(route.startsWith('/content/') || route === '/api') || !article || article.querySelector('.unavailable-page')) return;
 
   // Markdown headings are in the page. An HTML article's headings are inside its sandboxed frame: its bridge reports
   // them (athena:outline), and the reader adds its own title as Markdown does. No outline, no tree.
@@ -89,7 +89,7 @@ function buildPageTree() {
   } else {
     entries = [...article.querySelectorAll('h1[id],h2[id],h3[id]')].map((heading) => ({
       level: Number(heading.tagName.slice(1)), text: heading.textContent.trim(),
-      href: heading.querySelector('a.anchor')?.getAttribute('href') || '#' + heading.id, top: rect(heading)
+      href: '#' + route + '?id=' + encodeURIComponent(heading.id), top: rect(heading)
     }));
   }
   // A title alone is no outline.
@@ -103,7 +103,7 @@ function buildPageTree() {
   const summary = document.createElement('summary');
   summary.textContent = t('En esta página');
   const list = document.createElement('ol');
-  list.lang = 'es';
+  list.lang = route === '/api' ? 'en' : 'es';
 
   entries.forEach((entry) => {
     const item = document.createElement('li');
@@ -264,13 +264,39 @@ function filterDownloads() {
   }
 }
 
+// A table wider than its box is a keyboard stop with a right-edge cue until the reader reaches its end.
+function syncTableScroll(table) {
+  const overflow = table.scrollWidth > table.clientWidth + 1;
+  if (overflow) table.tabIndex = 0;
+  else table.removeAttribute('tabindex');
+  if (overflow && table.scrollLeft + table.clientWidth < table.scrollWidth - 1) table.dataset.scrollMore = 'true';
+  else delete table.dataset.scrollMore;
+}
+
+// A Docsify render replaces the tables; a removed one reports its last resize and is dropped.
+const tableResize = new ResizeObserver((entries) => entries.forEach(({ target }) => {
+  if (target.isConnected) syncTableScroll(target);
+  else tableResize.unobserve(target);
+}));
+
 function buildTableSorting() {
   const collator = new Intl.Collator(currentLang(), { numeric: true, sensitivity: 'base' });
   document.querySelectorAll('.markdown-section table').forEach((table) => {
-    if (table.getAttribute('tabindex') === null && table.getAttribute('role') !== 'presentation' && !table.parentElement.closest('table')) {
-      table.tabIndex = 0;
-      const name = table.tHead?.rows[0]?.cells[0]?.textContent.trim();
-      if (!table.caption && name) table.setAttribute('aria-label', name);
+    // An author tabindex stays as written; layout and nested tables never scroll on their own.
+    if (!table.dataset.scrollReady && table.getAttribute('tabindex') === null && table.getAttribute('role') !== 'presentation'
+      && !table.parentElement.closest('table')) {
+      table.dataset.scrollReady = 'true';
+      // The region takes the name of the nearest heading before it; a caption names the table itself.
+      let heading;
+      for (let node = table; node && !heading && !node.matches?.('.markdown-section'); node = node.parentElement) {
+        for (let sibling = node.previousElementSibling; sibling && !heading; sibling = sibling.previousElementSibling) {
+          if (/^H[1-4]$/.test(sibling.tagName) && sibling.id) heading = sibling;
+        }
+      }
+      if (!table.caption && heading) table.setAttribute('aria-labelledby', heading.id);
+      table.addEventListener('scroll', () => syncTableScroll(table), { passive: true });
+      tableResize.observe(table);
+      syncTableScroll(table);
     }
     if (table.dataset.sortReady || table.dataset.sortable === 'false' || table.getAttribute('role') === 'presentation'
       || table.parentElement.closest('table') || table.querySelector('table')
@@ -286,8 +312,10 @@ function buildTableSorting() {
     table.dataset.sortReady = 'true';
     headers.forEach((header, column) => {
       const label = header.textContent.trim();
-      // ponytail: infer long text from content; authored column widths if short prose needs a fixed width.
-      if (rows.some((row) => row.cells[column].textContent.trim().length > 60)) header.dataset.longText = 'true';
+      // shortcut: column floors come from the longest cell; add authored widths if a column needs another size.
+      const longest = Math.max(0, ...rows.map((row) => row.cells[column].textContent.trim().length));
+      const width = longest > 30 ? 'long' : longest > 12 ? 'text' : '';
+      if (width) rows.forEach((row) => { row.cells[column].dataset.width = width; });
       header.setAttribute('scope', 'col');
       header.setAttribute('aria-sort', 'none');
       const button = document.createElement('button');
@@ -778,14 +806,12 @@ function buildPdfViewer() {
     actions.append(a);
   });
   const frame = document.createElement('iframe');
-  frame.src = src;
+  // Page width without the thumbnail pane: Chromium and Edge read view/navpanes, Firefox reads zoom/pagemode.
+  frame.src = src + '#zoom=page-width&pagemode=none&view=FitH&navpanes=0';
   frame.title = t('Documento PDF');
   frame.loading = 'lazy';
   viewer.append(actions, frame);
   (link.closest('.article-pdf') || link).replaceWith(viewer);
-  const article = viewer.parentElement?.closest?.('.markdown-section');
-  if (article && ![...article.children].some((node) => node !== viewer && node.textContent.trim()
-    && !node.matches('.article-actions,h1,.article-meta,.article-access'))) viewer.classList.add('pdf-viewer--full');
 }
 
 // One meta line under the article title, from the reader's search index (drafts are not in it, so they get none).
@@ -843,6 +869,8 @@ const SPANISH_CONTENT = '[data-article-title],.guide-title,.guide-summary,.guide
 function markSpanishContent() {
   document.querySelectorAll(SPANISH_CONTENT).forEach((node) => { node.lang = 'es'; });
   const article = document.querySelector('.markdown-section');
+  // API para agentes is the repository's English API.md in both interface languages.
+  if (getRouteState().path === '/api' && article) article.lang = 'en';
   if (!getRouteState().path.startsWith('/content/') || !article || article.querySelector('.unavailable-page')) return;
   // The title and what follows it, apart from Athena's own lines; the actions and a draft notice come before it.
   let content = false;
@@ -1233,7 +1261,8 @@ function placeArticleTools() {
 function syncView() {
   const { path } = getRouteState();
   document.body.classList.toggle('home-view', path === '/');
-  document.body.classList.toggle('article-view', path.startsWith('/content/'));
+  // API para agentes reads like a guide: the article measure and page tree.
+  document.body.classList.toggle('article-view', path.startsWith('/content/') || path === '/api');
   updateCommand(path);
   buildRail();
   markRail();
