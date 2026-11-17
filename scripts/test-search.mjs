@@ -738,6 +738,8 @@ const readerCss = readFileSync(new URL('../src/styles.css', import.meta.url), 'u
 }
 // The article action row starts at the h1 edge on every article type (round 4 #4).
 assert.match(readerCss, /^\.article-actions\{display:flex;flex-wrap:wrap;justify-content:flex-start;/m);
+// The sort button holds its absolute visually hidden name parts, so they stay in the table scroll box (round 5 check: page overflow).
+assert.match(readerCss, /^\.markdown-section \.table-sort\{position:relative;/m);
 assert.doesNotMatch(readerCss, /article-actions\{[^}]*flex-end/);
 // Round 4 #3: list rows use the article meta voice: mono 13 px, tabular figures, the same " · " separators.
 assert.match(readerCss, /\.markdown-section \.item-meta\{display:flex;flex-wrap:wrap;align-items:baseline;[^}]*font:13px\/1\.5 var\(--font-mono\);font-variant-numeric:tabular-nums/);

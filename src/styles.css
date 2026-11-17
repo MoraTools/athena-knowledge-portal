@@ -129,7 +129,8 @@ body .markdown-section p.tip:before{color:var(--on-accent)}
 .markdown-section td[data-width=long]{min-width:30ch}.markdown-section td[data-width=text]{min-width:14ch}
 @container reader (max-width:600px){.markdown-section td[data-width=text]{min-width:0}}
 .markdown-section th:has(.table-sort){padding-top:0;padding-bottom:0}
-.markdown-section .table-sort{display:flex;align-items:center;justify-content:space-between;gap:var(--space-1);width:100%;min-height:40px;margin:0;padding:calc(var(--space-1) / 2) 0;border:0;background:transparent;color:inherit;font:inherit;text-align:inherit;cursor:pointer}
+/* position:relative keeps the visually hidden name parts inside the table scroll box; absolute spans placed past its edge widened the page. */
+.markdown-section .table-sort{position:relative;display:flex;align-items:center;justify-content:space-between;gap:var(--space-1);width:100%;min-height:40px;margin:0;padding:calc(var(--space-1) / 2) 0;border:0;background:transparent;color:inherit;font:inherit;text-align:inherit;cursor:pointer}
 .markdown-section .table-sort>span:first-child{flex:1;min-width:0}
 .markdown-section .table-sort:hover,.markdown-section th[aria-sort]:not([aria-sort=none]) .table-sort{color:var(--accent-text)}
 .markdown-section .table-sort:focus-visible{outline-offset:0}
