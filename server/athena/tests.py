@@ -3,6 +3,8 @@ import io
 import json
 import os
 import re
+import shutil
+import subprocess
 import tempfile
 import zlib
 from datetime import date, datetime, timedelta
@@ -1115,9 +1117,14 @@ class PortalTests(TestCase):
         response = self.client.get('/accounts/password_change/')
         self.assertContains(response, 'class="rail"')
         self.assertContains(response, '<a class="rail-item" href="/#/account" aria-current="page">', html=False)
-        # The reader's crumb row, and plain labels without Django's colon.
-        self.assertContains(response, '<div class="command-crumbs"><a href="/">Athena</a><span aria-hidden="true">›</span><a href="/#/account">Mi cuenta</a>'
-                                      '<span aria-hidden="true">›</span><span aria-current="page">Cambiar contraseña</span></div>', html=False)
+        # Round 4 #9: the crumbs are a list (the › comes from CSS), and plain labels without Django's colon.
+        self.assertContains(response, '<ol class="command-crumbs"><li><a href="/">Athena</a></li><li><a href="/#/account">Mi cuenta</a></li>'
+                                      '<li aria-current="page">Cambiar contraseña</li></ol>', html=False)
+        self.assertNotContains(response, '›</span>')
+        # The reader's Ctrl K chip, and the static script that gives the shortcut (no inline script: the CSP stays).
+        self.assertContains(response, 'aria-keyshortcuts="Control+k Meta+k"><kbd aria-hidden="true">Ctrl K</kbd>', html=False)
+        self.assertContains(response, '<script src="/static/athena/account-command.js"></script>', html=False)
+        self.assertNotRegex(response.content.decode(), r'<script>|<script [^>]*>[^<]')
         for field, label in [('old_password', 'Contraseña actual'), ('new_password1', 'Contraseña nueva'),
                              ('new_password2', 'Repita la contraseña nueva')]:
             self.assertContains(response, f'<label for="id_{field}">{label}</label>', html=False)
@@ -1676,6 +1683,34 @@ class ReaderPageTests(TestCase):
         self.assertEqual(search_text('Antes <span aria-hidden="true">oculto</span> después\n\n## Later\n\ntext'),
                          'Antes después Later text')
 
+    @override_settings(PUBLIC_ORIGIN='https://athena.test')
+    def test_restricted_pdf_prints_the_share_link_from_the_site_origin(self):
+        # Round 4 #40: the footer prints /s/<slug> from PUBLIC_ORIGIN, not the request host; /s/ of a restricted
+        # article is the bare redirect to the reader, which keeps the access rule.
+        article = Article.objects.create(title='Privada', slug='privada', summary='S', author='A', body='# Privada\n\nTexto',
+                                         published=True, is_restricted=True)
+        article.allowed_users.set([self.listed])
+        self.client.force_login(self.listed)
+        response = self.client.get('/content/privada.pdf', HTTP_HOST='127.0.0.1')
+        self.assertEqual(response.status_code, 200)
+        pdf = b''.join(response.streaming_content)
+        if shutil.which('pdftotext'):
+            text = subprocess.run(['pdftotext', '-', '-'], input=pdf, capture_output=True, check=True).stdout.decode()
+            self.assertIn('https://athena.test/s/privada · 1 / 1', text)
+            self.assertNotIn('#/content/', text)
+        self.assertIn('string-set: address "https://athena.test/s/privada · "', article_html(article, 'https://athena.test'))
+        share = self.client.get('/s/privada')
+        self.assertEqual((share.status_code, share['Location']), (302, '/#/content/privada'))
+
+    def test_pdf_short_inline_code_stays_on_one_line(self):
+        # Round 4 #29: short inline code does not break at its hyphen; a long value may wrap; blocks are untouched.
+        long = 'x' * 41
+        html = article_html(Article(title='T', slug='t', author='A', body=f'# T\n\nUse `run-tests` or `{long}`.\n\n```\n{long}\n```'),
+                            'https://athena.test')
+        self.assertIn(f'<p>Use <code>run-tests</code> or <code class="long">{long}</code>.</p>', html)
+        self.assertIn(f'<pre><code class="long">{long}', html)  # Inside pre the rule never applies.
+        self.assertIn(':not(pre) > code { white-space: nowrap }', html)
+
     def test_pdf_export_has_the_reader_meta_line_and_address(self):
         from weasyprint import HTML
         article = Article(title='Guía', slug='guia', author='Ana & Co', published=True, body='# Guía\n\nTexto `x`\n\n## Parte',
@@ -1685,7 +1720,7 @@ class ReaderPageTests(TestCase):
         self.assertIn('<h1>Guía</h1>\n<p class="article-meta">Guía · Ana &amp; Co · Actualizado 27 sept 2026 · Colas, Excel</p>', html)
         article.author, article.tags, article.updated_at = '', [], datetime(2026, 11, 14, 15, tzinfo=LIMA)
         self.assertIn('<p class="article-meta">Guía · Actualizado 14 nov 2026</p>', article_html(article, 'https://athena.test'))
-        self.assertIn('html { string-set: address "https://athena.test/#/content/guia · " }', html)
+        self.assertIn('html { string-set: address "https://athena.test/s/guia · " }', html)  # Round 4 #40: the share link.
         self.assertIn('@bottom-left { content: string(title);', html)  # The title next to the address.
         self.assertIn('content: string(address) counter(page)', html)
         # Theme A: the local Inter and Cormorant files, and no colour outside the suite tokens.

@@ -392,7 +392,8 @@ def article_parts(article):
 
 # 24px line icons, the stroke style of the "Copiar página" button (src/config.js).
 EDIT_ICON = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4Zm9-13 4 4"/></svg>'
-EXPORT_ICON = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11m-5-4 5 5 5-5M4 20h16"/></svg>'
+EXPORT_ICON = ('<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8l-5-5Zm0 0v5h5'
+               'M12 11v6m-3-3 3 3 3-3"/></svg>')  # A document, not the Descargas arrow.
 
 
 def article_markdown(request, slug):
@@ -440,6 +441,7 @@ h1 { font-size: 26pt; line-height: 1.15; margin-top: 0 } h2 { font-size: 18pt } 
 a { color: var(--accent-text) }
 code, pre { font-family: "DejaVu Sans Mono", monospace; font-size: 9pt; background: var(--surface-strong) }
 code { padding: 0 .2em }
+:not(pre) > code { white-space: nowrap } :not(pre) > code.long { white-space: normal; overflow-wrap: anywhere }
 pre { padding: .6em .8em; border: 1px solid var(--border); border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid }
 pre code { padding: 0 }
 img { max-width: 100%; break-inside: avoid }
@@ -474,14 +476,16 @@ READER_MONTHS = ('ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept',
 def article_html(article, origin):
     body = PDF_VIDEO.sub(video_link, MARKDOWN.render(article_body(article)))
     body = re.sub(r'\bhref="([^"]*)"', lambda m: f'href="{export_href(m[1], escape(origin))}"', body)
-    # The reader's meta line under the h1 (type · author · Actualizado <date> · tags), and the address in the footer.
+    # Short inline code stays on one line, as in the reader; a long value may wrap anywhere.
+    body = re.sub(r'<code>([^<]*)</code>', lambda m: f'<code class="long">{m[1]}</code>' if len(unescape(m[1])) > 40 else m[0], body)
+    # The reader's meta line under the h1 (type · author · Actualizado <date> · tags), and the share address in the footer.
     meta = [article.get_kind_display(), article.author]
     if article.updated_at:
         day = timezone.localdate(article.updated_at)
         meta.append(f'Actualizado {day.day} {READER_MONTHS[day.month - 1]} {day.year}')
     meta.append(', '.join(article.topic_tags))
     body = body.replace('</h1>', f'</h1>\n<p class="article-meta">{escape(" · ".join(filter(None, meta)))}</p>', 1)
-    address = f'{origin}/#/content/{article.slug} · '.replace('\\', '\\\\').replace('"', '\\"')
+    address = f'{origin}/s/{article.slug} · '.replace('\\', '\\\\').replace('"', '\\"')
     return (f'<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>{escape(article.title)}</title>'
             f'<meta name="author" content="{escape(article.author)}"><style>{PDF_STYLE}html {{ string-set: address "{address}" }}'
             f'</style></head><body>{body}</body></html>')
