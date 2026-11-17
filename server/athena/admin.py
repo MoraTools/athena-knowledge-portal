@@ -1,4 +1,5 @@
 import unicodedata
+from functools import partialmethod
 from urllib.parse import urlencode
 
 from django import forms
@@ -7,6 +8,7 @@ from django.contrib.admin.options import IS_POPUP_VAR
 from django.contrib.admin.utils import unquote
 from django.contrib.admin.widgets import RelatedFieldWidgetWrapper
 from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.forms import AdminPasswordChangeForm
 from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import PermissionDenied
 from django.db import models, transaction
@@ -15,7 +17,7 @@ from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.template.defaultfilters import filesizeformat
-from django.utils import formats, timezone
+from django.utils import formats, timezone, translation
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
@@ -25,10 +27,28 @@ from .models import ApiKey, Article, Download, DownloadEvent, readable_articles
 
 admin.site.site_header = 'Athena · Administración'
 admin.site.site_title = 'Athena'
-admin.site.index_title = 'Administrar conocimiento y acceso'
+admin.site.index_title = 'Administración'
 admin.site.site_url = '/'
 admin.site.unregister(Group)
 admin.site.unregister(User)
+
+
+class AdminLanguageMiddleware:
+    """Django's built-in admin strings follow the suite language: the django_language cookie that admin-lang.js
+    keeps equal to the toggle, else Accept-Language, as the toggle's default reads navigator.languages. Other paths
+    keep LANGUAGE_CODE, so reader responses stay as they are (no Vary: Accept-Language on cached files)."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if not request.path.startswith('/admin/'):
+            return self.get_response(request)
+        translation.activate(translation.get_language_from_request(request))
+        try:
+            return self.get_response(request)
+        finally:
+            translation.deactivate()  # The thread serves reader requests next.
 
 
 def since(moment, now):
@@ -47,6 +67,13 @@ def since(moment, now):
 
 def fold(text):
     return ''.join(char for char in unicodedata.normalize('NFD', text) if not unicodedata.combining(char)).lower()
+
+
+def plain_labels(form):
+    """Labels without Django's trailing colon, as on the sign-in page. The admin builds its forms without a
+    label_suffix argument, so it goes in through the constructor."""
+    form.__init__ = partialmethod(form.__init__, label_suffix='')
+    return form
 
 
 def flag(value, yes, no):
@@ -86,6 +113,9 @@ def row_controls(model_admin, request, obj, *extra):
 class RowControlsAdmin(admin.ModelAdmin):
     """Binds the request to the controls column, since list_display callables receive only the row."""
 
+    def get_form(self, request, obj=None, **kwargs):
+        return plain_labels(super().get_form(request, obj, **kwargs))
+
     def get_list_display(self, request):
         @admin.display(description='')
         def controls(obj):
@@ -101,6 +131,7 @@ class RowControlsAdmin(admin.ModelAdmin):
 @admin.register(User)
 class AthenaUserAdmin(UserAdmin):
     form = SafeUserChangeForm
+    change_password_form = plain_labels(type('AdminPasswordChangeForm', (AdminPasswordChangeForm,), {}))
 
     def may_touch(self, request, obj):  # A superuser account is off limits to a partial administrator.
         return obj is None or request.user.is_superuser or not obj.is_superuser
@@ -116,7 +147,7 @@ class AthenaUserAdmin(UserAdmin):
         return {}  # User removal is individual so the acting admin cannot be removed in a batch.
 
     def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
+        form = plain_labels(super().get_form(request, obj, **kwargs))
         form.actor = request.user
         return form
 

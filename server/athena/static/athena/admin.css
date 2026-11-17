@@ -49,15 +49,16 @@ div.breadcrumbs, thead th, .module h2, .module caption, .inline-group h2, fields
 .bulk-count, .paginator, #toolbar .quiet, #change-history tbody th {
   font: var(--label); letter-spacing: .06em; text-transform: uppercase;
 }
-/* Data voice: dates and times. */
-#changelist td.field-date, #changelist td.field-last_updated, #changelist td.field-expires_at, #changelist td.field-created, #changelist td.field-last_login {
-  font: 500 13px/1.45 var(--font-mono); font-variant-numeric: tabular-nums;
+/* Data voice: dates and times, one line each. */
+#changelist td.field-date, #changelist td.field-last_updated, #changelist td.field-expires_at, #changelist td.field-created, #changelist td.field-last_login,
+#changelist td.field-time {
+  font: 500 13px/1.45 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 
 /* Command bar (signed in) and sign-in header: the toggles always end the row. */
 #header, .admin-command {
   box-sizing: border-box; display: flex; flex-direction: row; justify-content: space-between; align-items: center;
-  gap: 12px 24px; flex-wrap: wrap; min-height: 52px; padding: 8px var(--space-4); background: var(--bg); color: var(--text);
+  gap: 12px 24px; flex-wrap: wrap; min-height: 52px; padding: 8px var(--space-3); background: var(--bg); color: var(--text);
   border-bottom: 1px solid var(--border);
 }
 .admin-command .suite-toggles { margin-left: auto; }
@@ -65,10 +66,10 @@ div.breadcrumbs, thead th, .module h2, .module caption, .inline-group h2, fields
 body:has(#rail) #container { flex-flow: row wrap; align-content: flex-start; }
 body:has(#rail) #container > * { flex: 1 0 100%; min-width: 0; }
 body:has(#rail) #container > nav { order: 1; flex: 1000 1 0; }
-body:has(#rail) #container > .admin-command { order: 2; flex: 1 0 auto; padding-left: 0; padding-right: var(--space-4); }
+body:has(#rail) #container > .admin-command { order: 2; flex: 1 0 auto; padding-left: 0; padding-right: var(--space-3); }
 body:has(#rail) #container > :not(.admin-command, nav) { order: 3; }
 body:has(#rail) #container > #footer { order: 4; }
-/* The row's rule sits on the breadcrumbs' nav, so an empty nav (the directory) still draws it under the whole row. */
+/* The row's rule sits on the breadcrumbs' nav, so it runs under the whole row, toggles included. */
 body:has(#rail) #container > nav { border-bottom: 1px solid var(--border); }
 body:has(#rail) #container > nav div.breadcrumbs { min-height: 51px; border-bottom: 0; }
 #site-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); min-width: 0; max-width: 100%; margin: 0; }
@@ -78,16 +79,16 @@ body:has(#rail) #container > nav div.breadcrumbs { min-height: 51px; border-bott
 #site-name .site-section:link, #site-name .site-section:visited { color: var(--text-muted); font: var(--label); letter-spacing: .06em; text-transform: uppercase; }
 #site-name a:hover, #site-name a:focus { color: var(--accent-text); }
 
-/* Breadcrumbs: the left part of the command bar. */
+/* Breadcrumbs: the left part of the command bar, in the label voice of the reader's crumbs. */
 div.breadcrumbs {
-  box-sizing: border-box; min-height: 52px; padding: 18px var(--space-4); background: var(--bg); color: var(--text-muted);
-  border-bottom: 1px solid var(--border); line-height: 15px; font-weight: 400; letter-spacing: 0; text-transform: none;
+  box-sizing: border-box; min-height: 52px; padding: 18px var(--space-3); background: var(--bg); color: var(--text-muted);
+  border-bottom: 1px solid var(--border); line-height: 15px;
 }
 div.breadcrumbs a:link, div.breadcrumbs a:visited { color: var(--accent-text); }
 div.breadcrumbs a:hover, div.breadcrumbs a:focus { color: var(--text); }
 
-/* Page: fills the width beside the rail up to --content-max; ultra-wide screens centre it, like the reader. */
-#content { box-sizing: border-box; width: 100%; max-width: var(--content-max); padding: var(--space-4); }
+/* Page: fills the width beside the rail up to --content-max; ultra-wide screens centre it; side padding as the reader's. */
+#content { box-sizing: border-box; width: 100%; max-width: var(--content-max); padding: var(--space-4) var(--space-3); }
 @media (min-width: 1600px) { #content { margin: 0 auto; } }
 #content h1 { margin: 0 0 var(--space-3); font: 600 var(--title-size)/32px var(--font-display); color: var(--text); overflow-wrap: anywhere; text-wrap: balance; }
 #content > h2 { margin: -12px 0 var(--space-3); font: 400 16px/1.5 var(--font-ui); color: var(--text-muted); }
@@ -176,7 +177,7 @@ input[type=file]::file-selector-button:hover { background: var(--surface-raised)
 .errors input, .errors select, .errors textarea { border-color: var(--crit); }
 
 /* Messages and errors */
-ul.messagelist { padding: var(--space-3) var(--space-4) 0; }
+ul.messagelist { padding: var(--space-3) var(--space-3) 0; }
 ul.messagelist li, ul.messagelist li.warning, ul.messagelist li.error {
   margin: 0 0 12px; padding: 12px 16px; border: 1px solid color-mix(in oklab, var(--ok) 45%, transparent); border-radius: var(--radius);
   background-image: none; color: var(--text); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere;
@@ -454,8 +455,8 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { background: var
 }
 
 @media (max-width: 1024px) {
-  .admin-command, div.breadcrumbs, ul.messagelist { padding-left: var(--space-3); padding-right: var(--space-3); }
-  body:has(#rail) #container > .admin-command { padding-left: 0; padding-right: var(--space-3); }
+  .admin-command, div.breadcrumbs { padding-left: var(--space-2); padding-right: var(--space-2); }
+  body:has(#rail) #container > .admin-command { padding-left: 0; padding-right: var(--space-2); }
   #content { padding: var(--space-3); }
   :where(body:has(#rail)) #content { padding-bottom: 80px; }
 }

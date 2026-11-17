@@ -2,7 +2,7 @@
 {% block responsive %}{{ block.super }}<link rel="stylesheet" href="{% static 'athena/admin-directory.css' %}">{% endblock %}
 {% block extrahead %}{{ block.super }}<script src="{% static 'athena/admin-directory.js' %}" defer></script>{% endblock %}
 {% block bodyclass %}{{ block.super }} directory-page{% endblock %}
-{% block breadcrumbs %}{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Administración</a> &rsaquo; Usuarios</div>{% endblock %}
 {% block content_title %}{% endblock %}
 {% block content %}
 <div class="directory">

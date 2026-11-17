@@ -1,4 +1,5 @@
-{% extends 'admin/index.html' %}{% load athena_nav %}
+{% extends 'admin/index.html' %}{% load i18n athena_nav %}
+{% block nav-breadcrumbs %}<nav aria-label="{% translate 'Breadcrumbs' %}"><div class="breadcrumbs">Administración</div></nav>{% endblock %}
 {% block nav-sidebar %}{% portal_sidebar %}{% endblock %}
 {% block sidebar %}
 <div id="content-related">

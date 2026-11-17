@@ -17,6 +17,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'athena.admin.AdminLanguageMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -49,6 +50,8 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 LANGUAGE_CODE = 'es'
+# The languages AdminLanguageMiddleware may activate for Django's own admin strings; others fall back to Spanish.
+LANGUAGES = [('es', 'Español'), ('en', 'English')]
 FORMAT_MODULE_PATH = ['athena.formats']
 TIME_ZONE = 'America/Lima'
 USE_TZ = True
