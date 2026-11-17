@@ -85,6 +85,8 @@ body .markdown-section h2{font:600 30px/36px var(--font-display);text-wrap:balan
 .markdown-section .item-meta{display:flex;flex-wrap:wrap;align-items:baseline;margin:var(--space-1) 0 0;color:var(--text-muted);font:13px/1.5 var(--font-mono);font-variant-numeric:tabular-nums}
 .markdown-section :is(.article-meta,.search-result__meta,.item-meta){--sep:20px;column-gap:0;margin-left:calc(-1 * var(--sep));clip-path:inset(-8px -8px -8px calc(var(--sep) - 6px))}
 :is(.article-meta,.search-result__meta,.item-meta)>*::before{content:'·';content:'·' / '';display:inline-block;width:var(--sep);text-align:center}
+/* Guías lists only guides: the kind repeats the page, so the line starts with the author (its '·' is clipped like any first item). */
+.guide-library .item-meta__kind{display:none}
 .article-meta>.article-meta__tags{display:flex;flex-wrap:wrap;flex-basis:100%;gap:4px;padding-left:var(--sep)}.article-meta>.article-meta__tags::before{content:none}
 .article-meta__tags a{display:inline-flex;align-items:center;text-decoration:none}
 @media(pointer:coarse){:is(.article-meta__tags,.search-result__actions,.contribute-note,.boot-status,.guide-topic-more) a{display:inline-flex;align-items:center;min-height:44px}}

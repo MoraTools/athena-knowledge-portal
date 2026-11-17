@@ -814,6 +814,11 @@ assert.match(readerCss, /\.markdown-section :is\(\.timeline-card,\.library-card\
   Object.assign(context, { getComputedStyle });
   context.document.querySelector = querySelector;
 }
+// Advisor review: the Guías page lists only guides, so its rows drop the kind; the line starts with the author.
+// Home rows and Herramientas cards keep it.
+assert.match(readerCss, /\.guide-library \.item-meta__kind\{display:none\}/);
+assert.doesNotMatch(readerCss, /(^|[},])\s*\.item-meta__kind\{display:none\}/);
+
 // Round 4 #29: short inline code stays on one line; a value over 40 characters may wrap anywhere.
 {
   const codes = ['run-tests', 'x'.repeat(41), 'y'.repeat(40)].map((text) => ({ textContent: text, classes: new Set(),
