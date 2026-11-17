@@ -87,7 +87,7 @@ assert.equal(options.ALLOW_DATA_ATTR, false);
 console.log('Article preview Markdown, title, image paths, draft/PDF parity, and sanitizer boundary checks passed.');
 
 // The editor uses native form controls. This DOM stub checks behavior without a new test dependency.
-function editor({ readOnly = false, serverError = null, format = null, previewUrl = '', tagList = null } = {}) {
+function editor({ readOnly = false, serverError = null, format = null, previewUrl = '', tagList = null, tags = '', placementTags = '' } = {}) {
   const handlers = {}, nodes = new Map(), closeEvents = [], posts = [];
   let focused = null, firstInvalid = null;
   function element(id = '', parent = null) {
@@ -131,13 +131,13 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
   if (previewUrl) body.dataset.htmlPreviewUrl = previewUrl;
   const fields = { title, body };
   if (format) fields.format = { value: format };
-  Object.assign(form.dataset, { format: format || 'markdown', articleSlug: 'guide' });
+  Object.assign(form.dataset, { format: format || 'markdown', articleSlug: 'guide', placementTags });
   for (const [name, parent] of [['summary', panels[0]], ['kind', panels[0]], ['url', tool],
     ['date', panels[1]], ['is_public', panels[1]], ['pdf_file', panels[2]], ['markdown_file', panels[2]]]) {
     fields[name] = Object.assign(element(`id_${name}`, parent), { name });
   }
   fields.kind.value = 'guide';
-  if (tagList) Object.assign(element('id_tags', panels[0]), { name: 'tags', value: '', list: { options: tagList.map(value => ({ value })) } });
+  if (tagList || tags) fields.tags = Object.assign(element('id_tags', panels[0]), { name: 'tags', value: tags, list: tagList && { options: tagList.map(value => ({ value })) } });
   element('id_markdown_file_helptext');
   for (const id of ['desk-preview-content', 'desk-image-footer', 'desk-state', 'desk-details-state', 'desk-count',
     'desk-source-heading', 'desk-preview-status', 'desk-save-state']) element(id);
@@ -168,7 +168,7 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
       createElement(tag) {
         const node = element('');
         Object.assign(node, { tagName: tag, elements: {}, contentWindow: { messages: [], postMessage(message) { this.messages.push(message); } },
-          append(...children) { for (const child of children) if (child.name) this.elements[child.name] = child; },
+          append(...children) { (this.childNodes ||= []).push(...children); for (const child of children) if (child?.name) this.elements[child.name] = child; },
           replaceChildren(...children) { this.children = children; },
           submit() { posts.push({ action: this.action, target: this.target, method: this.method, body: this.elements.body.value,
             csrf: this.elements.csrfmiddlewaretoken.value }); },
@@ -333,6 +333,15 @@ for (const file of [
   assert.equal(state.fields.body.value, 'Unsaved Markdown');
   assert.equal(state.fields.markdown_file.value, file.name);
   assert.equal(state.fields.body.readOnly, false);
+}
+// The preview meta line matches the reader: placement tags (from the server list) are no chips, and no separator dangles.
+for (const [tags, chips] of [['Primeros-Pasos, RPA', ['RPA']], ['primeros-pasos', []]]) {
+  const state = editor({ format: 'html', previewUrl: '/article-html-preview/', tags, placementTags: 'primeros-pasos' });
+  const nodes = state.preview.children[0].children[1].childNodes;
+  assert.notEqual(nodes.at(-1), '·', tags);
+  const list = nodes.find(node => node?.className === 'article-meta__tags');
+  assert.deepEqual(list ? list.childNodes.map(chip => chip.textContent) : [], chips, tags);
+  if (list) assert.notEqual(nodes[nodes.indexOf(list) - 1], '·', 'The tag chips get their own row, as in the reader.');
 }
 // HTML: the unsaved source is posted into the sandboxed preview frame, never put into srcdoc.
 {

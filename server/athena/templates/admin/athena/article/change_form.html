@@ -9,7 +9,7 @@
 {% endblock %}
 {% block content %}
 <div id="content-main">
-  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="article_form" novalidate data-article-slug="{{ original.slug|default:'' }}" data-article-kind="{{ original.kind|default:'guide' }}" data-pdf-name="{{ original.pdf_name|default:'' }}" data-published="{{ original.published|yesno:'true,false' }}" data-access="{{ original.access|default:'account' }}" data-pdf-only="{{ original.pdf_only|yesno:'true,false' }}" data-format="{{ original.format|default:'markdown' }}" data-updated="{{ original.updated_at|date:'Y-m-d' }}">
+  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="article_form" novalidate data-article-slug="{{ original.slug|default:'' }}" data-article-kind="{{ original.kind|default:'guide' }}" data-pdf-name="{{ original.pdf_name|default:'' }}" data-published="{{ original.published|yesno:'true,false' }}" data-access="{{ original.access|default:'account' }}" data-pdf-only="{{ original.pdf_only|yesno:'true,false' }}" data-format="{{ original.format|default:'markdown' }}" data-updated="{{ original.updated_at|date:'Y-m-d' }}" data-placement-tags="{{ placement_tags|join:',' }}">
     {% csrf_token %}
     {{ adminform.form.loaded_revision }}
     {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}

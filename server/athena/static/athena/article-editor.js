@@ -239,7 +239,9 @@
       return pill(' off', 'Borrador') + pill(' off', 'Solo editores') + `<span class="state-next"><span>al publicar:</span> <span>${label}</span></span>`;
     }
 
-    // The reader's meta line (type · author · Actualizado date · tags) from the Detalles fields.
+    // Placement tags (models.PLACEMENT_TAGS) place an article on the home; like the reader, the preview shows no chip for them.
+    const placementTags = (form.dataset.placementTags || '').split(',').filter(Boolean);
+    // The reader's meta line (type · author · Actualizado date, then the topic tags on their own row) from the Detalles fields.
     function metaLine() {
       const meta = document.createElement('p');
       meta.className = 'article-meta';
@@ -251,12 +253,12 @@
       time.dateTime = day;
       time.textContent = new Intl.DateTimeFormat(document.documentElement.lang || 'es', { dateStyle: 'medium' }).format(new Date(day + 'T12:00:00'));
       meta.append('·', span('Actualizado'), time);
-      const tags = value('tags').split(',').map(tag => tag.trim()).filter(Boolean);
+      const tags = value('tags').split(',').map(tag => tag.trim()).filter(tag => tag && !placementTags.includes(tag.toLowerCase()));
       if (tags.length) {
         const list = span('', 'es');
         list.className = 'article-meta__tags';
         list.append(...tags.map(tag => span(tag)));
-        meta.append('·', list);
+        meta.append(list);
       }
       return meta;
     }

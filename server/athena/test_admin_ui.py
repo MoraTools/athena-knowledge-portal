@@ -1,5 +1,6 @@
 import re
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -122,6 +123,11 @@ class AdminEditorTests(TestCase):
         self.assertIn('<input type="hidden" name="o" value="1">', page)
         self.assertNotIn('<input type="hidden" name="access"', page)
         self.assertNotIn('id="changelist-filter"', page)
+        # A select change does not reload the list (keyboard users keep their place); the Filtrar button applies the choices.
+        self.assertRegex(page, r'(?s)<div class="list-filters">.*<input type="submit" value="Filtrar">\s*</div>')
+        script = (settings.BASE_DIR / 'server/athena/static/athena/admin-list.js').read_text()
+        self.assertNotIn('requestSubmit', script)
+        self.assertNotIn('.list-filters', script)
         for query, titles in [('access=restricted', ['Informe interno']), ('access=public', ['Guía pública']),
                               ('access=account', ['Borrador de colas']), ('published__exact=0', ['Borrador de colas']),
                               ('kind__exact=tool', ['Guía pública'])]:
@@ -135,6 +141,9 @@ class AdminEditorTests(TestCase):
                       '<span class="state-next"><span>al publicar:</span> <span>Con cuenta</span></span>', page)
         self.assertIn('<textarea name="title"', page)
         self.assertNotIn('Guardado', page)
+        # The preview drops placement tags from its chips; the list comes from models.PLACEMENT_TAGS, not a copy in the script.
+        for url in [f'/admin/athena/article/{self.draft.pk}/change/', '/admin/athena/article/add/']:
+            self.assertIn('data-placement-tags="primeros-pasos"', self.client.get(url).content.decode())
         page = self.client.get(f'/admin/athena/article/{self.restricted.pk}/change/').content.decode()
         self.assertIn('<span class="pill gold">Publicado</span><span class="pill">Restringido</span>', page)
         data = {'title': 'Borrador\r\nde  colas', 'slug': self.draft.slug, 'kind': 'guide', 'summary': 'Resumen', 'author': 'Ana', 'format': 'markdown',

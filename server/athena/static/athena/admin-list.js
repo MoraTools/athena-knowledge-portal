@@ -40,8 +40,3 @@ if (action && boxes.length && [...action.options].some((option) => option.value 
   window.addEventListener('pageshow', update);
   update();
 }
-
-// Article list filters (Estado, Acceso, Tipo): a choice applies at once; without JavaScript, Buscar applies them.
-document.querySelectorAll('#changelist-search .list-filters select').forEach((select) => {
-  select.addEventListener('change', () => select.form.requestSubmit());
-});

@@ -24,7 +24,7 @@ from django.utils.safestring import mark_safe
 
 from .forms import (AdminArticleForm, ApiKeyForm, DirectoryUserCreationForm, DirectoryUserForm,
                     SafeUserChangeForm, may_manage_user, permissions, user_permission_names)
-from .models import ApiKey, Article, Download, DownloadEvent, readable_articles
+from .models import PLACEMENT_TAGS, ApiKey, Article, Download, DownloadEvent, readable_articles
 
 admin.site.site_header = 'Athena · Administración'
 admin.site.site_title = 'Athena'
@@ -373,7 +373,7 @@ class ArticleAdmin(RowControlsAdmin):
 
     def add_view(self, request, form_url='', extra_context=None):
         return super().add_view(request, form_url, {'title': 'Nuevo artículo', 'state_chips': state_chips(None),
-                                                    **(extra_context or {})})
+                                                    'placement_tags': PLACEMENT_TAGS, **(extra_context or {})})
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         article = self.get_object(request, object_id)
@@ -382,7 +382,8 @@ class ArticleAdmin(RowControlsAdmin):
         saved = article and any(message.level == messages.SUCCESS for message in messages.get_messages(request))
         return super().change_view(request, object_id, form_url, {
             'title': title, 'subtitle': None, 'state_chips': state_chips(article) if article else '',
-            'saved_at': timezone.localtime(article.updated_at) if saved else None, **(extra_context or {})})
+            'saved_at': timezone.localtime(article.updated_at) if saved else None, 'placement_tags': PLACEMENT_TAGS,
+            **(extra_context or {})})
 
     def delete_view(self, request, object_id, extra_context=None):
         article = self.get_object(request, unquote(object_id))

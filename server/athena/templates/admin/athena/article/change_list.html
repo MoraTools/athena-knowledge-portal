@@ -16,6 +16,7 @@
       </select>
     </label>
     {% endfor %}
+    <input type="submit" value="Filtrar">
   </div>
   {% for name, value in cl.params.items %}{% if name != 'q' and name not in filter_names %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endif %}{% endfor %}
 </form></div>
