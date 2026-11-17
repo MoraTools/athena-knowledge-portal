@@ -1,4 +1,6 @@
+import copy
 import unicodedata
+from datetime import datetime
 from functools import partialmethod
 from urllib.parse import urlencode
 
@@ -75,6 +77,24 @@ def plain_labels(form):
     label_suffix argument, so it goes in through the constructor."""
     form.__init__ = partialmethod(form.__init__, label_suffix='')
     return form
+
+
+def when(value):
+    """A <time> that suite-i18n.js shows as one medium date (plus the time for a moment) in the interface language.
+
+    The numeric text stays for a page without script."""
+    if isinstance(value, datetime):
+        value = timezone.localtime(value)
+        return format_html('<time datetime="{}">{}</time>', value.isoformat(timespec='minutes'), formats.localize(value))
+    return format_html('<time datetime="{}">{}</time>', value.isoformat(), formats.localize(value))
+
+
+def first_steps_help():
+    """Under the tags help: how many published articles carry the Primeros pasos tag, and which ones the home shows."""
+    tag = PLACEMENT_TAGS[0]
+    tagged = Article.objects.filter(published=True, tags__icontains=tag).values_list('tags', flat=True)
+    count = sum(tag in (name.lower() for name in tags) for tags in tagged)  # icontains also matches longer tags.
+    return f'Artículos publicados con primeros-pasos: {count}. El inicio muestra los 5 de fecha más antigua.'
 
 
 ACCESS_LABELS = {'public': 'Público', 'account': 'Con cuenta', 'restricted': 'Restringido'}
@@ -284,7 +304,7 @@ class AthenaUserAdmin(UserAdmin):
 class ArticleAdmin(RowControlsAdmin):
     form = AdminArticleForm
     change_form_template = 'admin/athena/article/change_form.html'
-    list_display = ['title', 'kind', 'state', 'access', 'author', 'date', 'last_updated', 'controls']
+    list_display = ['title', 'kind', 'state', 'access', 'author', 'article_date', 'last_updated', 'controls']
     list_filter = ['published', AccessFilter, 'kind']
     search_fields = ['title', 'summary', 'author', 'body']
     prepopulated_fields = {'slug': ('title',)}
@@ -314,6 +334,9 @@ class ArticleAdmin(RowControlsAdmin):
             elif 'format' in form.base_fields:  # HTML articles need the article change right (forms.ArticleForm).
                 form.base_fields['format'].choices = [('markdown', 'Markdown')]
             field.help_text = 'Pegue una imagen o use Insertar imagen. PNG, JPEG, WebP o GIF, hasta 10 MiB y 20 millones de píxeles, o un video MP4 de hasta 200 MiB. Se conserva el texto seleccionado.'
+        if 'tags' in form.base_fields:  # A copy: the declared field is shared by every form class.
+            tags = form.base_fields['tags'] = copy.copy(form.base_fields['tags'])
+            tags.help_text = format_html('{}<br>{}', tags.help_text, first_steps_help())
         if 'title' in form.base_fields:  # Wraps on a phone; save_model and the editor keep it one line.
             title = form.base_fields['title']
             title.widget = forms.Textarea(attrs={'rows': 1, 'maxlength': title.max_length})
@@ -405,9 +428,13 @@ class ArticleAdmin(RowControlsAdmin):
     def get_changeform_initial_data(self, request):
         return {'author': request.user.get_full_name() or request.user.username}
 
+    @admin.display(description='Fecha', ordering='date')
+    def article_date(self, obj):
+        return when(obj.date)
+
     @admin.display(description='Última modificación', ordering='updated_at')
     def last_updated(self, obj):
-        return formats.localize(timezone.localtime(obj.updated_at)) if obj.updated_at else 'Sin guardar'
+        return when(obj.updated_at) if obj.updated_at else 'Sin guardar'
 
     @admin.display(description='PDF actual')
     def current_pdf(self, obj):
@@ -440,7 +467,7 @@ class DownloadAdmin(RowControlsAdmin):
 
     @admin.display(description='Creado', ordering='created_at')
     def created(self, obj):
-        return formats.localize(timezone.localtime(obj.created_at)) if obj.created_at else 'Sin guardar'
+        return when(obj.created_at) if obj.created_at else 'Sin guardar'
 
     def changelist_view(self, request, extra_context=None):
         return super().changelist_view(request, {'title': 'Descargas', 'search_placeholder': 'Buscar descargas',
@@ -473,7 +500,7 @@ class DownloadEventAdmin(RowControlsAdmin):
 
     @admin.display(description='Fecha', ordering='downloaded_at')
     def time(self, obj):
-        return formats.localize(timezone.localtime(obj.downloaded_at))
+        return when(obj.downloaded_at)
 
     @admin.display(description='Tamaño', ordering='size')
     def human_size(self, obj):
@@ -487,16 +514,20 @@ class DownloadEventAdmin(RowControlsAdmin):
 @admin.register(ApiKey)
 class ApiKeyAdmin(RowControlsAdmin):
     form = ApiKeyForm
-    list_display = ['name', 'user', 'scope', 'expires_at', 'created', 'controls']
+    list_display = ['name', 'user', 'scope', 'expires', 'created', 'controls']
     fields = ['name', 'user', 'scope', 'expires_at']
     # One native date and time control. Django reads the value in the site time zone, as the split widget did.
     formfield_overrides = {models.DateTimeField: {
         'form_class': forms.DateTimeField,
         'widget': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M')}}
 
+    @admin.display(description='Vence', ordering='expires_at')
+    def expires(self, obj):
+        return when(obj.expires_at)
+
     @admin.display(description='Creada', ordering='created_at')
     def created(self, obj):
-        return obj.created_at
+        return when(obj.created_at)
 
     def controls(self, request, obj):
         return row_controls(self, request, obj)

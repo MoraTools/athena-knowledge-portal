@@ -50,7 +50,7 @@ div.breadcrumbs, thead th, .module h2, .module caption, .inline-group h2, fields
   font: var(--label); letter-spacing: .06em; text-transform: uppercase;
 }
 /* Data voice: dates and times, one line each. */
-#changelist td.field-date, #changelist td.field-last_updated, #changelist td.field-expires_at, #changelist td.field-created, #changelist td.field-last_login,
+#changelist td.field-article_date, #changelist td.field-last_updated, #changelist td.field-expires, #changelist td.field-created, #changelist td.field-last_login,
 #changelist td.field-time {
   font: 500 13px/1.45 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
@@ -331,7 +331,7 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 #change-history { max-width: 100%; overflow-x: auto; }
 #change-history table { background: var(--surface); border: 1px solid var(--border); }
 #change-history tbody th { width: 12em; color: var(--text-subtle); }
-#changelist td.field-date, #changelist td.field-last_updated, #changelist td.field-expires_at, #changelist td.field-created, #changelist td.field-last_login { white-space: nowrap; color: var(--text-muted); }
+#changelist td.field-article_date, #changelist td.field-last_updated, #changelist td.field-expires, #changelist td.field-created, #changelist td.field-last_login { white-space: nowrap; color: var(--text-muted); }
 /* Titles and names wrap (download titles are often long file names) but keep a readable column. */
 #changelist th.field-title, #changelist th.field-name { min-width: 16ch; overflow-wrap: anywhere; }
 

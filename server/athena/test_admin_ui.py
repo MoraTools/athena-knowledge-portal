@@ -72,14 +72,23 @@ class AdminFormatTests(TestCase):
         self.assertNotIn('Content-Language', response)
         self.assertIn('lang="es"', response.content.decode())
 
-    def test_english_keeps_numeric_dates(self):
+    def test_list_dates_are_time_elements_for_the_interface_language(self):
+        # suite-i18n.js shows each <time> as one medium date and time in the interface language; the text is the fallback.
         download = Download.objects.create(title='Plantilla', section='framework', slug='plantilla')
         moment = timezone.make_aware(timezone.datetime(2026, 11, 16, 17, 59))
         DownloadEvent.objects.create(download=download, username='luis', title='Plantilla', filename='p.zip', size=1,
                                      path='/downloads/plantilla', downloaded_at=moment)
+        cell = '<td class="field-time"><time datetime="2026-11-16T17:59-05:00">16/11/2026 17:59</time></td>'
+        self.assertIn(cell, self.client.get('/admin/athena/downloadevent/').content.decode())
         self.client.cookies['django_language'] = 'en'
-        page = self.client.get('/admin/athena/downloadevent/').content.decode()
-        self.assertIn('<td class="field-time">16/11/2026 17:59</td>', page)
+        self.assertIn(cell, self.client.get('/admin/athena/downloadevent/').content.decode())
+        del self.client.cookies['django_language']
+        Article.objects.filter(pk=self.article.pk).update(date=timezone.datetime(2026, 11, 12).date())
+        page = self.client.get('/admin/athena/article/').content.decode()
+        self.assertIn('<td class="field-article_date"><time datetime="2026-11-12">12/11/2026</time></td>', page)
+        self.assertRegex(page, r'<td class="field-last_updated"><time datetime="\d{4}-\d\d-\d\dT\d\d:\d\d-05:00">')
+        self.assertRegex(self.client.get('/admin/athena/download/').content.decode(),
+                         r'<td class="field-created"><time datetime="[^"]+T[^"]+">')
 
 
 @override_settings(SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False)
@@ -166,6 +175,15 @@ class AdminEditorTests(TestCase):
         self.assertNotIn('deleted-objects', page)
         self.client.post(f'/admin/athena/article/{self.public.pk}/delete/', {'post': 'yes'})
         self.assertFalse(Article.objects.filter(pk=self.public.pk).exists())
+
+    def test_tags_help_counts_the_published_first_steps_articles(self):
+        Article.objects.create(title='Inicio', slug='inicio', body='Texto', published=True, tags=['Primeros-Pasos'])
+        Article.objects.create(title='Borrador', slug='borrador-inicio', body='Texto', tags=['primeros-pasos'])
+        Article.objects.create(title='Otro', slug='otro', body='Texto', published=True, tags=['primeros-pasos-extra'])
+        for url in [f'/admin/athena/article/{self.draft.pk}/change/', '/admin/athena/article/add/']:
+            with self.subTest(url=url):
+                self.assertIn('el artículo aparece en Primeros pasos en el inicio.<br>Artículos publicados con primeros-pasos: 1. '
+                              'El inicio muestra los 5 de fecha más antigua.</div>', self.client.get(url).content.decode())
 
     def test_lists_mark_the_exceptions_not_the_normal_state(self):
         page = self.client.get('/admin/athena/article/').content.decode()
