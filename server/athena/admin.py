@@ -26,6 +26,7 @@ from django.utils.safestring import mark_safe
 
 from .forms import (AdminArticleForm, ApiKeyForm, DirectoryUserCreationForm, DirectoryUserForm,
                     SafeUserChangeForm, may_manage_user, permissions, user_permission_names)
+from .images import attached_image_ids
 from .models import PLACEMENT_TAGS, ApiKey, Article, Download, DownloadEvent, readable_articles
 
 admin.site.site_header = 'Athena · Administración'
@@ -100,14 +101,37 @@ def first_steps_help():
 ACCESS_LABELS = {'public': 'Público', 'account': 'Con cuenta', 'restricted': 'Restringido'}
 
 
+def draft_access(access):
+    """A draft is for editors only; its access level applies once it is published."""
+    return format_html('<span class="pill off">Solo editores</span>'
+                       '<span class="state-next"><span>al publicar:</span> <span>{}</span></span>', ACCESS_LABELS[access])
+
+
 def state_chips(article):
-    """Editor header and delete page. A draft is for editors only; its access level applies once it is published."""
+    """Editor header and delete page; the article list's Acceso column shows the same draft_access."""
     access = article.access if article else 'account'
     if article and article.published:
         tone = 'pill warn' if access == 'restricted' else 'pill'
         return format_html('<span class="pill">Publicado</span><span class="{}">{}</span>', tone, ACCESS_LABELS[access])
-    return format_html('<span class="pill warn">Borrador</span><span class="pill off">Solo editores</span>'
-                       '<span class="state-next"><span>al publicar:</span> <span>{}</span></span>', ACCESS_LABELS[access])
+    return format_html('<span class="pill warn">Borrador</span>{}', draft_access(access))
+
+
+# What a deletion breaks, by what the article has: (share link, images, PDF) -> sentence.
+DELETE_LOSSES = {
+    (True, False, False): 'El enlace para compartir del artículo deja de funcionar.',
+    (False, True, False): 'Las imágenes del artículo dejan de funcionar.',
+    (False, False, True): 'El PDF del artículo deja de funcionar.',
+    (True, True, False): 'El enlace para compartir y las imágenes del artículo dejan de funcionar.',
+    (True, False, True): 'El enlace para compartir y el PDF del artículo dejan de funcionar.',
+    (False, True, True): 'Las imágenes y el PDF del artículo dejan de funcionar.',
+    (True, True, True): 'El enlace para compartir, las imágenes y el PDF del artículo dejan de funcionar.',
+}
+
+
+def delete_losses(article):
+    """The delete page's sentence; empty when the article has no share link, images or PDF."""
+    images = bool(attached_image_ids(Article.objects.filter(pk=article.pk)))  # Body images and the share image.
+    return DELETE_LOSSES.get((article.published, images, bool(article.pdf_name)), '')
 
 
 class AccessFilter(admin.SimpleListFilter):
@@ -353,6 +377,8 @@ class ArticleAdmin(RowControlsAdmin):
 
     @admin.display(description='Acceso', ordering='is_public')
     def access(self, obj):
+        if not obj.published:
+            return draft_access(obj.access)
         if obj.is_restricted:
             return format_html('<span class="pill warn">Restringido ({})</span>', obj.allowed_users.count())
         return format_html('<span class="pill">{}</span>', 'Público' if obj.is_public else 'Con cuenta')
@@ -413,6 +439,7 @@ class ArticleAdmin(RowControlsAdmin):
     def delete_view(self, request, object_id, extra_context=None):
         article = self.get_object(request, unquote(object_id))
         return super().delete_view(request, object_id, {'state_chips': state_chips(article) if article else '',
+                                                        'losses': delete_losses(article) if article else '',
                                                         **(extra_context or {})})
 
     def get_fieldsets(self, request, obj=None):
@@ -514,12 +541,21 @@ class DownloadEventAdmin(RowControlsAdmin):
 @admin.register(ApiKey)
 class ApiKeyAdmin(RowControlsAdmin):
     form = ApiKeyForm
-    list_display = ['name', 'user', 'scope', 'expires', 'created', 'controls']
+    list_display = ['name', 'user', 'scope', 'status', 'expires', 'created', 'controls']
     fields = ['name', 'user', 'scope', 'expires_at']
     # One native date and time control. Django reads the value in the site time zone, as the split widget did.
     formfield_overrides = {models.DateTimeField: {
         'form_class': forms.DateTimeField,
         'widget': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M')}}
+
+    @admin.display(description='Estado', ordering='expires_at')
+    def status(self, obj):
+        left = obj.expires_at - timezone.now()
+        if left.total_seconds() <= 0:
+            return format_html('<span class="pill warn">Vencida</span>')
+        if left.days < 14:
+            return format_html('<span class="pill warn">Vence pronto</span>')
+        return format_html('<span class="pill">Activa</span>')
 
     @admin.display(description='Vence', ordering='expires_at')
     def expires(self, obj):
@@ -537,6 +573,13 @@ class ApiKeyAdmin(RowControlsAdmin):
         form.actor = request.user
         if 'expires_at' in form.base_fields:
             form.base_fields['expires_at'].help_text = f'Zona horaria: {settings.TIME_ZONE}.'
+        if 'user' in form.base_fields:
+            form.base_fields['user'].help_text = 'La clave actúa con los permisos de este usuario.'
+        if 'scope' in form.base_fields:
+            form.base_fields['scope'].help_text = format_html(
+                '{}<br>{}<br>{}', 'Lectura: leer los artículos publicados, sus PDF y las descargas.',
+                'Administrar artículos: crear y editar artículos y descargas, si el usuario tiene ese permiso.',
+                'Administrar usuarios y artículos: además, administrar usuarios, si el usuario es Administrador.')
         return form
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -573,7 +616,9 @@ class ApiKeyAdmin(RowControlsAdmin):
         return super().changelist_view(request, {'title': 'Claves de API', 'subtitle': subtitle, **(extra_context or {})})
 
     def add_view(self, request, form_url='', extra_context=None):
-        return super().add_view(request, form_url, {'title': 'Nueva clave de API', **(extra_context or {})})
+        return super().add_view(request, form_url, {'title': 'Nueva clave de API',
+                                                    'subtitle': 'La clave se muestra una sola vez, después de guardar.',
+                                                    **(extra_context or {})})
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         return super().change_view(request, object_id, form_url, {'title': 'Editar clave de API', **(extra_context or {})})

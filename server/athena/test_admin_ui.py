@@ -167,7 +167,7 @@ class AdminEditorTests(TestCase):
     def test_delete_page_shows_state_and_final_warning(self):
         page = self.client.get(f'/admin/athena/article/{self.public.pk}/delete/').content.decode()
         self.assertIn('<span class="pill">Publicado</span><span class="pill">Público</span>', page)
-        self.assertIn('El enlace para compartir, las imágenes y el PDF del artículo dejan de funcionar.', page)
+        self.assertIn('<p>El enlace para compartir del artículo deja de funcionar.</p>', page)  # No images, no PDF.
         self.assertIn('Esta acción no se puede deshacer.', page)
         self.assertIn('<input type="submit" value="Eliminar artículo">', page)
         # Cancelar has a destination without script (Django's cancel.js still goes back when it runs).
@@ -175,6 +175,33 @@ class AdminEditorTests(TestCase):
         self.assertNotIn('deleted-objects', page)
         self.client.post(f'/admin/athena/article/{self.public.pk}/delete/', {'post': 'yes'})
         self.assertFalse(Article.objects.filter(pk=self.public.pk).exists())
+
+    def test_delete_page_names_only_what_the_article_has(self):
+        page = self.client.get(f'/admin/athena/article/{self.draft.pk}/delete/').content.decode()
+        self.assertNotIn('de funcionar', page)  # A draft with no images and no PDF: only the final warning.
+        self.assertIn('Esta acción no se puede deshacer.', page)
+        # update() skips the reference check that save() runs; the page reads the body only.
+        Article.objects.filter(pk=self.draft.pk).update(
+            body='![x](/article-images/00000000-0000-4000-8000-000000000001/)', pdf_name='plan.pdf')
+        page = self.client.get(f'/admin/athena/article/{self.draft.pk}/delete/').content.decode()
+        self.assertIn('<p>Las imágenes y el PDF del artículo dejan de funcionar.</p>', page)
+        Article.objects.filter(pk=self.public.pk).update(pdf_name='plan.pdf')
+        page = self.client.get(f'/admin/athena/article/{self.public.pk}/delete/').content.decode()
+        self.assertIn('<p>El enlace para compartir y el PDF del artículo dejan de funcionar.</p>', page)
+
+    def test_editor_h1_is_the_first_heading(self):
+        for url in [f'/admin/athena/article/{self.public.pk}/change/', '/admin/athena/article/add/']:
+            with self.subTest(url=url):
+                main = self.client.get(url).content.decode().split('<div id="content-main">', 1)[1]
+                self.assertRegex(main, r'^\s*<h1 class="visually-hidden">')
+
+    def test_one_create_verb_and_ver_for_the_read_only_log(self):
+        page = self.client.get('/admin/athena/article/').content.decode()
+        self.assertIn('class="addlink">Nuevo artículo</a>', page)
+        self.assertNotIn('Añadir artículo', page)
+        page = self.client.get('/admin/').content.decode()
+        self.assertRegex(page, r'href="/admin/athena/downloadevent/" class="viewlink"[^>]*>Ver</a>')
+        self.assertNotIn('>Vista</a>', page)
 
     def test_tags_help_counts_the_published_first_steps_articles(self):
         Article.objects.create(title='Inicio', slug='inicio', body='Texto', published=True, tags=['Primeros-Pasos'])
@@ -190,7 +217,9 @@ class AdminEditorTests(TestCase):
         self.assertIn('<td class="field-state"><span class="pill warn">Borrador</span></td>', page)
         self.assertIn('<td class="field-state"><span class="pill">Publicado</span></td>', page)
         self.assertIn('<td class="field-access"><span class="pill">Público</span></td>', page)
-        self.assertIn('<td class="field-access"><span class="pill">Con cuenta</span></td>', page)
+        # A draft is for editors only, with the access it gets on publishing, as in the editor head and the delete page.
+        self.assertIn('<td class="field-access"><span class="pill off">Solo editores</span><span class="state-next">'
+                      '<span>al publicar:</span> <span>Con cuenta</span></span></td>', page)
         self.assertIn('<td class="field-access"><span class="pill warn">Restringido (0)</span></td>', page)
         self.assertNotIn('pill gold', page)
 
@@ -226,6 +255,36 @@ class AdminEditorTests(TestCase):
 
     def test_api_key_expiry_names_the_site_time_zone(self):
         self.assertContains(self.client.get('/admin/athena/apikey/add/'), 'Zona horaria: America/Lima.')
+
+    def test_api_key_form_explains_owner_scope_and_the_one_time_key(self):
+        page = self.client.get('/admin/athena/apikey/add/').content.decode()
+        self.assertIn('<h2>La clave se muestra una sola vez, después de guardar.</h2>', page)
+        self.assertIn('La clave actúa con los permisos de este usuario.', page)
+        self.assertIn('Lectura: leer los artículos publicados, sus PDF y las descargas.<br>', page)
+
+    def test_every_save_button_shows_the_new_key_once(self):
+        # Django's extra save buttons stay: response_add shows the key page for each of them.
+        for button in ['_save', '_addanother', '_continue']:
+            with self.subTest(button=button):
+                response = self.client.post('/admin/athena/apikey/add/', {
+                    'name': button, 'user': self.root.pk, 'scope': 'read', 'expires_at': '2099-01-01T00:00', button: '1'})
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, '<code class="secret" id="raw-key">athena_')
+
+    def test_api_key_list_marks_expired_and_expiring_keys(self):
+        from datetime import timedelta
+        from .models import ApiKey
+        now = timezone.now()
+        for name, days in [('vieja', -1), ('pronto', 5), ('larga', 60)]:
+            key = ApiKey(name=name, user=self.root, expires_at=now + timedelta(days=days))
+            key.issue()
+            key.save()
+        page = self.client.get('/admin/athena/apikey/').content.decode()
+        for name, chip in [('vieja', '<span class="pill warn">Vencida</span>'), ('pronto', '<span class="pill warn">Vence pronto</span>'),
+                           ('larga', '<span class="pill">Activa</span>')]:
+            with self.subTest(name=name):
+                row = re.search(rf'<tr>.*?>{name}</a>.*?</tr>', page, re.S).group()
+                self.assertIn(f'<td class="field-status">{chip}</td>', row)
 
 
 class TagTests(TestCase):

@@ -2,7 +2,7 @@
 {# An article has no related objects to list: say what it is now and that the deletion is final. #}
 {% block delete_confirm %}
 <p class="delete-state">{{ state_chips }}</p>
-<p>El enlace para compartir, las imágenes y el PDF del artículo dejan de funcionar.</p>
+{% if losses %}<p>{{ losses }}</p>{% endif %}
 <p>Esta acción no se puede deshacer.</p>
 <form method="post">{% csrf_token %}
 <div>
