@@ -227,7 +227,11 @@ function buildGuideTopics(library, state) {
       meta.className = 'guide-topic-meta';
       const author = document.createElement('span');
       author.textContent = entry.row.querySelector('.guide-author').textContent;
-      meta.append(author, entry.row.querySelector('time').cloneNode(true));
+      // The row date reads like the other reader lists: "Actualizado <date>". A small, not a span (author content), and
+      // Spanish source text, so suite-i18n.js translates it on every language switch, as on the home rows.
+      const date = document.createElement('small');
+      date.append('Actualizado ', entry.row.querySelector('time').cloneNode(true));
+      meta.append(author, date);
       article.append(detail, meta);
       section.append(article);
       group.entries.push({ entry, article, primary });
@@ -337,18 +341,23 @@ function showFilterActions(empty) {
 function filterDownloads() {
   if (!document.querySelector('#download-count')) return;
   const query = normalize(searchScope === 'download' ? document.querySelector('#athena-search-input')?.value || '' : '');
-  const section = document.querySelector('#download-section')?.value || '';
   let visible = 0;
   document.querySelectorAll('.download-section').forEach((block) => {
     let shown = 0;
     block.querySelectorAll('.catalog-item').forEach((item) => {
-      item.hidden = !((!query || normalize(item.dataset.search || '').includes(query)) && (!section || block.dataset.section === section));
+      item.hidden = Boolean(query && !normalize(item.dataset.search || '').includes(query));
       if (!item.hidden) shown += 1;
     });
     block.hidden = shown === 0;
     // Versiones anteriores opens when a match is inside it.
     const archive = block.querySelector('.download-archive');
-    if (archive && (query || section)) archive.open = shown > 0;
+    if (archive && query) archive.open = shown > 0;
+    // The section row counts the files the filter shows, like the Guías topics.
+    const jump = document.querySelector(`[data-download-jump="${block.dataset.section}"]`);
+    if (jump) {
+      jump.hidden = !shown;
+      jump.querySelector('.topic-count').textContent = new Intl.NumberFormat(currentLang()).format(shown);
+    }
     visible += shown;
   });
   const count = document.querySelector('#download-count');
@@ -1428,6 +1437,20 @@ function placeArticleTools() {
 const COPY_ICONS = '<svg class="copy-page__copy" aria-hidden="true" viewBox="0 0 24 24"><path d="M8 7V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M5 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z"/></svg>'
   + '<svg class="copy-page__check" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>';
 
+// The permanent framework link in Descargas gets the same copy button as an article link.
+function buildPermalinkCopy() {
+  const link = document.querySelector('.markdown-section .download-permalink a');
+  if (!link || link.parentElement.querySelector('.permalink-copy')) return;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'copy-page permalink-copy';
+  button.innerHTML = COPY_ICONS;
+  const label = document.createElement('span');
+  label.textContent = t('Copiar enlace');
+  button.append(label);
+  link.after(' ', button);
+}
+
 // Each code block gets a head row with its language and a 'Copiar' button; the block keeps its own scroll.
 function buildCodeCopy() {
   document.querySelectorAll('.markdown-section pre:not(.code-block > pre)').forEach((pre) => {
@@ -1474,6 +1497,7 @@ function syncView() {
   if (viewer?.dialog.open && !viewer.frame?.isConnected) viewer.dialog.close();
   placeArticleTools();
   buildCodeCopy();
+  buildPermalinkCopy();
   placeArticleHead();
   buildTableSorting();
   markSpanishContent();
@@ -1624,6 +1648,11 @@ document.addEventListener('click', async (event) => {
     copyWith(codeButton, async () => (pre.querySelector('code') || pre).textContent, 'Copiar', 'Código copiado');
     return;
   }
+  const permalinkButton = event.target.closest('button.permalink-copy');
+  if (permalinkButton) {
+    copyWith(permalinkButton, async () => permalinkButton.parentElement.querySelector('a').href, 'Copiar enlace', 'Enlace copiado');
+    return;
+  }
   const linkButton = event.target.closest('button.copy-link');
   if (linkButton) {
     // /s/<slug> exists for every article: it shows a link preview or redirects to the reader, and reveals nothing else.
@@ -1707,7 +1736,6 @@ document.addEventListener('input', (event) => {
 });
 
 document.addEventListener('change', (event) => {
-  if (event.target.matches('#download-section')) filterDownloads();
   if (event.target.matches('#athena-search-type')) {
     const query = document.querySelector('#athena-search-input')?.value || '';
     replaceSearchUrl(query, event.target.value);

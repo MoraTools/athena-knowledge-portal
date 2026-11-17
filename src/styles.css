@@ -27,7 +27,8 @@ div#main{min-height:100vh;width:auto;padding-left:var(--rail-current);container:
 .search-page{max-width:none}
 .search-toolbar{display:flex;align-items:center;gap:.8rem;margin:0 0 var(--space-2)}
 .search-toolbar label{color:var(--muted);font-weight:700}
-.search-toolbar select{min-width:190px;min-height:32px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--field-bg);color:var(--text);padding:6px 12px;font:14px var(--font-ui)}
+/* The reader's native select uses the admin kit's drawn chevron (DESIGN.md), in muted text. */
+.search-toolbar select{min-width:190px;min-height:32px;border:1px solid var(--border-strong);border-radius:var(--radius);background-color:var(--field-bg);background-image:linear-gradient(45deg,transparent 50%,var(--text-muted) 50%),linear-gradient(135deg,var(--text-muted) 50%,transparent 50%);background-position:calc(100% - 14px) 50%,calc(100% - 10px) 50%;background-size:4px 4px;background-repeat:no-repeat;appearance:none;cursor:pointer;color:var(--text);padding:6px 30px 6px 12px;font:14px var(--font-ui)}
 /* The loading shell before Docsify: a page title and a muted status line, not vue.css's centred 30px text. */
 div#app.boot-shell{margin:0;font-size:inherit;font-weight:inherit;text-align:left}
 .markdown-section .boot-status{color:var(--muted)}
@@ -236,13 +237,13 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 .guide-links{display:flex;flex-wrap:wrap;gap:0 var(--space-2)}
 .guide-links a{display:inline-flex;align-items:center;min-height:32px}
 .guide-detail p:empty{display:none}
-.guide-topic-jumps{display:flex;flex-wrap:wrap;gap:0 var(--space-3);max-width:100%;margin:0 0 var(--space-2);border-bottom:1px solid var(--line)}
+:is(.guide-topic-jumps,.download-jumps){display:flex;flex-wrap:wrap;gap:0 var(--space-3);max-width:100%;margin:0 0 var(--space-2);border-bottom:1px solid var(--line)}
 /* Only the topic name is underlined, not its count. */
-.guide-topic-jumps a{display:inline-flex;align-items:center;gap:var(--space-1);min-height:32px;max-width:24ch;color:var(--text-muted);font:var(--label-weight) var(--label-size)/1.3 var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform);overflow-wrap:anywhere;text-decoration:none}
-.guide-topic-jumps a:is(:hover,:focus-visible,[aria-current]){color:var(--accent-text)}
+:is(.guide-topic-jumps,.download-jumps) a{display:inline-flex;align-items:center;gap:var(--space-1);min-height:32px;max-width:24ch;color:var(--text-muted);font:var(--label-weight) var(--label-size)/1.3 var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform);overflow-wrap:anywhere;text-decoration:none}
+:is(.guide-topic-jumps,.download-jumps) a:is(:hover,:focus-visible,[aria-current]){color:var(--accent-text)}
 .topic-count{color:var(--text-subtle);font-variant-numeric:tabular-nums}
 .guide-topic-picker>summary{cursor:pointer;padding:var(--space-1) var(--space-2);color:var(--text-muted);font:var(--label-weight) var(--label-size)/1.3 var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform)}
-@media(pointer:coarse){.guide-topic-picker>summary,.guide-topic-jumps a{min-height:44px}.guide-topic-picker>summary{padding-block:15px}}
+@media(pointer:coarse){.guide-topic-picker>summary,:is(.guide-topic-jumps,.download-jumps) a{min-height:44px}.guide-topic-picker>summary{padding-block:15px}}
 /* Above a 600px reader the topics are an open row and the summary is hidden (app.js keeps the box open there). */
 @container reader (min-width:601px){.guide-topic-picker>summary{display:none}}
 @container reader (max-width:600px){.guide-topic-picker{margin:0 0 var(--space-2);border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}.guide-topic-picker .guide-topic-jumps{margin:0;padding:0 var(--space-2) var(--space-1);border-bottom:0}}
@@ -251,28 +252,39 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 .guide-topic-row:has(:focus-visible){background:var(--guide-row-highlight)}
 @media(hover:hover) and (pointer:fine){.guide-topic-row:hover{background:var(--guide-row-highlight)}}
 .guide-topic-meta{display:flex;align-items:flex-start;gap:var(--space-2)}
-.guide-topic-meta span{flex:1;min-width:0}.guide-topic-meta time{font-variant-numeric:tabular-nums;white-space:nowrap}
+.guide-topic-meta span{flex:1;min-width:0}.guide-topic .guide-topic-meta small{font-size:inherit}.guide-topic-meta time{font-variant-numeric:tabular-nums;white-space:nowrap}
 /* Recientes: type and date in two columns, so the dates line up from row to row. */
 .recent-list .guide-topic-meta{display:grid;grid-template-columns:13ch auto;justify-content:start}
-.guide-library [hidden],.guide-topic-jumps [hidden]{display:none!important}
-@container reader (max-width:600px){.guide-controls{grid-template-columns:1fr;gap:var(--space-2);padding:var(--space-2)}.guide-topic-row{grid-template-columns:1fr;gap:var(--space-1)}.guide-topic-meta{justify-content:flex-start}.guide-topic-meta span{flex:initial}.guide-topic-jumps{gap:0 var(--space-2)}}
+.guide-library [hidden],:is(.guide-topic-jumps,.download-jumps) [hidden]{display:none!important}
+@container reader (max-width:600px){.guide-controls{grid-template-columns:1fr;gap:var(--space-2);padding:var(--space-2)}.guide-topic-row{grid-template-columns:1fr;gap:var(--space-1)}.guide-topic-meta{justify-content:flex-start}.guide-topic-meta span{flex:initial}:is(.guide-topic-jumps,.download-jumps){gap:0 var(--space-2)}}
 /* One chip for tags and status in guide rows, tool cards, the feed, search results and the article meta line. */
 .tag-list{display:flex;flex-wrap:wrap;gap:4px}
 .tag-list span,.markdown-section .status,.article-meta__tags a>span{display:inline-flex;align-items:center;width:auto;margin:0;padding:2px 6px;border:1px solid var(--border);border-radius:var(--radius-chip);background:var(--surface-strong);color:var(--text-muted);font:var(--chip-weight) var(--chip-size)/1.3 var(--chip-font);letter-spacing:var(--chip-tracking);text-transform:var(--chip-transform);text-decoration:none;overflow-wrap:anywhere}
 .article-meta__tags a:hover>span{border-color:var(--accent-edge);color:var(--accent-text)}
 .updates-feed{display:grid;gap:var(--space-2)}.update-item h2{font-size:2rem}.update-item h2 a{color:var(--field-bg)}
 .download-permalink{margin:0 0 var(--space-2);color:var(--muted);font-size:.9rem;overflow-wrap:anywhere}
-.catalog-list{display:grid;gap:var(--space-2);margin:0}
-.catalog-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-2);align-items:center}
+/* Compact file rows: title and size · date on the first line, file name and note on the second, the button at the end. */
+.catalog-list{display:grid;gap:0;margin:0;border-top:1px solid var(--line)}
+.catalog-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-1) var(--space-2);align-items:center;padding:var(--space-1) var(--space-2);border:0;border-bottom:1px solid var(--line);border-radius:0}
+.catalog-item>div{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--space-2)}
+.catalog-item>div::before{content:'';flex-basis:100%;order:2}
+.catalog-item .post-actions{margin:0}
+/* A narrow reader keeps the button beside the row; the current-version chip goes above it. */
+@container reader (max-width:600px){.catalog-item .post-actions{flex-direction:column;align-items:flex-end;gap:var(--space-1)}}
+.catalog-item>div>code{order:3}.catalog-item>div>p{order:4;margin:0;color:var(--muted);font-size:.9rem}
+.download-controls{margin:0 0 var(--space-2)}.download-jumps a{max-width:none}.download-controls .result-count{margin:0 0 var(--space-1)}
+/* The archive summary says what a click does: show the files, or hide them again. */
+.download-archive[open] .archive-closed,.download-archive:not([open]) .archive-open{display:none}
 .catalog-item code{display:block;background:transparent;color:var(--code);padding:0;font-size:.72rem;overflow-wrap:anywhere}
 .catalog-item strong{overflow-wrap:anywhere}
-.catalog-item small{margin:.2rem 0 .55rem;font:13px/1.4 var(--font-mono);font-variant-numeric:tabular-nums}
+.catalog-item small{margin:0;font:13px/1.4 var(--font-mono);font-variant-numeric:tabular-nums}
 .folder-files{list-style:none;margin:.85rem 0 0;padding:0}.folder-files li{display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0}.folder-files li small{flex:none;margin:0}
 @container reader (min-width:900px){body.has-page-tree .content{display:grid;grid-template-columns:minmax(0,1fr) 216px;align-items:start;gap:var(--space-3);max-width:var(--content-max);padding:var(--space-3) var(--space-3) var(--space-5)}body.has-page-tree .markdown-section{grid-column:1;grid-row:1;max-width:none;padding:0}.page-tree{grid-column:2;grid-row:1;position:sticky;top:calc(52px + var(--space-3));max-height:calc(100vh - 100px);margin:0;overflow:auto;background:transparent}}
 @media (min-width:1600px){body.has-page-tree .content{margin:0 auto}}
 .account-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:var(--space-2);align-items:start}
-@container reader (max-width:900px){.hero{grid-template-columns:1fr;min-height:0}.hero-copy{padding:var(--space-3)}.hero img{height:160px;grid-row:1}.account-grid{grid-template-columns:1fr}}
-@container reader (max-width:600px){.hero img{height:120px}.hero p{font-size:1rem}.portal-grid,.library-controls{grid-template-columns:1fr}.catalog-item{grid-template-columns:1fr}.contribute-note{align-items:flex-start;flex-direction:column}.search .input-wrap{grid-template-columns:1fr}.search-toolbar{align-items:stretch;flex-direction:column}.search-toolbar select{width:100%}}
+.account-grid.no-keys{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+@container reader (max-width:900px){.hero{grid-template-columns:1fr;min-height:0}.hero-copy{padding:var(--space-3)}.hero img{height:160px;grid-row:1}.account-grid,.account-grid.no-keys{grid-template-columns:1fr}}
+@container reader (max-width:600px){.hero img{height:120px}.hero p{font-size:1rem}.portal-grid,.library-controls{grid-template-columns:1fr}.contribute-note{align-items:flex-start;flex-direction:column}.search .input-wrap{grid-template-columns:1fr}.search-toolbar{align-items:stretch;flex-direction:column}.search-toolbar select{width:100%}}
 @media (max-width:768px){.brand span{font-size:27px}.access-label{font-size:9px}.markdown-section{padding:var(--space-3) var(--space-2) var(--space-4)}.page-tree{margin-left:var(--space-2);margin-right:var(--space-2)}}
 @media (max-width:1024px){div#main{padding-bottom:var(--space-5)}body.home-view .access-label{display:block}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}

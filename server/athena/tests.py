@@ -1274,7 +1274,8 @@ class DownloadTests(TestCase):
         self.assertIn(f'<a class="download-link" href="/downloads/{self.item.slug}" download>', page)
         self.assertIn('<code>Plantilla A360+2024.zip</code>', page)
         self.assertLess(page.index('## Framework'), page.index('## Versiones anteriores'))
-        self.assertIn('<details class="download-archive"><summary>Mostrar 1 archivo</summary>', page)
+        self.assertIn('<details class="download-archive"><summary><span class="archive-closed">Mostrar 1 archivo</span>'
+                      '<span class="archive-open">Ocultar archivos</span></summary>', page)
         self.assertNotIn('target=', page)
         for old in ['/archive.md', '/packages.md']:
             self.assertRedirects(self.client.get(old), '/downloads.md', fetch_redirect_response=False)
@@ -1291,14 +1292,15 @@ class DownloadTests(TestCase):
         self.client.force_login(self.reader)
         page = self.client.get('/downloads.md').content.decode()
         self.assertNotIn('<input', page)
-        self.assertIn('<select id="download-section"><option value="">Todas</option><option value="framework">Framework</option>'
-                      '<option value="previous">Versiones anteriores</option></select>', page)
+        self.assertIn('<nav class="download-jumps" aria-label="Secciones de Descargas">'
+                      '<a href="#/downloads?id=download-framework" data-download-jump="framework"><span>Framework</span> <span class="topic-count">1</span></a>'
+                      '<a href="#/downloads?id=download-previous" data-download-jump="previous"><span>Versiones anteriores</span> <span class="topic-count">1</span></a></nav>', page)
         self.assertIn('<p id="download-count" class="result-count" role="status" aria-live="polite" aria-atomic="true"></p>', page)
-        self.assertIn('<section class="download-section" data-section="framework">', page)
+        self.assertIn('<section class="download-section" id="download-framework" data-section="framework">', page)
         self.assertIn('<article class="catalog-item" data-search="Framework actual Plantilla A360+2024.zip Framework ">', page)
         self.assertIn('<article class="catalog-item" data-search="Versión 2025 old.zip Versiones anteriores Solo lectura">', page)
         self.assertIn('<p class="library-empty download-empty" hidden>No hay archivos que coincidan.</p>', page)
-        self.assertLess(page.index('id="download-section"'), page.index('## Framework'))
+        self.assertLess(page.index('data-download-jump="framework"'), page.index('## Framework'))
         Download.objects.all().delete()
         page = self.client.get('/downloads.md').content.decode()
         self.assertIn('Todavía no hay archivos publicados.', page)

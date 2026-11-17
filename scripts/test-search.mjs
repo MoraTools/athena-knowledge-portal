@@ -106,7 +106,8 @@ for authenticated in (False, True):
                       })})
 pages.append({'name': 'downloads.md', 'markdown': render_to_string('downloads.md', {
     'sections': [('framework', 'Framework', [SimpleNamespace(title='File', filename='file.zip', size=100,
-                                                          slug='file', note='Download note')])],
+                                                          slug='file', note='Download note')]),
+                 ('previous', 'Versiones anteriores', [SimpleNamespace(title='Old', filename='old.zip', size=10, slug='old', note='')])],
     'latest_url': 'https://athena.test/downloads/framework/latest'
 })})
 print(json.dumps({'entries': entries, 'pages': pages}))
@@ -169,7 +170,18 @@ for (const page of readerEntries.pages) {
   }
   if (page.name === 'home.md') assert.ok(!html.includes('home-search-slot'), 'Home keeps no second search field.');
   if (page.name === 'account.md') assert.ok(html.includes('action="/accounts/logout/"'), `${page.name}: ${html}`);
-  if (page.name === 'downloads.md') assert.ok(html.includes('href="/downloads/file"'), `${page.name}: ${html}`);
+  if (page.name === 'downloads.md') {
+    assert.ok(html.includes('href="/downloads/file"'), `${page.name}: ${html}`);
+    // The section row links survive the sanitizer and name the section ids; the archive summary has both states.
+    for (const key of ['framework', 'previous']) {
+      assert.ok(html.includes(`href="#/downloads?id=download-${key}" data-download-jump="${key}"`), `${page.name}: ${html}`);
+      // Section names are interface text: the row is not .guide-topic-jumps (author topics that suite-i18n.js skips).
+      assert.ok(html.includes('<nav class="download-jumps"'), html);
+      assert.ok(html.includes(`id="download-${key}"`), `${page.name}: ${html}`);
+    }
+    assert.ok(html.includes('<summary><span class="archive-closed">Mostrar 1 archivo</span><span class="archive-open">Ocultar archivos</span></summary>'), html);
+    assert.ok(!html.includes('download-section"><option'), 'The section select is gone.');
+  }
 }
 
 const filler = 'relleno '.repeat(60);
@@ -850,7 +862,9 @@ assert.deepEqual(copiedDetail.children.filter((child) => child.tagName === 'A').
 assert.match(copiedDetail.textContent, /Estable/);
 assert.notEqual(copiedDetail, guides.rows[0].children[0], 'Topic details are copies of the source record.');
 assert.equal(groupFor('RPA').children[1].children[1].children[0].textContent, entries[0].author);
-assert.equal(groupFor('RPA').children[1].children[1].children[1].getAttribute('datetime'), entries[0].date);
+const rowDate = groupFor('RPA').children[1].children[1].children[1];
+assert.equal(rowDate.children.find((node) => node.tagName === 'TIME').getAttribute('datetime'), entries[0].date);
+assert.ok(rowDate.textContent.startsWith('Actualizado '), 'A Guías row date reads "Actualizado <date>" like the other reader lists.');
 assert.deepEqual(groupFor('Sin etiqueta').children.slice(1).map((row) => row.children[0].children[0].textContent),
   entries.slice(2).map((entry) => entry.title), 'Topic rows retain the server order.');
 const firstCopies = topicSections.map((section) => [...section.children]);
