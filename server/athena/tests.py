@@ -1440,6 +1440,39 @@ class ReaderPageTests(TestCase):
         self.assertNotIn('feed', page)
         self.assertIn(f'<small>Guía</small><small>Actualizado <time datetime="{timezone.localdate(old.updated_at).isoformat()}">', page)
 
+    def test_home_first_steps_are_tagged_readable_articles_in_date_order(self):
+        def home(user=None):
+            self.client.logout()
+            if user:
+                self.client.force_login(user)
+            return self.client.get('/README.md').content.decode()
+
+        def first_steps(user=None):
+            page = home(user)
+            if '## Primeros pasos' not in page:
+                return None
+            self.assertLess(page.index('## Primeros pasos'), page.index('## Recientes'))
+            part = page[page.index('## Primeros pasos'):page.index('## Recientes')]
+            return re.findall(r'<a class="guide-title" href="#/content/([^"]+)">', part)
+
+        def make(slug, day, tags, **fields):
+            return Article.objects.create(title=slug, slug=slug, summary='s', author='a', body='# ' + slug, tags=tags,
+                                          date=date(2026, 1, day), **{'published': True, **fields})
+        make('sin-etiqueta', 1, ['Colas'], is_public=True)
+        self.assertIsNone(first_steps())  # Shown only when at least one article has the tag.
+        make('mayusculas', 3, ['Primeros-Pasos'], is_public=True)
+        make('primero', 2, ['primeros-pasos', 'Colas'], is_public=True)
+        make('parecida', 1, ['no-primeros-pasos'], is_public=True)
+        make('con-cuenta', 4, ['primeros-pasos'])
+        make('borrador', 1, ['primeros-pasos'], published=False, is_public=True)
+        make('restringido', 1, ['primeros-pasos'], is_restricted=True).allowed_users.set([self.listed])
+        for day in range(5, 9):
+            make(f'mas-{day}', day, ['primeros-pasos'])
+        self.assertEqual(first_steps(), ['primero', 'mayusculas'])  # Visitors: public articles only.
+        self.assertEqual(first_steps(self.reader), ['primero', 'mayusculas', 'con-cuenta', 'mas-5', 'mas-6'])  # At most 5.
+        self.assertEqual(first_steps(self.listed), ['restringido', 'primero', 'mayusculas', 'con-cuenta', 'mas-5'])
+        self.assertIn('<small>Guía</small></div></article>', home(self.reader))  # Type only: a start path has no dates.
+
     def test_downloads_mark_the_framework_file_that_latest_serves(self):
         def make(title, section, minutes):
             item = Download.objects.create(title=title, section=section, file=ContentFile(b'x', name=title + '.zip'))

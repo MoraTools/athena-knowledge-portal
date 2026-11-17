@@ -702,6 +702,9 @@ def contributing_visible(user):
     return user.is_authenticated or visible_articles(user).filter(slug='contributing').exists()
 
 
+FIRST_STEPS_TAG = 'primeros-pasos'
+
+
 def static_portal(request, path='index.html'):
     # An explicit allowlist prevents serving a database, source file, or a removed article.
     assets = path.startswith(('fonts/', 'assets/', 'vendor/')) or path in ('styles.css', 'app.js', 'config.js')
@@ -722,9 +725,14 @@ def static_portal(request, path='index.html'):
             return render(request, 'index.html')
         if path == 'README.md':
             # The library's access rule; updated_at, so an edit moves an article to the top (DL-0022).
-            recent = visible_articles(request.user).defer('body', 'pdf').order_by('-updated_at', 'title')[:5]
+            readable = visible_articles(request.user).defer('body', 'pdf')
+            recent = readable.order_by('-updated_at', 'title')[:5]
+            # Primeros pasos: editors tag articles 'primeros-pasos' (any case); the article date, which editors set, orders them.
+            tagged = readable.filter(tags__icontains=FIRST_STEPS_TAG).order_by('date', 'title')
+            first_steps = [a for a in tagged if FIRST_STEPS_TAG in (tag.lower() for tag in a.tags)][:5]
             return render(request, 'home.md', {
                 'has_articles': bool(recent),
+                'first_steps': first_steps,
                 'recent': recent,
                 'show_contribute': contributing_visible(request.user),
             }, content_type='text/markdown; charset=utf-8')
