@@ -732,6 +732,17 @@ class PortalTests(TestCase):
         self.assertIn('<p class="tag-list"><span>Avisos</span></p>', updates)
         self.assertIn('<p class="post-actions"><a class="post-link" href="https://example.test/news" target="_blank" rel="noreferrer">Sitio oficial</a></p>', updates)
 
+    def test_placement_tag_is_no_guide_chip_and_not_in_pdf_meta(self):
+        # Round 3 #2: the reader hides the placement tag; Guías chips and the PDF meta line must too.
+        Article.objects.create(title='Start guide', slug='start-guide', kind='guide', summary='S', author='A',
+                               tags=['Primeros-Pasos', 'Colas'], published=True, is_public=True)
+        guides = self.client.get('/guides.md').content.decode()
+        self.assertIn('<p class="tag-list"><span>Colas</span></p>', guides)
+        self.assertIn('data-search="Start guide A S Primeros-Pasos Colas"', guides)  # Matching still finds it.
+        html = article_html(Article(title='T', slug='t', author='Ana', body='# T', tags=['primeros-pasos', 'Colas']),
+                            'https://athena.test')
+        self.assertIn('<p class="article-meta">Guía · Ana · Colas</p>', html)
+
     def test_article_tools_edit_and_export_links(self):
         export = '<a class="copy-page copy-page--ghost" href="/content/first-guide.pdf" download>'
         self.client.force_login(self.reader)

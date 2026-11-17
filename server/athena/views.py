@@ -20,7 +20,8 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from markdown_it import MarkdownIt
 
 from .forms import SignInForm
-from .models import ApiKey, Article, Download, DownloadEvent, ManagedImage, readable_articles, visible_articles
+from .models import (ApiKey, Article, Download, DownloadEvent, ManagedImage, PLACEMENT_TAGS, readable_articles,
+                     visible_articles)
 from .notify import notify_download
 
 
@@ -427,7 +428,7 @@ def article_html(article, origin):
     if article.updated_at:
         day = timezone.localdate(article.updated_at)
         meta.append(f'Actualizado {day.day} {READER_MONTHS[day.month - 1]} {day.year}')
-    meta.append(', '.join(article.tags))
+    meta.append(', '.join(article.topic_tags))
     body = body.replace('</h1>', f'</h1>\n<p class="article-meta">{escape(" · ".join(filter(None, meta)))}</p>', 1)
     address = f'{origin}/#/content/{article.slug} · '.replace('\\', '\\\\').replace('"', '\\"')
     return (f'<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>{escape(article.title)}</title>'
@@ -693,7 +694,7 @@ def contributing_visible(user):
     return user.is_authenticated or visible_articles(user).filter(slug='contributing').exists()
 
 
-FIRST_STEPS_TAG = 'primeros-pasos'
+FIRST_STEPS_TAG = PLACEMENT_TAGS[0]
 
 
 def static_portal(request, path='index.html'):

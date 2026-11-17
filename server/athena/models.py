@@ -19,6 +19,10 @@ def token_expiry():
     return timezone.now() + timedelta(days=90)
 
 
+# Tags that place an article (Primeros pasos on the home) and are no subject: no chip, no topic. Same set as src/app.js.
+PLACEMENT_TAGS = ('primeros-pasos',)
+
+
 class Article(models.Model):
     KINDS = [('guide', 'Guía'), ('page', 'Página'), ('tool', 'Herramienta'),
              ('announcement', 'Anuncio'), ('release', 'Versión')]
@@ -88,6 +92,10 @@ class Article(models.Model):
             errors['is_public'] = 'Un artículo restringido no puede ser público.'
         if errors:
             raise ValidationError(errors)
+
+    @property
+    def topic_tags(self):
+        return [tag for tag in self.tags if tag.lower() not in PLACEMENT_TAGS]
 
     @property
     def access(self):
