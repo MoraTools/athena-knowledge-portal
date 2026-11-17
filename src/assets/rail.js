@@ -30,9 +30,9 @@
   };
   // Icons follow the link label from /_sidebar.md and the admin model names.
   const LABEL_ICONS = {
-    Home: 'home', Guides: 'book', Updates: 'clock', Tools: 'tool', Downloads: 'download', Contribute: 'plus', 'My account': 'user', 'Sign in': 'user', 'Manage Athena': 'gear', 'API for agents': 'code', Articles: 'file', 'API keys': 'key', 'Logged downloads': 'log', Users: 'users',
+    Home: 'home', Guides: 'book', Updates: 'clock', Tools: 'tool', Downloads: 'download', Contribute: 'plus', 'My account': 'user', 'Sign in': 'user', 'Administration': 'gear', 'API for agents': 'code', Articles: 'file', 'API keys': 'key', 'Logged downloads': 'log', Users: 'users',
     Inicio: 'home', 'Guías': 'book', Actualizaciones: 'clock', Herramientas: 'tool', Descargas: 'download',
-    Contribuir: 'plus', 'Mi cuenta': 'user', Ingresar: 'user', 'Administrar Athena': 'gear', 'API para agentes': 'code',
+    Contribuir: 'plus', 'Mi cuenta': 'user', Ingresar: 'user', 'Administración': 'gear', 'API para agentes': 'code',
     'Artículos': 'file', 'Claves de API': 'key', 'Descargas registradas': 'log', Usuarios: 'users'
   };
   const tip = document.createElement('div');

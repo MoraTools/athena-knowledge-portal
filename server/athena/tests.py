@@ -686,13 +686,17 @@ class PortalTests(TestCase):
         self.client.force_login(self.reader)
         tools = self.client.get('/tools.md').content.decode()
         self.assertLess(tools.index('#/content/new-tool'), tools.index('#/content/old-tool'))
-        self.assertIn('<time datetime="2026-10-20">2026-10-20</time>', tools)
+        # One meta order: author, then 'Actualizado' and the date (the page names the type).
+        self.assertIn('<small>A · Actualizado <time datetime="2026-10-20">2026-10-20</time></small>', tools)
         self.assertNotIn('2020-01-01', tools)
         updates = self.client.get('/updates.md').content.decode()
-        slugs = re.findall(r'<h2><a href="#/content/([\w-]+)">', updates)
+        slugs = re.findall(r'<h3><a href="#/content/([\w-]+)">', updates)
         self.assertEqual(slugs, ['a-release', 'b-release', 'first-guide'])  # Equal updates fall back to the title.
         self.assertIn('<time datetime="2026-09-01"><span class="day">01</span>', updates)
-        self.assertIn('<time datetime="2026-09-01">01/09/2026</time>', updates)
+        # The date column is the only date: the meta line has type and author, and the title is the only link.
+        self.assertNotIn('01/09/2026', updates)
+        self.assertNotIn('>Leer</a>', updates)
+        self.assertNotIn('<p class="post-actions">', updates)
         self.assertRegex(updates, r'(?s)<h2>Octubre 2026</h2>.*<h2>Septiembre 2026</h2>')
         self.assertNotIn('31/12/2026', updates)
 
@@ -714,6 +718,19 @@ class PortalTests(TestCase):
         updates = self.client.get('/updates.md').content.decode()
         self.assertIn('class="timeline"', updates)
         self.assertIn('First guide', updates)
+        self.assertNotIn('<p class="post-actions">', updates)  # No PDF, site or download: no action row.
+
+    def test_placement_tag_is_no_chip_and_actions_only_with_a_target(self):
+        Article.objects.create(title='Start tool', slug='start-tool', kind='tool', summary='S', author='A',
+                               tags=['Primeros-Pasos', 'Colas'], published=True, is_public=True)
+        Article.objects.create(title='Start news', slug='start-news', kind='announcement', summary='S', author='A',
+                               tags=['primeros-pasos', 'Avisos'], url='https://example.test/news', published=True, is_public=True)
+        tools = self.client.get('/tools.md').content.decode()
+        self.assertIn('<p class="tag-list"><span>Colas</span></p>', tools)
+        self.assertIn('data-search="Start tool A S Primeros-Pasos Colas"', tools)  # Matching still finds it.
+        updates = self.client.get('/updates.md').content.decode()
+        self.assertIn('<p class="tag-list"><span>Avisos</span></p>', updates)
+        self.assertIn('<p class="post-actions"><a class="post-link" href="https://example.test/news" target="_blank" rel="noreferrer">Sitio oficial</a></p>', updates)
 
     def test_article_tools_edit_and_export_links(self):
         export = '<a class="copy-page copy-page--ghost" href="/content/first-guide.pdf" download>'

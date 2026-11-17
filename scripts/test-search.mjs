@@ -661,6 +661,12 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
   section.childNodes = [title];
   await context.buildArticleMeta();
   assert.deepEqual(section.children[1].children.at(-1).children.map((link) => link.href), ['#/search?q=Colas'], 'Other kinds keep the search link.');
+  // Search results use the same meta order as the article head.
+  context.document.createTextNode = (text) => ({ textContent: text });
+  const result = context.createSearchResult(context.prepareSearchEntry({ route: '#/content/guide', kind: 'guide', title: 'Guide', summary: 'S',
+    author: 'Ana Pérez', date: '2026-11-15', tags: [], text: '', prose: '', headings: [] }), ['guide']);
+  const resultMeta = result.children.find((node) => node.className === 'search-result__meta');
+  assert.deepEqual(resultMeta.children.map((node) => node.textContent), ['Guía', 'Ana Pérez', 'Actualizado ' + vm.runInContext("formatDate('2026-11-15')", context)]);
   context.location.hash = '#/content/draft';
   section.childNodes = [title];
   await context.buildArticleMeta();

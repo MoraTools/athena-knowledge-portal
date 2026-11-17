@@ -734,22 +734,9 @@ function createSearchResult(entry, terms) {
 
   const meta = document.createElement('p');
   meta.className = 'search-result__meta';
-  const kind = document.createElement('span');
-  kind.className = 'card-kicker';
-  kind.textContent = searchKindLabel(entry.kind);
-  meta.append(kind);
-  if (entry.date) {
-    const date = document.createElement('time');
-    date.dateTime = entry.date;
-    date.textContent = formatDate(entry.date);
-    meta.append(date);
-  }
-  if (entry.author) {
-    const author = document.createElement('span');
-    author.lang = 'es';
-    author.textContent = entry.author;
-    meta.append(author);
-  }
+  const items = metaItems(entry);
+  items[0].className = 'card-kicker';
+  meta.append(...items);
   const tail = document.createElement('p');
   tail.className = 'search-result__tail';
   const chips = entry.tags.filter(isTopicTag);
@@ -953,6 +940,30 @@ function buildPdfViewer() {
 }
 
 // One meta line under the article title, from the reader's search index (drafts are not in it, so they get none).
+// One meta order in the reader (article head and search results): type · author · Actualizado <date>.
+function metaItems(entry) {
+  const kind = document.createElement('span');
+  kind.textContent = searchKindLabel(entry.kind);
+  const items = [kind];
+  if (entry.author) {
+    const author = document.createElement('span');
+    author.lang = 'es';
+    author.textContent = entry.author;
+    items.push(author);
+  }
+  if (entry.date) {
+    const updated = document.createElement('span');
+    const label = document.createElement('span');
+    label.textContent = t('Actualizado');
+    const date = document.createElement('time');
+    date.dateTime = entry.date;
+    date.textContent = formatDate(entry.date);
+    updated.append(label, ' ', date);
+    items.push(updated);
+  }
+  return items;
+}
+
 async function buildArticleMeta() {
   const route = getRouteState().path;
   const heading = document.querySelector('.markdown-section h1');
@@ -968,25 +979,7 @@ async function buildArticleMeta() {
   if (!entry || !heading.isConnected) return;
   const meta = document.createElement('p');
   meta.className = 'article-meta';
-  const kind = document.createElement('span');
-  kind.textContent = searchKindLabel(entry.kind);
-  meta.append(kind);
-  if (entry.author) {
-    const author = document.createElement('span');
-    author.lang = 'es';
-    author.textContent = entry.author;
-    meta.append(author);
-  }
-  if (entry.date) {
-    const updated = document.createElement('span');
-    const label = document.createElement('span');
-    label.textContent = t('Actualizado');
-    const date = document.createElement('time');
-    date.dateTime = entry.date;
-    date.textContent = formatDate(entry.date);
-    updated.append(label, ' ', date);
-    meta.append(updated);
-  }
+  meta.append(...metaItems(entry));
   const topicTags = entry.tags.filter(isTopicTag);
   if (topicTags.length) {
     // A guide tag that is a Guías section (some guide's first topic tag) opens that section; other tags search Athena.

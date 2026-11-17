@@ -237,6 +237,8 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 @media(hover:hover) and (pointer:fine){.guide-topic-row:hover{background:var(--guide-row-highlight)}}
 .guide-topic-meta{display:flex;align-items:flex-start;gap:var(--space-2)}
 .guide-topic-meta span{flex:1;min-width:0}.guide-topic-meta time{font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Recientes: type and date in two columns, so the dates line up from row to row. */
+.recent-list .guide-topic-meta{display:grid;grid-template-columns:13ch auto;justify-content:start}
 .guide-library [hidden],.guide-topic-jumps [hidden]{display:none!important}
 @container reader (max-width:600px){.guide-controls{grid-template-columns:1fr;gap:var(--space-2);padding:var(--space-2)}.guide-topic-row{grid-template-columns:1fr;gap:var(--space-1)}.guide-topic-meta{justify-content:flex-start}.guide-topic-meta span{flex:initial}.guide-topic-jumps{gap:0 var(--space-2)}}
 /* One chip for tags and status in guide rows, tool cards, the feed, search results and the article meta line. */
@@ -264,7 +266,7 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 .markdown-section .timeline-intro{color:var(--muted);margin:0 0 var(--space-3)}
 .timeline,.timeline ol{list-style:none;margin:0;padding:0}
 .markdown-section .timeline-month>h2{margin:var(--space-4) 0 var(--space-2);padding-left:calc(var(--timeline-rail) + var(--space-2));font:700 12px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text)}
-.timeline{--timeline-rail:64px;--card-pad:var(--space-3);--title-lh:24px;--badge-h:56px;--badge-top:calc(1px + var(--card-pad) + 12px * 1.4 + var(--space-1) + var(--title-lh) / 2 - var(--badge-h) / 2)}
+.timeline{--timeline-rail:64px;--card-pad:var(--space-2);--title-lh:24px;--badge-h:56px;--badge-top:calc(1px + var(--card-pad) + 12px * 1.4 + var(--space-1) + var(--title-lh) / 2 - var(--badge-h) / 2)}
 /* The first month sits under the intro; the last post of a month leaves the gap to the next month heading. */
 .markdown-section .timeline-month:first-child>h2{margin-top:0}
 .timeline-post{position:relative;display:grid;grid-template-columns:var(--timeline-rail) minmax(0,1fr);gap:var(--space-2);padding:0 0 var(--space-2)}
@@ -274,7 +276,7 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 .timeline-post>time{position:relative;z-index:1;align-self:start;display:flex;flex-direction:column;align-items:center;justify-content:center;width:var(--timeline-rail);height:var(--badge-h);margin-top:var(--badge-top);background:var(--bg);color:var(--text)}
 .timeline-post>time .day{font:600 24px/1 var(--font-mono)}
 .timeline-post>time .mon{margin-top:.2rem;font:700 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent-text)}
-.timeline-card{margin:0;padding:var(--card-pad);border:1px solid var(--border)}
+.timeline-card{margin:0;padding:var(--card-pad) var(--space-3);border:1px solid var(--border)}
 .timeline-card .post-meta{display:block;margin:0 0 var(--space-1);color:var(--muted);font:12px/1.4 var(--font-mono);letter-spacing:.04em;text-transform:uppercase}
 /* Update titles use the h3 voice and are the link to the post (DESIGN.md: Cormorant is for page titles). */
 .markdown-section .timeline-card :is(h2,h3){margin:0;font:650 18px/var(--title-lh) var(--font-ui)}
@@ -282,7 +284,7 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 .markdown-section .timeline-card :is(h2,h3) a{color:var(--text);text-decoration:none}
 .markdown-section .timeline-card :is(h2,h3) a:is(:hover,:focus-visible){color:var(--accent-text);text-decoration:underline}
 .post-actions{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:var(--space-2) 0 0}
-@container reader (max-width:600px){.timeline{--card-pad:var(--space-3)}.markdown-section .timeline-month>h2{padding-left:0}.timeline-post{grid-template-columns:1fr;gap:var(--space-1)}.timeline-post::before{display:none}.timeline-post>time{width:auto;height:auto;margin:0;flex-direction:row;justify-content:flex-start;gap:var(--space-1)}.timeline-post>time .mon{margin:0}}
+@container reader (max-width:600px){.markdown-section .timeline-month>h2{padding-left:0}.timeline-post{grid-template-columns:1fr;gap:var(--space-1)}.timeline-post::before{display:none}.timeline-post>time{width:auto;height:auto;margin:0;flex-direction:row;justify-content:flex-start;gap:var(--space-1)}.timeline-post>time .mon{margin:0}}
 
 /* Mi cuenta (/#/account): controls follow the admin system (44px, 4px radius, var(--border-strong) border). */
 .markdown-section .account-meta{margin:0 0 var(--space-4);color:var(--muted);font:13px/1.5 var(--font-mono);letter-spacing:.06em;text-transform:uppercase}

@@ -15,18 +15,18 @@
 <ol>{% for article in month.list %}<li class="timeline-post">
 <time datetime="{{ article.updated_at|date:'Y-m-d' }}"><span class="day">{{ article.updated_at|date:'d' }}</span><span class="mon">{{ article.updated_at|date:'M' }}</span></time>
 <article class="library-card timeline-card">
-<small class="post-meta"><span>{{ article.get_kind_display }}</span> · {{ article.author }} · <time datetime="{{ article.updated_at|date:'Y-m-d' }}">{{ article.updated_at|date:'d/m/Y' }}</time></small>
-<h2><a href="#/content/{{ article.slug }}">{{ article.title }}</a></h2><p class="post-summary">{{ article.summary }}</p>
+<small class="post-meta"><span>{{ article.get_kind_display }}</span> · {{ article.author }}</small>
+<h3><a href="#/content/{{ article.slug }}">{{ article.title }}</a></h3><p class="post-summary">{{ article.summary }}</p>
 {% if article.status %}<p class="status status-{{ article.status }}">{{ article.get_status_display }}</p>{% endif %}
-<p class="tag-list">{% for tag in article.tags %}<span>{{ tag }}</span>{% endfor %}</p>
-<p class="post-actions"><a class="post-link" href="#/content/{{ article.slug }}">Leer</a>{% if article.pdf_name %}<a class="pdf-link" href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a>{% endif %}{% if article.url %}<a class="post-link" href="{{ article.url }}" target="_blank" rel="noreferrer">Sitio oficial</a>{% endif %}{% if article.download_file and user.is_authenticated %}<a class="post-link" href="#/downloads">Descarga aprobada</a>{% endif %}</p>
+<p class="tag-list">{% for tag in article.tags %}{% if tag|lower != 'primeros-pasos' %}<span>{{ tag }}</span>{% endif %}{% endfor %}</p>
+{% if article.pdf_name or article.url or article.download_file and user.is_authenticated %}<p class="post-actions">{% if article.pdf_name %}<a class="pdf-link" href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a>{% endif %}{% if article.url %}<a class="post-link" href="{{ article.url }}" target="_blank" rel="noreferrer">Sitio oficial</a>{% endif %}{% if article.download_file and user.is_authenticated %}<a class="post-link" href="#/downloads">Descarga aprobada</a>{% endif %}</p>{% endif %}
 </article></li>{% endfor %}</ol></li>{% empty %}<li><p>Todavía no hay actualizaciones publicadas.</p></li>{% endfor %}
 </ol>
 {% elif section == 'tools' %}<div class="library-grid">
 {% for article in articles %}<article class="library-card" data-search="{{ article.title }} {{ article.author }} {{ article.summary }} {{ article.tags|join:' ' }}" data-tags="{{ article.tags|join:'|' }}">
-<h2><a href="#/content/{{ article.slug }}">{{ article.title }}</a></h2><p>{{ article.summary }}</p><small><time datetime="{{ article.updated_at|date:'Y-m-d' }}">{{ article.updated_at|date:'Y-m-d' }}</time> · {{ article.author }}</small>
+<h2><a href="#/content/{{ article.slug }}">{{ article.title }}</a></h2><p>{{ article.summary }}</p><small>{{ article.author }} · Actualizado <time datetime="{{ article.updated_at|date:'Y-m-d' }}">{{ article.updated_at|date:'Y-m-d' }}</time></small>
 {% if article.status %}<p class="status status-{{ article.status }}">{{ article.get_status_display }}</p>{% endif %}
-<p class="tag-list">{% for tag in article.tags %}<span>{{ tag }}</span>{% endfor %}</p>
+<p class="tag-list">{% for tag in article.tags %}{% if tag|lower != 'primeros-pasos' %}<span>{{ tag }}</span>{% endif %}{% endfor %}</p>
 {% if article.pdf_name %}<p><a class="pdf-link" href="/pdf/{{ article.slug }}.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a></p>{% endif %}
 {% if article.url %}<p><a href="{{ article.url }}" target="_blank" rel="noreferrer">Sitio oficial</a></p>{% endif %}
 {% if article.download_file and user.is_authenticated %}<p><a href="#/downloads">Descarga aprobada</a></p>{% endif %}
