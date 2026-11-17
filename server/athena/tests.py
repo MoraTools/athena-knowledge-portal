@@ -1314,7 +1314,7 @@ class DownloadTests(TestCase):
         self.item.save()
         # The download view serves published files only, so the control is disabled.
         self.assertContains(self.client.get('/admin/athena/download/'), 'aria-disabled="true" title="Sin publicar: no se puede descargar"')
-        self.assertContains(response, '<title>Descargas · Athena</title>')
+        self.assertContains(response, '<title>Archivos de descarga · Athena</title>')
         self.assertEqual(self.client.get('/admin/athena/download/add/').status_code, 200)
         self.assertContains(self.client.get(f'/admin/athena/download/{self.item.pk}/change/'), self.item.sha256)
         response = self.client.post('/admin/athena/download/add/', {

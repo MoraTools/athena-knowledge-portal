@@ -228,7 +228,7 @@ class Download(models.Model):
     class Meta:
         ordering = ['section', '-created_at']
         verbose_name = 'descarga'
-        verbose_name_plural = 'descargas'
+        verbose_name_plural = 'archivos de descarga'
 
     def __str__(self):
         return self.title

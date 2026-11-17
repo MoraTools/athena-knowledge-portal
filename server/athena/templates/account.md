@@ -19,6 +19,6 @@
 {% if is_admin %}
 <section class="account-admin">
 <h2>Administración</h2>
-<div class="account-actions"><a class="account-button" href="/admin/athena/article/">Artículos</a>{% if perms.athena.view_apikey %}<a class="account-button" href="/admin/athena/apikey/">Claves de API</a>{% endif %}<a class="account-button" href="/admin/athena/download/">Descargas</a>{% if perms.auth.view_user %}<a class="account-button" href="/admin/auth/user/">Usuarios</a>{% endif %}</div>
+<div class="account-actions"><a class="account-button" href="/admin/athena/article/">Artículos</a>{% if perms.athena.view_apikey %}<a class="account-button" href="/admin/athena/apikey/">Claves de API</a>{% endif %}<a class="account-button" href="/admin/athena/download/">Archivos de descarga</a>{% if perms.auth.view_user %}<a class="account-button" href="/admin/auth/user/">Usuarios</a>{% endif %}</div>
 </section>
 {% endif %}

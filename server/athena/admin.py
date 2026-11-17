@@ -470,7 +470,7 @@ class DownloadAdmin(RowControlsAdmin):
         return when(obj.created_at) if obj.created_at else 'Sin guardar'
 
     def changelist_view(self, request, extra_context=None):
-        return super().changelist_view(request, {'title': 'Descargas', 'search_placeholder': 'Buscar descargas',
+        return super().changelist_view(request, {'title': 'Archivos de descarga', 'search_placeholder': 'Buscar archivos de descarga',
                                                  **(extra_context or {})})
 
     def add_view(self, request, form_url='', extra_context=None):

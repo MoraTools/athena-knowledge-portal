@@ -195,7 +195,7 @@ class AdminEditorTests(TestCase):
         self.assertNotIn('pill gold', page)
 
     def test_download_lists_name_what_they_search(self):
-        for url, text in [('/admin/athena/download/', 'Buscar descargas'),
+        for url, text in [('/admin/athena/download/', 'Buscar archivos de descarga'),
                           ('/admin/athena/downloadevent/', 'Buscar en el registro')]:
             with self.subTest(url=url):
                 page = self.client.get(url + '?q=plan&o=1').content.decode()
@@ -203,6 +203,12 @@ class AdminEditorTests(TestCase):
                 self.assertIn(f'<input type="search" name="q" value="plan" id="searchbar" placeholder="{text}">', page)
                 self.assertIn('<input type="hidden" name="o" value="1">', page)
                 self.assertNotIn('<input type="hidden" name="q"', page)
+
+    def test_rail_names_each_entry_once(self):
+        page = self.client.get('/admin/').content.decode()
+        labels = re.findall(r'<span class="rail-label">([^<]+)</span></a>', page)
+        self.assertEqual(len(labels), len(set(labels)), labels)
+        self.assertIn('Archivos de descarga', labels)
 
     def test_directory_names_editors_and_administrators(self):
         editor = User.objects.create_user('editora', is_staff=True)
