@@ -188,15 +188,20 @@ class HtmlText(HTMLParser):
     """Readable text of an article: headings and prose, without scripts, styles, templates, controls or hidden text.
 
     One pass gives two texts: parts (everything readable, for matching) and prose (the same without code blocks
-    and with "…" for inline code, the source of result excerpts).
+    and with "…" for inline code, the source of result excerpts). With blocks_only (an HTML article, whose cards put
+    titles and link labels between sentences), prose keeps only text in paragraph-level blocks, outside links and headings.
     """
     SKIP = {'script', 'style', 'template', 'noscript', 'title', 'svg', 'button', 'video'}
     CODE = {'pre', 'code'}
     INLINE = {'a', 'abbr', 'b', 'code', 'em', 'i', 'kbd', 'mark', 's', 'small', 'span', 'strong', 'sub', 'sup', 'u'}
     VOID = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'}
+    BLOCKS = {'p', 'li', 'dd', 'td', 'blockquote', 'figcaption'}
+    LABELS = {'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
 
-    def __init__(self):
+    def __init__(self, blocks_only=False):
         super().__init__(convert_charrefs=True)
+        # Open counts of BLOCKS and LABELS elements; None when every text is prose.
+        self.open = {'block': 0, 'label': 0} if blocks_only else None
         # skips: open skipped elements as [tag, its open count, text held since it opened, prose held, hides text].
         # A code element holds only prose: its text stays in parts.
         self.parts, self.prose, self.skips = [], [], []
@@ -219,7 +224,13 @@ class HtmlText(HTMLParser):
                 out_text.extend(text)
             out_prose.extend(prose)
 
+    def count(self, tag, step):
+        if self.open is not None and (tag in self.BLOCKS or tag in self.LABELS):
+            key = 'block' if tag in self.BLOCKS else 'label'
+            self.open[key] = max(0, self.open[key] + step)  # A stray end tag never goes below zero.
+
     def handle_starttag(self, tag, attrs):
+        self.count(tag, 1)
         hides = tag in self.SKIP or ('aria-hidden', 'true') in attrs
         if tag not in self.VOID and (hides or tag in self.CODE):
             if not hides:
@@ -231,6 +242,7 @@ class HtmlText(HTMLParser):
         self.space(tag)
 
     def handle_endtag(self, tag):
+        self.count(tag, -1)
         depth = next((i for i in range(len(self.skips) - 1, -1, -1) if self.skips[i][0] == tag), None)
         if depth is not None:
             self.release(depth + 1)
@@ -243,17 +255,19 @@ class HtmlText(HTMLParser):
         self.space(tag)
 
     def handle_data(self, data):
-        for target in self.out():
-            target.append(data)
+        text, prose = self.out()
+        text.append(data)
+        if self.open is None or self.open['block'] and not self.open['label']:
+            prose.append(data)
 
     def close(self):
         super().close()
         self.release(0)
 
 
-def html_texts(body):
+def html_texts(body, blocks_only=False):
     """(text, prose) of an HTML body; see HtmlText."""
-    parser = HtmlText()
+    parser = HtmlText(blocks_only)
     parser.feed(body)
     parser.close()
     return tuple(re.sub(r'\s+', ' ', ''.join(parts)).strip() for parts in (parser.parts, parser.prose))
@@ -271,7 +285,7 @@ def search_text(body):
 def search_entry(article):
     if article.format == 'html':
         # Headings live inside the sandboxed frame; results link to the article itself.
-        text, prose = html_texts(article.body)
+        text, prose = html_texts(article.body, blocks_only=True)
         return {'title': article.title, 'kind': article.kind, 'summary': article.summary, 'author': article.author,
                 'date': timezone.localdate(article.updated_at).isoformat(), 'tags': article.tags, 'route': '#/content/' + article.slug,
                 'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '', 'text': text, 'prose': prose,
@@ -605,7 +619,7 @@ def downloads_page(request):
 
 
 def library(request, section):
-    kinds = {'guides': ['guide'], 'tools': ['tool'], 'updates': ['guide', 'announcement', 'release']}
+    kinds = {'guides': ['guide'], 'tools': ['tool'], 'updates': ['announcement', 'release']}
     articles = visible_articles(request.user).filter(kind__in=kinds[section]).defer('body', 'pdf').order_by('-updated_at', 'title')
     tags = sorted({tag for article in articles for tag in article.tags})
     return render(request, 'library.md', {'section': section, 'articles': articles, 'tags': tags},

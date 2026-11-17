@@ -17,13 +17,13 @@
 
 <div class="recent-list">{% for article in recent %}<article class="guide-topic-row"><div class="guide-detail"><a class="guide-title" href="#/content/{{ article.slug }}">{{ article.title }}</a></div><div class="guide-topic-meta"><small>{{ article.get_kind_display }}</small><small>Actualizado <time datetime="{{ article.updated_at|date:'Y-m-d' }}">{{ article.updated_at|date:'Y-m-d' }}</time></small></div></article>{% endfor %}</div>
 
-<p><a href="#/updates">Ver todas las actualizaciones</a></p>
+<p><a href="#/updates">Ver anuncios y versiones</a></p>
 {% endif %}
 ## Explorar
 
 <div class="portal-grid">
   <a class="portal-card" href="#/guides"><span>Guías</span><p>Busque por texto o etiqueta en la biblioteca permanente.</p></a>
-  <a class="portal-card" href="#/updates"><span>Actualizaciones</span><p>Consulte guías nuevas, versiones y anuncios.</p></a>
+  <a class="portal-card" href="#/updates"><span>Actualizaciones</span><p>Consulte anuncios y versiones.</p></a>
   <a class="portal-card" href="#/tools"><span>Herramientas</span><p>Revise estado, límites y documentación.</p></a>
   {% if user.is_authenticated %}<a class="portal-card" href="#/downloads"><span>Descargas</span><p>Descargue los archivos aprobados desde Athena.</p></a>{% endif %}
 </div>

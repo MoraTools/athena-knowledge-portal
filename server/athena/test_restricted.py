@@ -130,7 +130,8 @@ class RestrictedArticleTests(TestCase):
             for text in ['Informe privado', 'Resumen confidencial', SECRET, 'informe-privado']:
                 with self.subTest(user=user, text=text):
                     self.assertEqual(text in index, visible)
-            for path in ['/guides.md', '/updates.md']:
+            # The article is a guide; Actualizaciones lists announcements and releases only (test_public covers it).
+            for path in ['/guides.md']:
                 with self.subTest(user=user, path=path):
                     self.assertEqual('Informe privado' in self.client.get(path).content.decode(), visible)
             self.assertEqual('Resumen HTML confidencial' in index, visible)

@@ -74,7 +74,7 @@ class PublicArticleTests(TestCase):
     def test_public_search_and_libraries_never_disclose_private_metadata_or_downloads(self):
         Download.objects.create(title='Secret package', file=ContentFile(b'secret', name='secret.zip'))
         public = self.articles[True, True]
-        for path in ['/search-index.json', '/guides.md', '/updates.md']:
+        for path in ['/search-index.json', '/guides.md']:
             response = self.client.get(path)
             self.assertContains(response, public.slug)
             self.assertNotContains(response, 'Secret package')
@@ -83,6 +83,9 @@ class PublicArticleTests(TestCase):
                 if key != (True, True):
                     self.assertNotContains(response, article.slug)
         self.assertEqual(len(self.client.get('/search-index.json').json()), 1)
+        Article.objects.update(kind='announcement')  # Actualizaciones lists announcements and releases only.
+        for key, article in self.articles.items():
+            self.assertEqual(article.slug in self.client.get('/updates.md').content.decode(), key == (True, True))
         for article in self.articles.values():
             article.kind, article.status = 'tool', 'stable'
             article.save()

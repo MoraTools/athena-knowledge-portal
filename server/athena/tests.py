@@ -675,7 +675,7 @@ class PortalTests(TestCase):
 
     def test_tools_and_feed_show_and_order_by_last_update_in_site_time(self):
         Article.objects.filter(pk=self.article.pk).update(
-            date=date(2026, 12, 31), updated_at=datetime(2026, 9, 2, 3, tzinfo=timezone.get_fixed_timezone(0)))  # 2026-09-01 in Lima
+            kind='announcement', date=date(2026, 12, 31), updated_at=datetime(2026, 9, 2, 3, tzinfo=timezone.get_fixed_timezone(0)))  # 2026-09-01 in Lima
         for slug, kind in [('old-tool', 'tool'), ('new-tool', 'tool'), ('b-release', 'release'), ('a-release', 'release')]:
             Article.objects.create(title=slug, slug=slug, kind=kind, summary='S', author='A', date=date(2020, 1, 1),
                                    published=True)
@@ -703,6 +703,8 @@ class PortalTests(TestCase):
     def test_guide_topics_do_not_change_tools_or_updates(self):
         Article.objects.create(title='Real tool', slug='real-tool', kind='tool', summary='Tool summary', author='Tool author',
                                status='alpha', url='https://example.test/tool', published=True, is_public=True)
+        Article.objects.create(title='Real news', slug='real-news', kind='announcement', summary='S', author='A',
+                               published=True, is_public=True)
         self.article.is_public = True
         self.article.save()
         for path in ['/tools.md', '/updates.md']:
@@ -717,7 +719,8 @@ class PortalTests(TestCase):
         self.assertIn('https://example.test/tool', tools)
         updates = self.client.get('/updates.md').content.decode()
         self.assertIn('class="timeline"', updates)
-        self.assertIn('First guide', updates)
+        self.assertIn('Real news', updates)
+        self.assertNotIn('First guide', updates)  # A guide is no update.
         self.assertNotIn('<p class="post-actions">', updates)  # No PDF, site or download: no action row.
 
     def test_placement_tag_is_no_chip_and_actions_only_with_a_target(self):
@@ -731,6 +734,19 @@ class PortalTests(TestCase):
         updates = self.client.get('/updates.md').content.decode()
         self.assertIn('<p class="tag-list"><span>Avisos</span></p>', updates)
         self.assertIn('<p class="post-actions"><a class="post-link" href="https://example.test/news" target="_blank" rel="noreferrer">Sitio oficial</a></p>', updates)
+
+    def test_updates_are_announcements_and_releases_only(self):
+        # Round 3 #26: one set for the page, its crumb and the search type (announcement, release).
+        self.article.is_public = True
+        self.article.save()  # A changed guide: still in Recientes, not on Actualizaciones.
+        Article.objects.create(title='Big news', slug='big-news', kind='announcement', summary='S', author='A',
+                               published=True, is_public=True)
+        updates = self.client.get('/updates.md').content.decode()
+        self.assertEqual(re.findall(r'<h3><a href="#/content/([\w-]+)">', updates), ['big-news'])
+        home = self.client.get('/README.md').content.decode()
+        self.assertIn('#/content/first-guide', home)
+        self.assertIn('</div>\n\n<p><a href="#/updates">Ver anuncios y versiones</a></p>', home)
+        self.assertIn('<span>Actualizaciones</span><p>Consulte anuncios y versiones.</p>', home)
 
     def test_placement_tag_is_no_guide_chip_and_not_in_pdf_meta(self):
         # Round 3 #2: the reader hides the placement tag; Guías chips and the PDF meta line must too.
@@ -1459,7 +1475,7 @@ class ReaderPageTests(TestCase):
             self.assertEqual(recent(user), [a.slug for a in visible_articles(user or AnonymousUser()).order_by('-updated_at', 'title')[:5]])
         page = self.client.get('/README.md').content.decode()
         self.assertIn('## Recientes', page)
-        self.assertIn('</div>\n\n<p><a href="#/updates">Ver todas las actualizaciones</a></p>', page)
+        self.assertIn('</div>\n\n<p><a href="#/updates">Ver anuncios y versiones</a></p>', page)
         # One hero line for visitors and signed-in users.
         self.client.logout()
         self.assertIn('<p>Guías, herramientas y conocimiento compartido por el equipo.</p>', self.client.get('/README.md').content.decode())
@@ -1560,6 +1576,21 @@ class ReaderPageTests(TestCase):
         # An HTML article with an unclosed code element loses no prose after it.
         self.assertEqual(html_texts('<p>a <code>x</p><h2>Later</h2><p>text</p>'), ('a x Later text', 'a x Later text'))
         self.assertEqual(html_texts('<pre>a <span aria-hidden="true">h</pre> b'), ('a h b', 'b'))
+
+    def test_html_article_prose_is_paragraph_text_only(self):
+        # Round 3 #6: card titles, section headings and link labels do not run into the excerpt; matching keeps them.
+        body = ('<main><p class="intro">Demos grabadas.</p><h2 id="f">Finanzas</h2><div class="grid">'
+                '<article class="card"><div class="body"><h3 id="c">Cobranzas</h3><p>Lee la cola de cuotas vencidas.</p>'
+                '<p class="links"><a href="https://x.test/">Abrir demo</a></p></div></article>'
+                '<article class="card"><div class="body"><h3 id="r">Registro</h3><p>Extrae los datos.</p></div></article>'
+                '</div><ul><li>Uno <code>x</code></li></ul></main>')
+        article = Article(title='Demos', slug='demos', kind='page', summary='s', author='a', format='html', body=body,
+                          updated_at=timezone.now())
+        from .views import search_entry
+        entry = search_entry(article)
+        self.assertEqual(entry['prose'], 'Demos grabadas. Lee la cola de cuotas vencidas. Extrae los datos. Uno …')
+        self.assertEqual(entry['text'], 'Demos grabadas. Finanzas Cobranzas Lee la cola de cuotas vencidas. Abrir demo '
+                                        'Registro Extrae los datos. Uno x')
 
     def test_search_text_keeps_text_after_an_unclosed_hidden_element(self):
         from .views import search_text
