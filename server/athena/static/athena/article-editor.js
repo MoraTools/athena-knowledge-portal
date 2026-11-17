@@ -235,8 +235,8 @@
     function stateChips(published, access) {
       const label = ACCESS_LABELS[access] || ACCESS_LABELS.account;
       const pill = (tone, text) => `<span class="pill${tone}">${text}</span>`;
-      if (published) return pill(' gold', 'Publicado') + pill(access === 'public' ? ' gold' : access === 'restricted' ? '' : ' off', label);
-      return pill(' off', 'Borrador') + pill(' off', 'Solo editores') + `<span class="state-next"><span>al publicar:</span> <span>${label}</span></span>`;
+      if (published) return pill('', 'Publicado') + pill(access === 'restricted' ? ' warn' : '', label);
+      return pill(' warn', 'Borrador') + pill(' off', 'Solo editores') + `<span class="state-next"><span>al publicar:</span> <span>${label}</span></span>`;
     }
 
     // Placement tags (models.PLACEMENT_TAGS) place an article on the home; like the reader, the preview shows no chip for them.

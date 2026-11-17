@@ -263,7 +263,7 @@ class RestrictedArticleTests(TestCase):
         self.assertContains(page, 'id="id_allowed_users"')
         self.assertContains(page, 'selectfilter')
         self.assertContains(page, 'data-access="restricted"')
-        self.assertContains(page, '<span class="pill gold">Publicado</span><span class="pill">Restringido</span>')
+        self.assertContains(page, '<span class="pill">Publicado</span><span class="pill warn">Restringido</span>')
         form = page.context['adminform'].form
         data = {name: form[name].value() for name in ['title', 'kind', 'summary', 'author', 'date', 'body']}
         data.update(tags='', published='on', loaded_revision=form['loaded_revision'].value(), _continue='1',

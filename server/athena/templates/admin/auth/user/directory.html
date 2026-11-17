@@ -43,7 +43,7 @@
     <header>
       {% if selected %}
       <h2 id="inspector-title">{% if selected.get_full_name %}{{ selected.get_full_name }}{% else %}{{ selected.username }}{% endif %}</h2>
-      <p class="mono">alta <time datetime="{{ selected.date_joined|date:'Y-m-d' }}">{{ selected.date_joined|date:'d/m/Y' }}</time> · sesión {% if selected.last_login %}<time datetime="{{ selected.last_login|date:'c' }}">{{ selected.last_login|date:'d/m/Y H:i' }}</time>{% else %}nunca{% endif %}</p>
+      <p class="mono"><span class="pill{% if selected.is_staff %} gold{% endif %}">{{ selected_role }}</span> alta <time datetime="{{ selected.date_joined|date:'Y-m-d' }}">{{ selected.date_joined|date:'d/m/Y' }}</time> · sesión {% if selected.last_login %}<time datetime="{{ selected.last_login|date:'c' }}">{{ selected.last_login|date:'d/m/Y H:i' }}</time>{% else %}nunca{% endif %}</p>
       {% else %}
       <h2 id="inspector-title">Nuevo usuario</h2>
       {% endif %}
@@ -72,7 +72,7 @@
         <fieldset class="directory-edits">
           <legend class="label">Permisos de edición</legend>
           {% for box in form.edits %}<label class="directory-choice">{{ box.tag }}{{ box.choice_label }}</label>{% endfor %}
-          <p class="help">Sin marcar, el administrador solo consulta.</p>
+          <p class="help">Sin marcar, el editor solo consulta. Con todos marcados, la cuenta es Administrador.</p>
         </fieldset>
       </div>
     </div>

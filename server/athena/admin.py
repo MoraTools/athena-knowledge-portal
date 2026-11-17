@@ -84,9 +84,9 @@ def state_chips(article):
     """Editor header and delete page. A draft is for editors only; its access level applies once it is published."""
     access = article.access if article else 'account'
     if article and article.published:
-        tone = {'public': 'pill gold', 'account': 'pill off', 'restricted': 'pill'}[access]
-        return format_html('<span class="pill gold">Publicado</span><span class="{}">{}</span>', tone, ACCESS_LABELS[access])
-    return format_html('<span class="pill off">Borrador</span><span class="pill off">Solo editores</span>'
+        tone = 'pill warn' if access == 'restricted' else 'pill'
+        return format_html('<span class="pill">Publicado</span><span class="{}">{}</span>', tone, ACCESS_LABELS[access])
+    return format_html('<span class="pill warn">Borrador</span><span class="pill off">Solo editores</span>'
                        '<span class="state-next"><span>al publicar:</span> <span>{}</span></span>', ACCESS_LABELS[access])
 
 
@@ -104,9 +104,9 @@ class AccessFilter(admin.SimpleListFilter):
         return queryset.filter(**lookup) if lookup else queryset
 
 
-def flag(value, yes, no):
-    # Text pills replace Django's boolean icons; same markup as the directory pills.
-    return format_html('<span class="pill {}">{}</span>', 'gold' if value else 'off', yes if value else no)
+def role_label(user):
+    # Superusers hold every edit area; staff without it are editors, with the areas the directory grants.
+    return 'Administrador' if user.is_superuser else 'Editor' if user.is_staff else 'Lector'
 
 
 # Row controls: 24px line icons in the rail's stroke style (src/assets/rail.js).
@@ -213,7 +213,7 @@ class AthenaUserAdmin(UserAdmin):
             raise PermissionDenied
         sort_fields = {
             'username': ('Usuario', lambda user: fold(user.username)),
-            'role': ('Acceso', lambda user: not user.is_staff),
+            'role': ('Acceso', lambda user: (not user.is_staff, not user.is_superuser)),
             'status': ('Estado', lambda user: not user.is_active),
             'session': ('Sesión', lambda user: user.last_login),
         }
@@ -254,7 +254,7 @@ class AthenaUserAdmin(UserAdmin):
         if sort == 'session':
             ordered.extend(user for user in roster if not user.last_login)
         # ponytail: whole user list in one page; paginate or search server-side past a few hundred accounts.
-        users = [(user, since(user.last_login, now), 'Administrador' if user.is_staff else 'Lector',
+        users = [(user, since(user.last_login, now), role_label(user),
                   needle in fold(f'{user.username} {user.get_full_name()} {user.email}'))
                  for user in ordered]
         selection = {'new': 1} if creating else {'user': selected.pk}
@@ -270,6 +270,7 @@ class AthenaUserAdmin(UserAdmin):
         return TemplateResponse(request, 'admin/auth/user/directory.html', {
             **self.admin_site.each_context(request), **(extra_context or {}),
             'title': 'Usuarios', 'opts': self.opts, 'form': form, 'selected': selected, 'users': users,
+            'selected_role': role_label(selected) if selected else '',
             'query': query, 'has_matches': any(row[3] for row in users),
             'headers': headers, 'sort': sort, 'direction': direction, 'roster_query': roster_query,
             'api_keys': ApiKey.objects.filter(user=selected).count() if selected else 0,
@@ -322,15 +323,16 @@ class ArticleAdmin(RowControlsAdmin):
         obj.title = ' '.join(obj.title.split())
         super().save_model(request, obj, form, change)
 
+    # The normal state is a quiet chip; the exceptions an editor looks for (Borrador, Restringido) are marked.
     @admin.display(description='Estado', ordering='published')
     def state(self, obj):
-        return flag(obj.published, 'Publicado', 'Borrador')
+        return format_html('<span class="pill">Publicado</span>') if obj.published else format_html('<span class="pill warn">Borrador</span>')
 
     @admin.display(description='Acceso', ordering='is_public')
     def access(self, obj):
         if obj.is_restricted:
-            return format_html('<span class="pill">Restringido ({})</span>', obj.allowed_users.count())
-        return flag(obj.is_public, 'Público', 'Con cuenta')
+            return format_html('<span class="pill warn">Restringido ({})</span>', obj.allowed_users.count())
+        return format_html('<span class="pill">{}</span>', 'Público' if obj.is_public else 'Con cuenta')
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
         field = super().formfield_for_manytomany(db_field, request, **kwargs)
@@ -441,7 +443,8 @@ class DownloadAdmin(RowControlsAdmin):
         return formats.localize(timezone.localtime(obj.created_at)) if obj.created_at else 'Sin guardar'
 
     def changelist_view(self, request, extra_context=None):
-        return super().changelist_view(request, {'title': 'Descargas', **(extra_context or {})})
+        return super().changelist_view(request, {'title': 'Descargas', 'search_placeholder': 'Buscar descargas',
+                                                 **(extra_context or {})})
 
     def add_view(self, request, form_url='', extra_context=None):
         return super().add_view(request, form_url, {'title': 'Nueva descarga', **(extra_context or {})})
@@ -477,7 +480,8 @@ class DownloadEventAdmin(RowControlsAdmin):
         return filesizeformat(obj.size)
 
     def changelist_view(self, request, extra_context=None):
-        return super().changelist_view(request, {'title': 'Descargas registradas', **(extra_context or {})})
+        return super().changelist_view(request, {'title': 'Descargas registradas', 'search_placeholder': 'Buscar en el registro',
+                                                 **(extra_context or {})})
 
 
 @admin.register(ApiKey)

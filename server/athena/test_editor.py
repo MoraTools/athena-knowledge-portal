@@ -48,7 +48,7 @@ class ArticleEditorTests(TestCase):
                 self.assertNotIn(' hidden', panels[index - 1])  # Without JavaScript all groups stay reachable.
             self.assertContains(response, 'type="submit" name="_save">Guardar cambios</button>')
             self.assertContains(response, 'name="loaded_revision"', count=1)
-        self.assertContains(self.client.get(self.path), '<span class="pill gold">Publicado</span><span class="pill off">Con cuenta</span>')
+        self.assertContains(self.client.get(self.path), '<span class="pill">Publicado</span><span class="pill">Con cuenta</span>')
 
     def test_view_only_has_source_and_history_without_save_or_upload(self):
         viewer = User.objects.create_user('viewer', is_staff=True)

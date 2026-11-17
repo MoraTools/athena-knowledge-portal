@@ -287,6 +287,7 @@ a.delete-related { --icon: url('/static/admin/img/icon-deletelink.svg'); }
 }
 .pill.gold { --tone: var(--accent-text); }
 .pill.off { --tone: var(--text-subtle); border-style: dashed; }
+.pill.warn { --tone: var(--warn); }
 
 /* Tables: the kit's table. */
 table { border-color: var(--border); }

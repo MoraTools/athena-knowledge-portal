@@ -311,7 +311,7 @@ class ApiKeyForm(forms.ModelForm):
 
 
 class DirectoryUserForm(forms.ModelForm):
-    role = forms.ChoiceField(label='Acceso', choices=[('admin', 'Administrador'), ('reader', 'Lector')],
+    role = forms.ChoiceField(label='Acceso', choices=[('admin', 'Editor'), ('reader', 'Lector')],
                              widget=forms.RadioSelect)
     edits = forms.MultipleChoiceField(label='Permisos de edición', required=False, widget=forms.CheckboxSelectMultiple,
                                       choices=[('articles', 'Artículos'), ('downloads', 'Descargas'),

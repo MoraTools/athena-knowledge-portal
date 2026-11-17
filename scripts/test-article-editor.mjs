@@ -379,7 +379,7 @@ for (const [tags, chips] of [['Primeros-Pasos, RPA', ['RPA']], ['primeros-pasos'
 {
   const state = editor();
   const chips = state.nodes.get('desk-state').innerHTML;
-  assert.match(chips, /pill off">Borrador<.*pill off">Solo editores<.*al publicar:<\/span> <span>Con cuenta</);
+  assert.match(chips, /pill warn">Borrador<.*pill off">Solo editores<.*al publicar:<\/span> <span>Con cuenta</);
   assert.equal(state.nodes.get('desk-details-state').innerHTML, chips);
   assert.equal(state.nodes.get('desk-save-state').textContent, undefined);
   state.fields.published = { checked: true };
@@ -389,7 +389,7 @@ for (const [tags, chips] of [['Primeros-Pasos, RPA', ['RPA']], ['primeros-pasos'
   assert.equal(state.fields.title.value, 'Two lines');
   assert.equal(state.nodes.get('desk-save-state').textContent, 'Cambios sin guardar');
   await state.form.fire('change', { target: state.fields.kind });
-  assert.equal(state.nodes.get('desk-state').innerHTML, '<span class="pill gold">Publicado</span><span class="pill gold">Público</span>');
+  assert.equal(state.nodes.get('desk-state').innerHTML, '<span class="pill">Publicado</span><span class="pill">Público</span>');
   assert.equal((await state.fields.title.fire('keydown', { key: 'Enter' })).defaultPrevented, true);
 }
 // Tag suggestions complete the last tag and skip the ones already typed.

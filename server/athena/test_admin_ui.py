@@ -137,7 +137,7 @@ class AdminEditorTests(TestCase):
 
     def test_editor_chips_say_a_draft_is_for_editors_and_a_save_shows_its_time(self):
         page = self.client.get(f'/admin/athena/article/{self.draft.pk}/change/').content.decode()
-        self.assertIn('<span class="pill off">Borrador</span><span class="pill off">Solo editores</span>'
+        self.assertIn('<span class="pill warn">Borrador</span><span class="pill off">Solo editores</span>'
                       '<span class="state-next"><span>al publicar:</span> <span>Con cuenta</span></span>', page)
         self.assertIn('<textarea name="title"', page)
         self.assertNotIn('Guardado', page)
@@ -145,7 +145,7 @@ class AdminEditorTests(TestCase):
         for url in [f'/admin/athena/article/{self.draft.pk}/change/', '/admin/athena/article/add/']:
             self.assertIn('data-placement-tags="primeros-pasos"', self.client.get(url).content.decode())
         page = self.client.get(f'/admin/athena/article/{self.restricted.pk}/change/').content.decode()
-        self.assertIn('<span class="pill gold">Publicado</span><span class="pill">Restringido</span>', page)
+        self.assertIn('<span class="pill">Publicado</span><span class="pill warn">Restringido</span>', page)
         data = {'title': 'Borrador\r\nde  colas', 'slug': self.draft.slug, 'kind': 'guide', 'summary': 'Resumen', 'author': 'Ana', 'format': 'markdown',
                 'date': self.draft.date.isoformat(), 'tags': '', 'body': 'Texto', 'access': 'account',
                 'loaded_revision': self.draft.updated_at.isoformat(), '_continue': '1'}
@@ -157,13 +157,48 @@ class AdminEditorTests(TestCase):
 
     def test_delete_page_shows_state_and_final_warning(self):
         page = self.client.get(f'/admin/athena/article/{self.public.pk}/delete/').content.decode()
-        self.assertIn('<span class="pill gold">Publicado</span><span class="pill gold">Público</span>', page)
+        self.assertIn('<span class="pill">Publicado</span><span class="pill">Público</span>', page)
+        self.assertIn('El enlace para compartir, las imágenes y el PDF del artículo dejan de funcionar.', page)
         self.assertIn('Esta acción no se puede deshacer.', page)
         self.assertIn('<input type="submit" value="Eliminar artículo">', page)
-        self.assertIn('class="button cancel-link">Cancelar</a>', page)
+        # Cancelar has a destination without script (Django's cancel.js still goes back when it runs).
+        self.assertIn(f'<a href="/admin/athena/article/{self.public.pk}/change/" class="button cancel-link">Cancelar</a>', page)
         self.assertNotIn('deleted-objects', page)
         self.client.post(f'/admin/athena/article/{self.public.pk}/delete/', {'post': 'yes'})
         self.assertFalse(Article.objects.filter(pk=self.public.pk).exists())
+
+    def test_lists_mark_the_exceptions_not_the_normal_state(self):
+        page = self.client.get('/admin/athena/article/').content.decode()
+        self.assertIn('<td class="field-state"><span class="pill warn">Borrador</span></td>', page)
+        self.assertIn('<td class="field-state"><span class="pill">Publicado</span></td>', page)
+        self.assertIn('<td class="field-access"><span class="pill">Público</span></td>', page)
+        self.assertIn('<td class="field-access"><span class="pill">Con cuenta</span></td>', page)
+        self.assertIn('<td class="field-access"><span class="pill warn">Restringido (0)</span></td>', page)
+        self.assertNotIn('pill gold', page)
+
+    def test_download_lists_name_what_they_search(self):
+        for url, text in [('/admin/athena/download/', 'Buscar descargas'),
+                          ('/admin/athena/downloadevent/', 'Buscar en el registro')]:
+            with self.subTest(url=url):
+                page = self.client.get(url + '?q=plan&o=1').content.decode()
+                self.assertIn(f'<label class="visually-hidden" for="searchbar">{text}</label>', page)
+                self.assertIn(f'<input type="search" name="q" value="plan" id="searchbar" placeholder="{text}">', page)
+                self.assertIn('<input type="hidden" name="o" value="1">', page)
+                self.assertNotIn('<input type="hidden" name="q"', page)
+
+    def test_directory_names_editors_and_administrators(self):
+        editor = User.objects.create_user('editora', is_staff=True)
+        reader = User.objects.create_user('lectora')
+        page = self.client.get(f'/admin/auth/user/?user={editor.pk}').content.decode()
+        for user, role in [(self.root, 'Administrador'), (editor, 'Editor'), (reader, 'Lector')]:
+            with self.subTest(user=user.username):
+                row = re.search(rf'<tr[^>]*data-search="{user.username} .*?</tr>', page, re.S).group()
+                self.assertIn(f'">{role}</span></td>', row)
+        # The inspector shows the selected account's role; its access choice names editors, as the roster does.
+        self.assertIn('<p class="mono"><span class="pill gold">Editor</span> alta', page)
+        self.assertRegex(page, r'<label class="directory-choice"><input[^>]*value="admin"[^>]*>Editor</label>')
+        users = self.client.get('/admin/auth/user/?sort=role').context['users']
+        self.assertEqual([row[2] for row in users], ['Administrador', 'Editor', 'Editor', 'Lector'])
 
     def test_api_key_expiry_names_the_site_time_zone(self):
         self.assertContains(self.client.get('/admin/athena/apikey/add/'), 'Zona horaria: America/Lima.')

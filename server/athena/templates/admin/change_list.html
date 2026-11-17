@@ -6,6 +6,17 @@
 &rsaquo; {{ cl.opts.verbose_name_plural|capfirst }}
 </div>
 {% endblock %}
+{# A list that names what it searches gets the article list's search field: hidden label and placeholder. #}
+{% block search %}{% if search_placeholder %}
+<div id="toolbar"><form id="changelist-search" class="list-toolbar" method="get" role="search">
+  <div class="list-search">
+    <label class="visually-hidden" for="searchbar">{{ search_placeholder }}</label>
+    <input type="search" name="q" value="{{ cl.query }}" id="searchbar" placeholder="{{ search_placeholder }}">
+    <input type="submit" value="Buscar">
+  </div>
+  {% for name, value in cl.params.items %}{% if name != 'q' %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endif %}{% endfor %}
+</form></div>
+{% else %}{{ block.super }}{% endif %}{% endblock %}
 {# Django's action form stays in #changelist-form but hidden; admin-list.js drives it from the bulk bar. #}
 {% block result_list %}
 {% if action_form and cl.show_admin_actions %}<div class="bulk-source" hidden>{% admin_actions %}</div>{% endif %}

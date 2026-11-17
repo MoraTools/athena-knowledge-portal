@@ -325,7 +325,7 @@ class PortalTests(TestCase):
         self.assertIn('class="is-selected"', row)
         self.assertIn(f'href="?user={inactive.pk}#user-inspector" aria-current="true"', row)
         self.assertIn('title="María Salas"', row)
-        self.assertIn('<span class="pill gold">Administrador</span>', row)
+        self.assertIn('<span class="pill gold">Editor</span>', row)  # Staff without superuser is an editor.
         self.assertIn('<span class="directory-status off">Inactiva</span>', row)
         self.assertIn('<td class="directory-session">nunca</td>', row)
         self.assertNotIn('Lector', row)
@@ -362,7 +362,7 @@ class PortalTests(TestCase):
             'username': (['administrator', 'Álvaro', 'beta', 'reader', 'zeta'],
                          ['zeta', 'reader', 'beta', 'Álvaro', 'administrator']),
             'role': (['administrator', 'Álvaro', 'beta', 'reader', 'zeta'],
-                     ['beta', 'reader', 'zeta', 'administrator', 'Álvaro']),
+                     ['beta', 'reader', 'zeta', 'Álvaro', 'administrator']),
             'status': (['administrator', 'reader', 'zeta', 'Álvaro', 'beta'],
                        ['Álvaro', 'beta', 'administrator', 'reader', 'zeta']),
             'session': (['administrator', 'Álvaro', 'beta', 'reader', 'zeta'],
@@ -1030,8 +1030,8 @@ class PortalTests(TestCase):
         Article.objects.create(title='Draft', slug='draft', summary='Draft', author='Author')
         self.client.force_login(self.admin)
         response = self.client.get('/admin/athena/article/')
-        self.assertContains(response, '<span class="pill gold">Publicado</span>')
-        self.assertContains(response, '<span class="pill off">Borrador</span>')
+        self.assertContains(response, '<span class="pill">Publicado</span>')
+        self.assertContains(response, '<span class="pill warn">Borrador</span>')
         self.assertNotContains(response, 'icon-yes.svg')
         self.assertNotContains(response, 'icon-no.svg')
         self.assertContains(response, '<title>Artículos · Athena</title>')
