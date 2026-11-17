@@ -1414,9 +1414,11 @@ class ReaderPageTests(TestCase):
         Download.objects.filter(pk=make('oculto', 'framework', 0).pk).update(published=False)
         self.client.force_login(self.reader)
         page = self.client.get('/downloads.md').content.decode()
-        self.assertIn(f'<p class="post-actions"><span class="status">Versión actual</span><a class="download-link" href="/downloads/{current.slug}" download>Descargar</a></p>', page)
-        self.assertIn(f'<a class="account-button" href="/downloads/{older.slug}" download>Descargar</a>', page)
-        self.assertIn(f'<a class="download-link" href="/downloads/{package.slug}" download>Descargar</a>', page)
+        hidden = '<span class="visually-hidden" lang="es"> {}</span>'  # Each link names its file for screen readers.
+        self.assertIn(f'<p class="post-actions"><span class="status">Versión actual</span><a class="download-link" href="/downloads/{current.slug}" download>Descargar{hidden.format(current.title)}</a></p>', page)
+        self.assertIn(f'<a class="account-button" href="/downloads/{older.slug}" download>Descargar{hidden.format(older.title)}</a>', page)
+        self.assertIn(f'<a class="account-button" href="/downloads/{package.slug}" download>Descargar{hidden.format(package.title)}</a>', page)
+        self.assertEqual(page.count('class="download-link"'), 1)  # One gold primary: only the current Framework file.
         self.assertEqual(page.count('Versión actual'), 1)  # Only Framework has a rule for "current".
         self.assertIn(f'<small>1\xa0byte · <time datetime="{timezone.localdate(current.created_at).isoformat()}">', page)
         self.assertIn(current.filename, self.client.get('/downloads/framework/latest')['Content-Disposition'])
