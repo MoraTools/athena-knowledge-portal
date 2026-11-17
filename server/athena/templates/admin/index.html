@@ -3,7 +3,7 @@
 {% block nav-sidebar %}{% portal_sidebar %}{% endblock %}
 {% block sidebar %}
 <div id="content-related">
-  {% if drafts %}<p class="drafts-line"><a href="{% url 'admin:athena_article_changelist' %}?published__exact=0"><span>Borradores:</span> {{ drafts }}</a></p>{% endif %}
+  {% if drafts %}<p class="drafts-line"><a href="{% url 'admin:athena_article_changelist' %}?published__exact=0"><span>Borradores</span> {{ drafts }}</a></p>{% endif %}
   <div class="module" id="recent-actions-module">
     <h2>Última actividad</h2>
     {% recent_activity user as admin_log %}

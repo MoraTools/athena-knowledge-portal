@@ -118,11 +118,11 @@ class AdminEditorTests(TestCase):
         LogEntry.objects.create(user=self.root, content_type=kind, object_id=str(self.public.pk), object_repr='Guía pública',
                                 action_flag=CHANGE, change_message='Revisado por el equipo.')
         page = self.client.get('/admin/').content.decode()
-        self.assertIn('href="/admin/athena/article/?published__exact=0"><span>Borradores:</span> 1</a>', page)
+        self.assertIn('href="/admin/athena/article/?published__exact=0"><span>Borradores</span> 1</a>', page)
         self.assertNotIn('Modificado Contenido', page)
         self.assertIn('Revisado por el equipo.', page)
         self.client.force_login(self.viewer)
-        self.assertNotIn('Borradores:', self.client.get('/admin/').content.decode())
+        self.assertNotIn('<span>Borradores</span>', self.client.get('/admin/').content.decode())
 
     def test_list_filters_are_selects_with_list_filter_parameters(self):
         page = self.client.get('/admin/athena/article/?access=restricted&o=1').content.decode()
@@ -219,7 +219,7 @@ class AdminEditorTests(TestCase):
                 row = re.search(rf'<tr[^>]*data-search="{user.username} .*?</tr>', page, re.S).group()
                 self.assertIn(f'">{role}</span></td>', row)
         # The inspector shows the selected account's role; its access choice names editors, as the roster does.
-        self.assertIn('<p class="mono"><span class="pill gold">Editor</span> alta', page)
+        self.assertIn('<p class="mono"><span class="pill">Editor</span> alta', page)
         self.assertRegex(page, r'<label class="directory-choice"><input[^>]*value="admin"[^>]*>Editor</label>')
         users = self.client.get('/admin/auth/user/?sort=role').context['users']
         self.assertEqual([row[2] for row in users], ['Administrador', 'Editor', 'Editor', 'Lector'])

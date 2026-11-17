@@ -285,7 +285,6 @@ a.delete-related { --icon: url('/static/admin/img/icon-deletelink.svg'); }
   background: color-mix(in oklab, var(--tone) 10%, transparent); color: color-mix(in oklab, var(--tone) var(--chip-ink-mix), var(--text));
   font: 600 10px/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
 }
-.pill.gold { --tone: var(--accent-text); }
 .pill.off { --tone: var(--text-subtle); border-style: dashed; }
 .pill.warn { --tone: var(--warn); }
 
@@ -349,14 +348,17 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 #changelist-search .list-filters > label { position: static; display: inline-flex; align-items: center; gap: 8px; width: auto; height: auto;
   overflow: visible; clip-path: none; color: var(--text-muted); font: var(--label); letter-spacing: .06em; text-transform: uppercase; }
 #changelist-search .list-filters select { text-transform: none; letter-spacing: normal; }
-/* Django's action form is hidden (admin/change_list.html); admin-list.js shows this bar while rows are checked. */
+/* Django's action form is hidden (admin/change_list.html); admin-list.js shows this bar under the table while rows are checked,
+   stuck to the viewport bottom, so a tick never moves the rows; z-index 46 puts it over the floating rail button (45). */
 .bulk-bar {
-  position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
-  margin: 0 0 12px; padding: 8px 8px 8px 16px; background: var(--surface-raised); border: 1px solid var(--accent-edge); border-radius: var(--radius);
+  position: sticky; bottom: 0; z-index: 46; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  margin: 12px 0 0; padding: 8px 8px 8px 16px; background: var(--surface-raised); border: 1px solid var(--accent-edge); border-radius: var(--radius);
 }
 .bulk-bar[hidden] { display: none; }
 .bulk-count { margin-right: auto; color: var(--accent-text); font-variant-numeric: tabular-nums; }
 .bulk-bar .button { height: var(--control-h-sm); min-height: var(--control-h-sm); }
+/* Phones: the count on its own row and both buttons on one row, so the bar covers as few rows as possible. */
+@media (max-width: 767px) { .bulk-bar { padding: 8px; } .bulk-count { flex-basis: 100%; padding-left: 8px; } }
 /* Row controls: 28px icon links in the last column, named by title and aria-label.
    The column stays pinned to the right edge when a narrow table scrolls inside .results. */
 #changelist td.field-controls, #changelist thead th.column-controls { position: sticky; right: 0; box-shadow: inset 1px 0 0 var(--border); }
@@ -366,12 +368,12 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 .row-controls { display: flex; gap: 8px; justify-content: flex-end; }
 .icon-button {
   box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; width: var(--control-h-sm); height: var(--control-h-sm);
-  border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--accent-text);
+  border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--text-muted);
 }
-a.icon-button:link, a.icon-button:visited, a.icon-button:hover, a.icon-button:focus { color: var(--accent-text); text-decoration: none; }
-a.icon-button:hover, a.icon-button:focus-visible { background: var(--surface-raised); }
-a.icon-button.danger:link, a.icon-button.danger:visited, a.icon-button.danger:hover, a.icon-button.danger:focus { border-color: var(--crit); color: var(--crit-text); }
-a.icon-button.danger:hover, a.icon-button.danger:focus-visible { background: var(--crit-fill); }
+/* Muted at rest; the accent and the red tint only on hover and focus, so the row titles stay the loudest links. */
+a.icon-button:link, a.icon-button:visited, a.icon-button:focus { color: var(--text-muted); text-decoration: none; }
+a.icon-button:hover, a.icon-button:focus-visible { background: var(--surface-raised); color: var(--accent-text); text-decoration: none; }
+a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: var(--crit); background: var(--crit-fill); color: var(--crit-text); }
 .icon-button[aria-disabled] { opacity: .5; cursor: not-allowed; }
 .icon-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .paginator, #changelist .paginator, #change-history .paginator {
@@ -416,7 +418,9 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { background: var
 .dashboard .module table td, .dashboard .module table th { padding: var(--cell-pad-y) var(--cell-pad-x); }
 .dashboard .module table td a { white-space: nowrap; }
 #content-related { background: transparent; }
-.drafts-line { margin: 0 0 var(--space-2); font-weight: 600; }
+#content-related .drafts-line { margin: 0 0 var(--space-2); padding: 0; font: var(--label); letter-spacing: .06em; text-transform: uppercase; }
+.drafts-line a:link, .drafts-line a:visited { color: var(--text-muted); }
+.drafts-line a:hover { color: var(--accent-text); }
 /* A draft's access level, shown after its chips: "al publicar: Con cuenta". */
 .state-next { color: var(--text-subtle); font: var(--label); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
 #content-related .module h2 { padding: 12px 16px; margin: 0; color: var(--text-muted); font: var(--label); border-bottom: 1px solid var(--border); }

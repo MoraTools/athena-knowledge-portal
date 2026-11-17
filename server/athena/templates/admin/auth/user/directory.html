@@ -29,7 +29,7 @@
           {% for user, seen, role, matches in users %}
           <tr data-search="{{ user.username }} {{ user.get_full_name }} {{ user.email }}"{% if user.pk == selected.pk %} class="is-selected"{% endif %}{% if not matches %} hidden{% endif %}>
             <th scope="row"><a href="?user={{ user.pk }}{% if roster_query %}&amp;{{ roster_query }}{% endif %}#user-inspector"{% if user.pk == selected.pk %} aria-current="true"{% endif %}{% if user.get_full_name %} title="{{ user.get_full_name }}"{% endif %}>{{ user.username }}</a></th>
-            <td><span class="pill{% if user.is_staff %} gold{% endif %}">{{ role }}</span></td>
+            <td><span class="pill">{{ role }}</span></td>
             <td><span class="directory-status{% if not user.is_active %} off{% endif %}">{% if user.is_active %}Activa{% else %}Inactiva{% endif %}</span></td>
             <td class="directory-session">{% if user.last_login %}<time datetime="{{ user.last_login|date:'c' }}" title="{{ seen }}">{{ user.last_login|date:'d/m/Y H:i' }}</time>{% else %}nunca{% endif %}</td>
           </tr>
@@ -43,7 +43,7 @@
     <header>
       {% if selected %}
       <h2 id="inspector-title">{% if selected.get_full_name %}{{ selected.get_full_name }}{% else %}{{ selected.username }}{% endif %}</h2>
-      <p class="mono"><span class="pill{% if selected.is_staff %} gold{% endif %}">{{ selected_role }}</span> alta <time datetime="{{ selected.date_joined|date:'Y-m-d' }}">{{ selected.date_joined|date:'d/m/Y' }}</time> · sesión {% if selected.last_login %}<time datetime="{{ selected.last_login|date:'c' }}">{{ selected.last_login|date:'d/m/Y H:i' }}</time>{% else %}nunca{% endif %}</p>
+      <p class="mono"><span class="pill">{{ selected_role }}</span> alta <time datetime="{{ selected.date_joined|date:'Y-m-d' }}">{{ selected.date_joined|date:'d/m/Y' }}</time> · sesión {% if selected.last_login %}<time datetime="{{ selected.last_login|date:'c' }}">{{ selected.last_login|date:'d/m/Y H:i' }}</time>{% else %}nunca{% endif %}</p>
       {% else %}
       <h2 id="inspector-title">Nuevo usuario</h2>
       {% endif %}

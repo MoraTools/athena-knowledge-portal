@@ -83,9 +83,8 @@
 .directory .help li { font-size: 12px; list-style: square; }
 .directory .bar { margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--border); }
 .directory .bar > .button { width: 100%; }
-.directory-actions { display: flex; align-items: center; flex-wrap: wrap; margin-top: var(--space-2); }
+.directory-actions { display: grid; justify-items: start; gap: var(--space-1); margin-top: var(--space-2); }
 .directory-actions .link { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; min-height: var(--control-height); color: var(--text-muted); font-size: 13px; overflow-wrap: anywhere; }
-.directory-actions .link + .link { margin-left: var(--space-2); padding-left: var(--space-2); border-left: 1px solid var(--border); }
 .directory-actions svg { flex: 0 0 18px; stroke-linecap: round; stroke-linejoin: round; }
 .directory-actions a.link:hover { color: var(--accent-text); }
 .directory-actions .link.danger { color: var(--crit-text); }
@@ -109,6 +108,4 @@
   .directory-toolbar { gap: var(--space-2); }
   .directory-search { flex-basis: 100%; max-width: none; }
   .directory .compact { grid-template-columns: 1fr; }
-  .directory-actions { display: grid; }
-  .directory-actions .link + .link { margin-left: 0; padding-left: 0; border-left: 0; border-top: 1px solid var(--border); }
 }

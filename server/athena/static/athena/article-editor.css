@@ -15,9 +15,8 @@
 .desk-save-state { color: var(--text-subtle); font-size: 12px; white-space: nowrap; }
 .desk-save-state:empty { display: none; }
 @container admin-page (min-width: 901px) { .desk-save-state, .desk-save-state:empty { display: inline-block; min-width: 17ch; } }
-.desk-header .desk-details, .desk-header .desk-overflow > summary { border-color: transparent; background: transparent; }
-.desk-header .desk-details { color: var(--accent-text); }
-.desk-header .desk-details:hover, .desk-header .desk-overflow > summary:hover { background: color-mix(in oklab, var(--accent) 10%, transparent); }
+.desk-header .desk-overflow > summary { border-color: transparent; background: transparent; }
+.desk-header .desk-overflow > summary:hover { background: color-mix(in oklab, var(--accent) 10%, transparent); }
 .desk-header .desk-save { min-width: 88px; }
 .desk-header .suite-toggles { margin-left: var(--space-1); }
 .desk-overflow { position: relative; }

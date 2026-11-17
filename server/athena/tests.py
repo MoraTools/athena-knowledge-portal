@@ -270,7 +270,7 @@ class PortalTests(TestCase):
 
         self.client.force_login(self.admin)
         response = self.client.get(url)
-        self.assertContains(response, '<span class="pill gold">Administrador</span>')
+        self.assertContains(response, '<span class="pill">Administrador</span>')
         self.assertContains(response, '<span class="pill">Lector</span>')
         self.assertContains(response, 'title="No puedes eliminar tu propia cuenta"')
         self.assertNotContains(response, f'/admin/auth/user/{self.admin.pk}/delete/')
@@ -325,7 +325,7 @@ class PortalTests(TestCase):
         self.assertIn('class="is-selected"', row)
         self.assertIn(f'href="?user={inactive.pk}#user-inspector" aria-current="true"', row)
         self.assertIn('title="María Salas"', row)
-        self.assertIn('<span class="pill gold">Editor</span>', row)  # Staff without superuser is an editor.
+        self.assertIn('<span class="pill">Editor</span>', row)  # Staff without superuser is an editor.
         self.assertIn('<span class="directory-status off">Inactiva</span>', row)
         self.assertIn('<td class="directory-session">nunca</td>', row)
         self.assertNotIn('Lector', row)

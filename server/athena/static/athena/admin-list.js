@@ -12,7 +12,7 @@ if (action && boxes.length && [...action.options].some((option) => option.value 
   bar.innerHTML = '<span class="bulk-count" aria-live="polite"></span>'
     + '<button type="button" class="button danger" data-bulk="delete">Eliminar seleccionados</button>'
     + '<button type="button" class="button" data-bulk="cancel">Cancelar</button>';
-  form.querySelector('.results').before(bar);
+  form.querySelector('.results').after(bar);
   const count = bar.querySelector('.bulk-count');
 
   const update = () => {
