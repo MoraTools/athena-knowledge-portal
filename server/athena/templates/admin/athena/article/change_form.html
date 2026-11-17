@@ -9,7 +9,7 @@
 {% endblock %}
 {% block content %}
 <div id="content-main">
-  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="article_form" novalidate data-article-slug="{{ original.slug|default:'' }}" data-article-kind="{{ original.kind|default:'guide' }}" data-pdf-name="{{ original.pdf_name|default:'' }}" data-published="{{ original.published|yesno:'true,false' }}" data-access="{{ original.access|default:'account' }}" data-pdf-only="{{ original.pdf_only|yesno:'true,false' }}" data-format="{{ original.format|default:'markdown' }}">
+  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="article_form" novalidate data-article-slug="{{ original.slug|default:'' }}" data-article-kind="{{ original.kind|default:'guide' }}" data-pdf-name="{{ original.pdf_name|default:'' }}" data-published="{{ original.published|yesno:'true,false' }}" data-access="{{ original.access|default:'account' }}" data-pdf-only="{{ original.pdf_only|yesno:'true,false' }}" data-format="{{ original.format|default:'markdown' }}" data-updated="{{ original.updated_at|date:'Y-m-d' }}">
     {% csrf_token %}
     {{ adminform.form.loaded_revision }}
     {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
@@ -17,7 +17,7 @@
     <header class="desk-header">
       {% url opts|admin_urlname:'changelist' as list_url %}
       <a class="desk-back" href="{% add_preserved_filters list_url %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg>Artículos</a>
-      <span id="desk-state" class="desk-state">{% if original.published %}Publicado{% else %}Borrador{% endif %} · {% if original.is_restricted %}Restringido{% elif original.is_public %}Público{% else %}Con cuenta{% endif %}</span>
+      <span id="desk-state" class="desk-state">{{ state_chips }}</span>
       <button type="button" class="button desk-details" data-open-details>Detalles</button>
       <details class="desk-overflow">
         <summary class="button" aria-label="Más opciones"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></summary>
@@ -39,6 +39,7 @@
         </div>
       </details>
       {% if has_change_permission or add and has_add_permission %}<button class="button default desk-save" type="submit" name="_save">Guardar</button>{% endif %}
+      <span id="desk-save-state" class="desk-save-state" role="status">{% if saved_at %}<span>Guardado</span> {{ saved_at|time:"H:i" }}{% endif %}</span>
       <div class="suite-toggles"><button class="suite-icon" type="button" data-suite-toggle="lang" aria-label="Switch the language to English" title="English"></button><button class="suite-icon" type="button" data-suite-toggle="theme" aria-label="Cambiar a tema claro" title="Cambiar a tema claro"></button></div>
     </header>
     {% if errors %}<div class="desk-errors" role="alert"><p class="errornote">Corrija los campos indicados.</p>{{ adminform.form.non_field_errors }}<button class="button" type="button" data-open-details>Revisar detalles</button></div>{% endif %}
@@ -74,7 +75,7 @@
         {% for fieldset in adminform %}<button type="button" role="tab" id="desk-detail-tab-{{ forloop.counter }}" aria-controls="desk-detail-panel-{{ forloop.counter }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"{% if not forloop.first %} tabindex="-1"{% endif %} data-detail-tab>{{ fieldset.name }}</button>{% endfor %}
       </div>
       <div class="desk-dialog-body">
-        <div class="desk-dialog-status"><span id="desk-details-state">{% if original.published %}Publicado{% else %}Borrador{% endif %} · {% if original.is_restricted %}Restringido{% elif original.is_public %}Público{% else %}Con cuenta{% endif %}</span><span class="desk-dialog-help">Cerrar conserva los cambios pendientes.</span></div>
+        <div class="desk-dialog-status"><span id="desk-details-state" class="desk-state">{{ state_chips }}</span><span class="desk-dialog-help">Cerrar conserva los cambios pendientes.</span></div>
         {% for fieldset in adminform %}
           <section class="desk-detail-panel" id="desk-detail-panel-{{ forloop.counter }}" role="tabpanel" aria-labelledby="desk-detail-tab-{{ forloop.counter }}">
             <h3 class="desk-detail-fallback-heading">{{ fieldset.name }}</h3>

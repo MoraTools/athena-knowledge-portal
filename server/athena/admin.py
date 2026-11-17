@@ -3,6 +3,7 @@ from functools import partialmethod
 from urllib.parse import urlencode
 
 from django import forms
+from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.admin.options import IS_POPUP_VAR
 from django.contrib.admin.utils import unquote
@@ -74,6 +75,33 @@ def plain_labels(form):
     label_suffix argument, so it goes in through the constructor."""
     form.__init__ = partialmethod(form.__init__, label_suffix='')
     return form
+
+
+ACCESS_LABELS = {'public': 'Público', 'account': 'Con cuenta', 'restricted': 'Restringido'}
+
+
+def state_chips(article):
+    """Editor header and delete page. A draft is for editors only; its access level applies once it is published."""
+    access = article.access if article else 'account'
+    if article and article.published:
+        tone = {'public': 'pill gold', 'account': 'pill off', 'restricted': 'pill'}[access]
+        return format_html('<span class="pill gold">Publicado</span><span class="{}">{}</span>', tone, ACCESS_LABELS[access])
+    return format_html('<span class="pill off">Borrador</span><span class="pill off">Solo editores</span>'
+                       '<span class="state-next"><span>al publicar:</span> <span>{}</span></span>', ACCESS_LABELS[access])
+
+
+class AccessFilter(admin.SimpleListFilter):
+    title = 'acceso'
+    parameter_name = 'access'
+    lookups_by_value = {'public': {'is_public': True}, 'account': {'is_public': False, 'is_restricted': False},
+                        'restricted': {'is_restricted': True}}
+
+    def lookups(self, request, model_admin):
+        return list(ACCESS_LABELS.items())
+
+    def queryset(self, request, queryset):
+        lookup = self.lookups_by_value.get(self.value())
+        return queryset.filter(**lookup) if lookup else queryset
 
 
 def flag(value, yes, no):
@@ -256,7 +284,7 @@ class ArticleAdmin(RowControlsAdmin):
     form = AdminArticleForm
     change_form_template = 'admin/athena/article/change_form.html'
     list_display = ['title', 'kind', 'state', 'access', 'author', 'date', 'last_updated', 'controls']
-    list_filter = ['published', 'is_public', 'is_restricted', 'kind']
+    list_filter = ['published', AccessFilter, 'kind']
     search_fields = ['title', 'summary', 'author', 'body']
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ['last_updated', 'current_pdf']
@@ -285,7 +313,14 @@ class ArticleAdmin(RowControlsAdmin):
             elif 'format' in form.base_fields:  # HTML articles need the article change right (forms.ArticleForm).
                 form.base_fields['format'].choices = [('markdown', 'Markdown')]
             field.help_text = 'Pegue una imagen o use Insertar imagen. PNG, JPEG, WebP o GIF, hasta 10 MiB y 20 millones de píxeles, o un video MP4 de hasta 200 MiB. Se conserva el texto seleccionado.'
+        if 'title' in form.base_fields:  # Wraps on a phone; save_model and the editor keep it one line.
+            title = form.base_fields['title']
+            title.widget = forms.Textarea(attrs={'rows': 1, 'maxlength': title.max_length})
         return form
+
+    def save_model(self, request, obj, form, change):
+        obj.title = ' '.join(obj.title.split())
+        super().save_model(request, obj, form, change)
 
     @admin.display(description='Estado', ordering='published')
     def state(self, obj):
@@ -320,15 +355,39 @@ class ArticleAdmin(RowControlsAdmin):
         return row_controls(self, request, obj, ('Ver', 'view', obj.get_absolute_url()))
 
     def changelist_view(self, request, extra_context=None):
-        return super().changelist_view(request, {'title': 'Artículos', **(extra_context or {})})
+        # The list filters as native selects above the table, with list_filter's own parameters.
+        filters = [{'label': label, 'name': name, 'value': request.GET.get(name, ''), 'options': options} for label, name, options in [
+            ('Estado', 'published__exact', [('1', 'Publicado'), ('0', 'Borrador')]),
+            ('Acceso', AccessFilter.parameter_name, list(ACCESS_LABELS.items())),
+            ('Tipo', 'kind__exact', Article.KINDS)]]
+        names = [f['name'] for f in filters]
+        # "Todos" sends an empty value, which Django's filters reject (?e=1): drop it from the address.
+        if any(request.GET.get(name) == '' for name in names):
+            query = request.GET.copy()
+            for name in names:
+                if query.get(name) == '':
+                    del query[name]
+            return redirect(f'{request.path}?{query.urlencode()}' if query else request.path)
+        return super().changelist_view(request, {'title': 'Artículos', 'article_filters': filters,
+                                                 'filter_names': names, **(extra_context or {})})
 
     def add_view(self, request, form_url='', extra_context=None):
-        return super().add_view(request, form_url, {'title': 'Nuevo artículo', **(extra_context or {})})
+        return super().add_view(request, form_url, {'title': 'Nuevo artículo', 'state_chips': state_chips(None),
+                                                    **(extra_context or {})})
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         article = self.get_object(request, object_id)
         title = f'Editar artículo · {article.title}' if article else 'Editar artículo'
-        return super().change_view(request, object_id, form_url, {'title': title, 'subtitle': None, **(extra_context or {})})
+        # Django redirects here with a success message after "Guardar y continuar editando".
+        saved = article and any(message.level == messages.SUCCESS for message in messages.get_messages(request))
+        return super().change_view(request, object_id, form_url, {
+            'title': title, 'subtitle': None, 'state_chips': state_chips(article) if article else '',
+            'saved_at': timezone.localtime(article.updated_at) if saved else None, **(extra_context or {})})
+
+    def delete_view(self, request, object_id, extra_context=None):
+        article = self.get_object(request, unquote(object_id))
+        return super().delete_view(request, object_id, {'state_chips': state_chips(article) if article else '',
+                                                        **(extra_context or {})})
 
     def get_fieldsets(self, request, obj=None):
         if obj and not self.has_change_permission(request, obj):  # Upload fields mean nothing on a read-only page.
@@ -440,6 +499,8 @@ class ApiKeyAdmin(RowControlsAdmin):
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         form.actor = request.user
+        if 'expires_at' in form.base_fields:
+            form.base_fields['expires_at'].help_text = f'Zona horaria: {settings.TIME_ZONE}.'
         return form
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -497,3 +558,17 @@ class ApiKeyAdmin(RowControlsAdmin):
             **self.admin_site.each_context(request), 'title': 'Clave creada', 'opts': self.opts, 'original': obj,
             'raw': raw, 'host': request.get_host(),
         })
+
+
+site_index = admin.site.index
+
+
+def index_with_drafts(request, extra_context=None):
+    """The dashboard counts the drafts an editor can review; the link opens the list's own Estado filter."""
+    drafts = 0
+    if request.user.has_perm('athena.change_article'):
+        drafts = readable_articles(request.user, Article.objects.filter(published=False)).count()
+    return site_index(request, {'drafts': drafts, **(extra_context or {})})
+
+
+admin.site.index = index_with_drafts

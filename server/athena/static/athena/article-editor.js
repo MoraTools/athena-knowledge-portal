@@ -74,6 +74,9 @@
     let validating = false;
     let timer;
     const ACCESS_LABELS = { public: 'Público', account: 'Con cuenta', restricted: 'Restringido' };
+    const KIND_LABELS = { guide: 'Guía', page: 'Página', tool: 'Herramienta', announcement: 'Anuncio', release: 'Versión' };
+    const saveState = document.getElementById('desk-save-state');
+    let shownState = null;
     const value = (name, fallback = '') => form.elements.namedItem(name)?.value ?? fallback;
     const checked = (name, fallback = false) => form.elements.namedItem(name)?.checked ?? fallback;
     const detailTabs = [...dialog.querySelectorAll('[data-detail-tab]')];
@@ -129,6 +132,7 @@
     const sourceHeading = document.getElementById('desk-source-heading');
     const format = () => value('format', form.dataset.format || 'markdown');
     let htmlFrame = null;
+    const htmlHead = document.createElement('div');
     let htmlForm = null;
     let htmlTimer;
     let heightTimer;
@@ -205,9 +209,13 @@
         document.addEventListener('suite:lang', () => sendFrame('athena:lang', document.documentElement.lang));
       }
       const fresh = !htmlFrame.isConnected;
+      // The reader shows the title and the meta line above an HTML article's frame.
+      const heading = document.createElement('h1');
+      heading.textContent = title.value;
+      htmlHead.replaceChildren(heading, metaLine());
       if (fresh) {
         preview.classList.add('desk-preview-content--html');
-        preview.replaceChildren(htmlFrame);
+        preview.replaceChildren(htmlHead, htmlFrame);
       }
       clearTimeout(htmlTimer);
       // Typing waits for a pause; a switch to HTML or a view-only page loads at once.
@@ -223,15 +231,48 @@
       return (doc.body?.textContent || '').trim();
     }
 
+    // The same chips as the server (admin.state_chips): a draft is for editors only until it is published.
+    function stateChips(published, access) {
+      const label = ACCESS_LABELS[access] || ACCESS_LABELS.account;
+      const pill = (tone, text) => `<span class="pill${tone}">${text}</span>`;
+      if (published) return pill(' gold', 'Publicado') + pill(access === 'public' ? ' gold' : access === 'restricted' ? '' : ' off', label);
+      return pill(' off', 'Borrador') + pill(' off', 'Solo editores') + `<span class="state-next"><span>al publicar:</span> <span>${label}</span></span>`;
+    }
+
+    // The reader's meta line (type · author · Actualizado date · tags) from the Detalles fields.
+    function metaLine() {
+      const meta = document.createElement('p');
+      meta.className = 'article-meta';
+      const span = (text, lang) => Object.assign(document.createElement('span'), { textContent: text }, lang ? { lang } : {});
+      meta.append(span(KIND_LABELS[value('kind', form.dataset.articleKind)] || KIND_LABELS.guide));
+      if (value('author').trim()) meta.append('·', span(value('author').trim(), 'es'));
+      const day = form.dataset.updated || new Date().toLocaleDateString('sv');  // Unsaved: the date it gets on save.
+      const time = document.createElement('time');
+      time.dateTime = day;
+      time.textContent = new Intl.DateTimeFormat(document.documentElement.lang || 'es', { dateStyle: 'medium' }).format(new Date(day + 'T12:00:00'));
+      meta.append('·', span('Actualizado'), time);
+      const tags = value('tags').split(',').map(tag => tag.trim()).filter(Boolean);
+      if (tags.length) {
+        const list = span('', 'es');
+        list.className = 'article-meta__tags';
+        list.append(...tags.map(tag => span(tag)));
+        meta.append('·', list);
+      }
+      return meta;
+    }
+
     function updatePreview() {
       const published = checked('published', form.dataset.published === 'true');
       const access = value('access', form.dataset.access || 'account');
-      const state = `${published ? 'Publicado' : 'Borrador'} · ${ACCESS_LABELS[access] || 'Con cuenta'}`;
+      const state = stateChips(published, access);
       // The user list matters only for "Usuarios seleccionados"; without JavaScript it stays visible.
       const picker = document.querySelector('.form-row.field-allowed_users');
       if (picker) picker.hidden = access !== 'restricted' && !picker.classList.contains('errors');
-      document.getElementById('desk-state').textContent = state;
-      document.getElementById('desk-details-state').textContent = state;
+      if (state !== shownState) {  // Only on a change, so the translated chips are not rebuilt on every key.
+        shownState = state;
+        document.getElementById('desk-state').innerHTML = state;
+        document.getElementById('desk-details-state').innerHTML = state;
+      }
       document.getElementById('desk-count').textContent = `${words().split(/\s+/).filter(Boolean).length} palabras`;
       const pdf = form.elements.namedItem('pdf_file')?.files?.[0];
       const pdfName = pdf?.name || (checked('remove_pdf') ? '' : form.dataset.pdfName);
@@ -250,6 +291,7 @@
         return;
       }
       preview.innerHTML = renderMarkdown(source.value, { title: title.value, published, pdfName, slug: value('slug', form.dataset.articleSlug) });
+      preview.querySelector('h1')?.after(metaLine());
       preview.querySelectorAll('a').forEach(link => {
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
@@ -261,15 +303,22 @@
         }
       });
     }
-    form.addEventListener('input', () => {
+    function markDirty() {
+      if (!dirty && saveState) saveState.textContent = 'Cambios sin guardar';
       dirty = true;
+    }
+    // The title is one line: Enter does nothing and pasted line breaks become spaces.
+    title.addEventListener('keydown', event => { if (event.key === 'Enter') event.preventDefault(); });
+    form.addEventListener('input', event => {
+      if (event.target === title && /[\r\n]/.test(title.value)) title.value = title.value.replace(/\s*[\r\n]+\s*/g, ' ');
+      markDirty();
       clearTimeout(timer);
       timer = setTimeout(updatePreview, 120);
     });
     function showToolFields() { toolFields.open = value('kind', form.dataset.articleKind) === 'tool' || Boolean(toolFields.querySelector('.errors')); }
     showToolFields();
     form.addEventListener('change', event => {
-      dirty = true;
+      markDirty();
       if (event.target.name === 'kind') showToolFields();
       updatePreview();
     });

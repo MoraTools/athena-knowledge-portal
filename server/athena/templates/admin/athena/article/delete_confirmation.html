@@ -1,0 +1,15 @@
+{% extends 'admin/delete_confirmation.html' %}
+{# An article has no related objects to list: say what it is now and that the deletion is final. #}
+{% block delete_confirm %}
+<p class="delete-state">{{ state_chips }}</p>
+<p>Esta acción no se puede deshacer.</p>
+<form method="post">{% csrf_token %}
+<div>
+<input type="hidden" name="post" value="yes">
+{% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
+{% if to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}">{% endif %}
+<input type="submit" value="Eliminar artículo">
+<a href="#" class="button cancel-link">Cancelar</a>
+</div>
+</form>
+{% endblock %}

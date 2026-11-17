@@ -142,7 +142,7 @@ input[disabled], select[disabled], textarea[disabled] { opacity: .5; cursor: not
 
 /* Inputs */
 input:not([type]), input[type=text], input[type=password], input[type=email], input[type=url], input[type=number],
-input[type=tel], input[type=search], input[type=date], input[type=time], .vTextField, select, textarea,
+input[type=tel], input[type=search], input[type=date], input[type=time], input[type=datetime-local], .vTextField, select, textarea,
 .form-row input[type=text], .form-row input[type=password], .form-row input[type=email], .form-row input[type=url],
 .form-row input[type=number], .form-row input[type=tel], .form-row .vTextField, .form-row select, .form-row textarea {
   box-sizing: border-box; min-height: var(--control-height); min-width: 0; max-width: 100%; margin: 0; padding: 6px 10px;
@@ -150,8 +150,9 @@ input[type=tel], input[type=search], input[type=date], input[type=time], .vTextF
   font: 13px/18px var(--font-ui); vertical-align: middle;
 }
 :is(input, select, textarea):not([type=checkbox], [type=radio], [type=file], [type=submit], [type=button]):hover { border-color: var(--text-muted); }
+input[type=datetime-local] { height: var(--control-height); } /* Chrome's date and time parts add 2px to the shared padding. */
 input:not([type]):focus, input[type=text]:focus, input[type=password]:focus, input[type=email]:focus, input[type=url]:focus,
-input[type=number]:focus, input[type=search]:focus, .vTextField:focus, select:focus, textarea:focus { border-color: var(--accent-edge); }
+input[type=number]:focus, input[type=search]:focus, input[type=datetime-local]:focus, .vTextField:focus, select:focus, textarea:focus { border-color: var(--accent-edge); }
 input::placeholder, textarea::placeholder { color: var(--text-subtle); opacity: 1; }
 textarea, .form-row textarea { width: 100%; padding: 8px 10px; line-height: 1.5; }
 /* Aligned textareas fill the row beside the label column; zero basis so the cols attribute cannot widen the row. */
@@ -230,7 +231,7 @@ fieldset.module { padding: 0; border-top: 1px solid var(--border); }
 .aligned label + div.readonly, .aligned label + p { padding: 6px 0; font-size: 14px; }
 .aligned .form-row .flex-container { flex-wrap: wrap; align-items: flex-start; }
 .aligned .form-row div { min-width: 0; }
-form .aligned div.help, form .aligned p.help { margin-left: 196px; padding-left: 0; }
+form .aligned div.help, form .aligned p.help { margin-left: 180px; padding-left: 0; } /* The label column, so help starts under its field. */
 form .aligned div.checkbox-row + div.help { margin-left: 196px; }
 
 /* Date, time and related-object widgets: Django's icons are drawn through a gold mask. */
@@ -342,6 +343,11 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 #toolbar form #searchbar, #toolbar #searchbar { width: 320px; max-width: 100%; height: var(--control-height); margin: 0; padding: 6px 10px; font-size: 13px; }
 #changelist-search > div > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 #toolbar .quiet { flex: 1 1 auto; width: auto; color: var(--text-subtle); margin: 0; }
+/* Article list: Estado, Acceso and Tipo selects under the search field (admin/athena/article/change_list.html). */
+#changelist-search .list-filters { gap: 8px 16px; margin-top: 12px; }
+#changelist-search .list-filters > label { position: static; display: inline-flex; align-items: center; gap: 8px; width: auto; height: auto;
+  overflow: visible; clip-path: none; color: var(--text-muted); font: var(--label); letter-spacing: .06em; text-transform: uppercase; }
+#changelist-search .list-filters select { text-transform: none; letter-spacing: normal; }
 /* Django's action form is hidden (admin/change_list.html); admin-list.js shows this bar while rows are checked. */
 .bulk-bar {
   position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
@@ -409,6 +415,9 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { background: var
 .dashboard .module table td, .dashboard .module table th { padding: var(--cell-pad-y) var(--cell-pad-x); }
 .dashboard .module table td a { white-space: nowrap; }
 #content-related { background: transparent; }
+.drafts-line { margin: 0 0 var(--space-2); font-weight: 600; }
+/* A draft's access level, shown after its chips: "al publicar: Con cuenta". */
+.state-next { color: var(--text-subtle); font: var(--label); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
 #content-related .module h2 { padding: 12px 16px; margin: 0; color: var(--text-muted); font: var(--label); border-bottom: 1px solid var(--border); }
 #content-related h3 { margin: 16px 0 8px; padding: 0 16px; color: var(--text-subtle); }
 #content-related .actionlist { margin: 0 16px 16px; }
@@ -423,6 +432,7 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { background: var
 .delete-confirmation #content ul { padding-left: 1.2em; }
 .delete-confirmation #content ul li { list-style: square; }
 .delete-confirmation form div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.delete-state { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .delete-confirmation form .cancel-link { margin: 0; line-height: 1; }
 
 /* Login: a panel; the toggles sit at the top right of the window, like the account pages. */

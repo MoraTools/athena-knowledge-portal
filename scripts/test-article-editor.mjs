@@ -139,7 +139,7 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
   fields.kind.value = 'guide';
   element('id_markdown_file_helptext');
   for (const id of ['desk-preview-content', 'desk-image-footer', 'desk-state', 'desk-details-state', 'desk-count',
-    'desk-source-heading', 'desk-preview-status']) element(id);
+    'desk-source-heading', 'desk-preview-status', 'desk-save-state']) element(id);
   const preview = nodes.get('desk-preview-content');
   preview.replaceChildren = (...children) => { preview.children = children; children.forEach(child => { child.isConnected = true; }); };
   preview.getBoundingClientRect = () => ({ top: 100, bottom: 700 });
@@ -168,6 +168,7 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
         const node = element('');
         Object.assign(node, { tagName: tag, elements: {}, contentWindow: { messages: [], postMessage(message) { this.messages.push(message); } },
           append(...children) { for (const child of children) if (child.name) this.elements[child.name] = child; },
+          replaceChildren(...children) { this.children = children; },
           submit() { posts.push({ action: this.action, target: this.target, method: this.method, body: this.elements.body.value,
             csrf: this.elements.csrfmiddlewaretoken.value }); },
           getBoundingClientRect: () => ({ top: 150, height: 3000 }) });
@@ -335,8 +336,12 @@ for (const file of [
 // HTML: the unsaved source is posted into the sandboxed preview frame, never put into srcdoc.
 {
   const state = editor({ format: 'html', previewUrl: '/article-html-preview/' });
-  const frame = state.preview.children[0];
+  const [head, frame] = state.preview.children;
   assert.equal(frame.tagName, 'iframe');
+  // The reader's h1 and meta line sit above the frame.
+  assert.equal(head.children[0].tagName, 'h1');
+  assert.equal(head.children[0].textContent, 'Title');
+  assert.equal(head.children[1].className, 'article-meta');
   assert.equal(frame.attributes.sandbox, 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
   assert.equal(frame.srcdoc, undefined);
   assert.equal(state.nodes.get('desk-source-heading').textContent, 'HTML');
@@ -358,7 +363,24 @@ for (const file of [
 {
   const state = editor({ format: 'html', readOnly: true });
   assert.equal(state.posts.length, 0, 'A view-only page has no preview endpoint.');
-  assert.equal(state.preview.children[0].src, '/article-html/guide/?theme=dark&lang=es');
+  assert.equal(state.preview.children[1].src, '/article-html/guide/?theme=dark&lang=es');
+}
+// Status: chips as in the list (a draft is for editors only), 'Cambios sin guardar' after the first edit, a one-line title.
+{
+  const state = editor();
+  const chips = state.nodes.get('desk-state').innerHTML;
+  assert.match(chips, /pill off">Borrador<.*pill off">Solo editores<.*al publicar:<\/span> <span>Con cuenta</);
+  assert.equal(state.nodes.get('desk-details-state').innerHTML, chips);
+  assert.equal(state.nodes.get('desk-save-state').textContent, undefined);
+  state.fields.published = { checked: true };
+  state.fields.access = { value: 'public' };
+  state.fields.title.value = 'Two\nlines';
+  await state.form.fire('input', { target: state.fields.title });
+  assert.equal(state.fields.title.value, 'Two lines');
+  assert.equal(state.nodes.get('desk-save-state').textContent, 'Cambios sin guardar');
+  await state.form.fire('change', { target: state.fields.kind });
+  assert.equal(state.nodes.get('desk-state').innerHTML, '<span class="pill gold">Publicado</span><span class="pill gold">Público</span>');
+  assert.equal((await state.fields.title.fire('keydown', { key: 'Enter' })).defaultPrevented, true);
 }
 console.log('HTML preview frame, sandbox, POST source, message source checks, theme and viewport messages passed.');
 console.log('Article detail tabs, read-only controls, keyboard focus, error routing, close retention and native save checks passed.');
