@@ -342,6 +342,8 @@ class AdminAuthRegressionTests(TestCase):
                                      HTTP_IF_MATCH=f'"{self.article.updated_at.isoformat()}"', **headers)
         self.assertEqual(response.status_code, 403)
         self.assertEqual(self.client.post('/api/v1/downloads/', {}, **headers).status_code, 403)
+        self.assertEqual(self.client.patch('/api/v1/downloads/any/', '{"section": "previous"}',
+                                           content_type='application/json', **headers).status_code, 403)
 
     def test_stale_admin_save_keeps_submitted_text_and_cannot_restore_publication(self):
         self.client.force_login(self.root)

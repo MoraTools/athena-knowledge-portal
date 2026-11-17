@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Athena management API",
-    "version": "1.10.0",
+    "version": "1.11.0",
     "description": "Private knowledge base. Create a scoped key in /admin/athena/apikey/. Keys expire after 90 days by default and are revoked when the owning user is disabled, removed, or has their password reset. Browser cookies are not accepted by the API. Guide for agents: GET /api/docs/. Check a key with GET /me/."
   },
   "servers": [
@@ -394,6 +394,69 @@
       }
     },
     "/downloads/{slug}/": {
+      "patch": {
+        "operationId": "update_download",
+        "summary": "Change a download title, section, or note (articles or admin scope)",
+        "description": "Requires change_download. Send one or more of title, section, note. Any other field (file, published, slug, filename, sha256, ...), an empty object, or an invalid section answers 400 and saves nothing. The stored file is not changed. Release recipe: POST the new file to /downloads/ with section framework, then PATCH the old row with {\"section\": \"previous\"}.",
+        "responses": {
+          "200": {
+            "description": "The changed download."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid, expired, or revoked key"
+          },
+          "403": {
+            "description": "Insufficient scope or user permissions"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "maxLength": 240
+                  },
+                  "section": {
+                    "type": "string",
+                    "enum": [
+                      "framework",
+                      "packages",
+                      "exercises",
+                      "previous"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 300
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
         "operationId": "delete_download",
         "summary": "Delete a download and its file (articles or admin scope)",

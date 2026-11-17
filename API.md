@@ -60,6 +60,7 @@ A scope never grants more authority than its owner has. A key owned by an ordina
 | GET | `/article-images/{id}/` | Read image or video bytes with the current key's article access; videos accept `Range` |
 | GET | `/downloads/` | List downloads; `read` sees published files only |
 | POST | `/downloads/` | Upload a file from multipart fields `title`, `section`, `file`, optional `note` |
+| PATCH | `/downloads/{slug}/` | Change `title`, `section`, or `note` from a JSON body; the stored file stays |
 | DELETE | `/downloads/{slug}/` | Remove a download and its stored file |
 | GET, POST | `/users/` | List or create users; admin scope only |
 | GET, PATCH, DELETE | `/users/{id}/` | Read, rename, reset password, deactivate, promote, or remove user |
@@ -84,6 +85,9 @@ Other authors can reuse an image only after an article they can read uses it. A 
 Unused images have a 24-hour grace period before cleanup. If an image is no longer available, upload it again before saving.
 Download sections: `framework`, `packages`, `exercises`, `previous`. Uploads are published at once and keep the original file name.
 The proxy accepts up to 512 MB on `/api/`. Each result has `size`, `sha256`, and `url`; the `url` works only in a signed-in browser session.
+API version 1.11.0: PATCH a download with a JSON object of one or more of `title`, `section`, `note`. It needs `change_download`.
+Any other key (`file`, `published`, `slug`, `filename`, `sha256`, ...), an empty object, or a section that is not in the
+list answers `400` and saves nothing. PATCH never changes or deletes the stored file; to publish a new file, upload a new download.
 
 ## HTML articles
 
@@ -174,6 +178,15 @@ curl --fail-with-body https://athena.moratechnology.com/api/v1/articles/recorder
 curl --fail-with-body https://athena.moratechnology.com/api/v1/downloads/ \
   -H "Authorization: Bearer $ATHENA_API_KEY" \
   -F 'title=Framework 2026-07' -F 'section=framework' -F 'file=@Export.CORE_FRAMEWORK.zip'
+```
+
+A template release is one upload and one PATCH. Upload the new ZIP to `framework` as above, then move the old row to
+`previous` (read its `slug` from `GET /downloads/`). `/downloads/framework/latest` and the Descargas page follow the newest published `framework` file.
+
+```sh
+curl --fail-with-body -X PATCH https://athena.moratechnology.com/api/v1/downloads/$OLD_SLUG/ \
+  -H "Authorization: Bearer $ATHENA_API_KEY" \
+  -H 'Content-Type: application/json' --data '{"section":"previous"}'
 ```
 
 Create a user with `username` and a password of at least 12 characters.

@@ -1268,6 +1268,44 @@ class DownloadTests(TestCase):
         self.assertFalse(Path(path).exists())
         self.assertEqual(self.client.delete(url + 'new-jar/', **write).status_code, 404)
 
+    def test_download_api_patch_moves_old_release_to_previous(self):
+        from .views import current_framework
+        url = f'/api/v1/downloads/{self.item.slug}/'
+        write = self.key(self.admin, 'articles')
+
+        def patch(data, headers=write, path=url):
+            return self.client.patch(path, json.dumps(data), content_type='application/json', **headers)
+
+        newer = Download.objects.create(title='Nueva', section='framework', file=ContentFile(b'n', name='Framework-2.zip'))
+        older = Download.objects.create(title='Anterior', section='framework', file=ContentFile(b'o', name='Older.zip'))
+        self.assertEqual(current_framework(), older)
+        path, digest = self.item.file.path, self.item.sha256
+        for bad in [{'file': 'other.zip'}, {'section': 'previous', 'published': False}, {'slug': 'x'},
+                    {'filename': 'x.zip'}, {'sha256': '0' * 64}, {'extra': 'x'}, {}, {'section': 'archive'},
+                    {'title': ''}, {'note': 5}]:
+            with self.subTest(bad=bad), self.captureOnCommitCallbacks(execute=True):
+                self.assertEqual(patch(bad).status_code, 400)
+        self.assertEqual(self.client.patch(url, 'section=previous', content_type='application/x-www-form-urlencoded',
+                                           **write).status_code, 400)
+        self.assertEqual(Download.objects.get(pk=self.item.pk).section, 'framework')
+        self.assertEqual(patch({'section': 'previous'}, self.key(self.reader, 'read')).status_code, 403)
+        self.assertEqual(patch({'section': 'previous'}, self.key(self.reader, 'articles')).status_code, 403)
+        self.assertEqual(patch({'section': 'previous'}, path='/api/v1/downloads/missing/').status_code, 404)
+        with self.captureOnCommitCallbacks(execute=True):
+            response = patch({'section': 'previous'}, path=f'/api/v1/downloads/{older.slug}/')
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()['section'], 'previous')
+        self.assertEqual(current_framework(), newer)
+        with self.captureOnCommitCallbacks(execute=True):
+            response = patch({'title': 'Framework 2024', 'note': 'Versión anterior'})
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual((response.json()['title'], response.json()['note'], response.json()['section']),
+                         ('Framework 2024', 'Versión anterior', 'framework'))
+        self.item.refresh_from_db()
+        self.assertEqual((self.item.file.path, self.item.sha256), (path, digest))
+        self.assertEqual(hashlib.sha256(Path(path).read_bytes()).hexdigest(), digest)
+        self.assertEqual(self.client.put(url, '{}', content_type='application/json', **write)['Allow'], 'PATCH, DELETE')
+
 
 class RobotsTests(TestCase):
     def test_site_is_not_indexable(self):

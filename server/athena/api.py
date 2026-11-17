@@ -28,7 +28,7 @@ ENDPOINTS = {
     '/api/v1/article-images/': ['POST'],
     '/api/v1/article-images/{id}/': ['GET'],
     '/api/v1/downloads/': ['GET', 'POST'],
-    '/api/v1/downloads/{slug}/': ['DELETE'],
+    '/api/v1/downloads/{slug}/': ['PATCH', 'DELETE'],
     '/api/v1/users/': ['GET', 'POST'],
     '/api/v1/users/{id}/': ['GET', 'PATCH', 'DELETE'],
     '/api/docs/': ['GET'],
@@ -267,6 +267,7 @@ def download_data(item):
 
 
 DownloadForm = modelform_factory(Download, fields=['title', 'section', 'file', 'note'])
+DownloadChangeForm = modelform_factory(Download, fields=['title', 'section', 'note'])
 
 
 @api
@@ -283,12 +284,25 @@ def downloads(request, slug=None):
         if not form.is_valid():
             raise ValidationError({field: list(errors) for field, errors in form.errors.items()})
         return JsonResponse(download_data(form.save()), status=201)
+    if request.method == 'PATCH' and slug:
+        if not can_edit(request, 'change', 'download'):
+            return denied()
+        item = get_object_or_404(Download, slug=slug)
+        data = payload(request)
+        if not data or set(data) - {'title', 'section', 'note'}:
+            raise ValidationError('Send one or more of title, section, note. To change the file, upload a new download.')
+        if any(not isinstance(value, str) for value in data.values()):
+            raise ValidationError('title, section, and note must be strings.')
+        form = DownloadChangeForm({**model_to_dict(item, fields=['title', 'section', 'note']), **data}, instance=item)
+        if not form.is_valid():
+            raise ValidationError({field: list(errors) for field, errors in form.errors.items()})
+        return JsonResponse(download_data(form.save()))
     if request.method == 'DELETE' and slug:
         if not can_edit(request, 'delete', 'download'):
             return denied()
         get_object_or_404(Download, slug=slug).delete()
         return HttpResponse(status=204)
-    return method_not_allowed('DELETE' if slug else 'GET, POST')
+    return method_not_allowed('PATCH, DELETE' if slug else 'GET, POST')
 
 
 def user_data(user):
