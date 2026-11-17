@@ -217,7 +217,13 @@ function buildGuideTopics(library, state) {
     jump.append(name, ' ', count);
     jumps.append(jump);
     topics.append(section);
-    const group = { section, jump, count, entries: [] };
+    // A section lists only the guides whose first topic it is; when its topic has more, it ends with a link to the topic filter.
+    const more = document.createElement('p');
+    more.className = 'guide-topic-more';
+    const moreLink = document.createElement('a');
+    moreLink.href = jump.href;
+    more.append(moreLink);
+    const group = { section, jump, count, more, moreLink, entries: [] };
     entries.forEach(({ entry, primary }) => {
       const article = document.createElement('article');
       article.className = 'guide-topic-row';
@@ -236,6 +242,7 @@ function buildGuideTopics(library, state) {
       section.append(article);
       group.entries.push({ entry, article, primary });
     });
+    section.append(more);
     state.groups.set(key, group);
   });
   state.all = all;
@@ -283,19 +290,19 @@ function filterGuides() {
   state.groups?.forEach((group) => {
     let shown = 0;
     let tagged = 0;
-    let listed = false;
     group.entries.forEach(({ entry, article, primary }) => {
       article.hidden = entry.row.hidden || (topic ? group !== topic : !primary);
       if (!article.hidden) shown += 1;
       if (!entry.row.hidden) tagged += 1;
-      if (primary && !entry.row.hidden) listed = true;
     });
     group.section.hidden = !shown;
-    // The topic row keeps the topics of the unfiltered page; its counts are guides with the tag.
-    group.jump.hidden = !tagged || !(listed || group === topic);
+    // The topic row offers every topic tag of a visible guide; its counts are guides with the tag.
+    group.jump.hidden = !tagged;
     if (group === topic) group.jump.setAttribute('aria-current', 'true');
     else group.jump.removeAttribute('aria-current');
     group.count.textContent = new Intl.NumberFormat(currentLang()).format(tagged);
+    group.more.hidden = Boolean(topic) || shown === tagged;
+    group.moreLink.textContent = t('Ver las ' + group.count.textContent + ' guías de ' + group.section.children[0].textContent);
   });
   if (topic) visible = topic.entries.filter(({ article }) => !article.hidden).length;
   if (state.all) state.all.hidden = !topic;
@@ -1433,6 +1440,17 @@ function placeArticleTools() {
   holder.remove();
 }
 
+// A phone reader shows a short word beside each action icon (styles.css). It comes first, so it starts the accessible name.
+function labelArticleActions() {
+  document.querySelectorAll('.markdown-section .article-actions .copy-page').forEach((button) => {
+    if (button.querySelector('.copy-page__short')) return;
+    const word = document.createElement('span');
+    word.className = 'copy-page__short';
+    word.textContent = t(button.classList.contains('copy-link') ? 'Enlace' : button.hasAttribute('download') ? 'PDF' : button.tagName === 'A' ? 'Editar' : 'Copiar');
+    button.querySelector('span').before(word);
+  });
+}
+
 // The copy and check icons of 'Copiar página' (src/config.js); .copied shows the check.
 const COPY_ICONS = '<svg class="copy-page__copy" aria-hidden="true" viewBox="0 0 24 24"><path d="M8 7V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M5 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z"/></svg>'
   + '<svg class="copy-page__check" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>';
@@ -1496,6 +1514,7 @@ function syncView() {
   // The viewer belongs to the article frame that opened it.
   if (viewer?.dialog.open && !viewer.frame?.isConnected) viewer.dialog.close();
   placeArticleTools();
+  labelArticleActions();
   buildCodeCopy();
   buildPermalinkCopy();
   placeArticleHead();
@@ -1673,7 +1692,7 @@ document.addEventListener('click', async (event) => {
 
 // One copy flow for page, link and code: the button shows "Copiado" and its check icon for 2 s; #copy-status announces it.
 async function copyWith(button, getText, idle, done) {
-  const label = button.querySelector('span');
+  const label = button.querySelector('span:not(.copy-page__short)');
   const status = document.querySelector('#copy-status');
   if (button.classList.contains('copied')) return;
   const name = button.getAttribute('aria-label');

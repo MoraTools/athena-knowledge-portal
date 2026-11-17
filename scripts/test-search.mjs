@@ -538,6 +538,35 @@ for (const [text, expected] of [['', true], ['Texto de la guía', false]]) {
 }
 context.document.querySelector = () => null;
 context.document.querySelectorAll = () => [];
+// Phone article actions (round 4 #1): each icon has a short visible word that starts its accessible name; the full name stays.
+{
+  const button = (tagName, classes, label, attributes = []) => {
+    const nodes = [{ tagName: 'svg', textContent: '' }];
+    const span = { tagName: 'SPAN', className: '', textContent: label, before: (node) => nodes.splice(nodes.indexOf(span), 0, node) };
+    nodes.push(span);
+    return { tagName, nodes, classList: { contains: (name) => classes.includes(name) }, hasAttribute: (name) => attributes.includes(name),
+      querySelector: (selector) => ({ span, '.copy-page__short': nodes.find((node) => node.className === 'copy-page__short') || null })[selector] };
+  };
+  const actions = [['Copiar', button('BUTTON', ['copy-page'], 'Copiar página')], ['Enlace', button('BUTTON', ['copy-page', 'copy-link'], 'Copiar enlace')],
+    ['PDF', button('A', ['copy-page'], 'Exportar PDF', ['download'])], ['Editar', button('A', ['copy-page'], 'Editar artículo')]];
+  context.document.querySelectorAll = (selector) => selector === '.markdown-section .article-actions .copy-page' ? actions.map(([, item]) => item) : [];
+  context.document.createElement = (tag) => ({ tagName: tag.toUpperCase() });
+  context.labelArticleActions?.();
+  context.labelArticleActions?.();
+  for (const [word, item] of actions) {
+    const full = item.nodes.at(-1).textContent;
+    const shorts = item.nodes.filter((node) => node.className === 'copy-page__short');
+    assert.equal(shorts.length, 1, full + ': one short visible word, also after a repeated sync.');
+    assert.equal(shorts[0].textContent, word);
+    const name = item.nodes.map((node) => node.textContent).filter(Boolean).join(' ');
+    assert.ok(name.startsWith(word + ' ') && name.endsWith(full), full + ': the accessible name "' + name + '" starts with the visible word and keeps the full name.');
+  }
+  const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /^\.copy-page__short\{display:none\}/m, 'Wide readers show the full label only.');
+  assert.match(css, /@container reader \(max-width:600px\)\{[^@]*\.article-actions \.copy-page__short\{display:inline\}/, 'A phone reader shows the short word.');
+  assert.match(css, /@container reader \(max-width:600px\)\{[^@]*\.article-actions \.copy-page>span:not\(\.copy-page__short\)\{position:absolute/, 'A phone reader hides only the full label, which stays in the name.');
+  context.document.querySelectorAll = () => [];
+}
 
 function table(headers, data) {
   const result = new Element('table');
@@ -635,6 +664,18 @@ assert.equal(records.getAttribute('aria-labelledby'), 'claves-de-api', 'The scro
 assert.equal(records.getAttribute('aria-label'), null);
 // The right-edge cue is a scroll-shadow background, so no mask clips the focus ring or fades the last column.
 const readerCss = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
+// Phone tag targets (round 4 #7): at least 24 px tall (WCAG 2.5.8) and no overlap with the chip row above.
+{
+  const rule = readerCss.match(/@media\(pointer:coarse\)\{\.article-meta>\.article-meta__tags\{row-gap:var\(--space-1\)\}\.article-meta__tags a\{min-height:0;padding-block:(\d+)px;margin-block:-(\d+)px\}\}/);
+  assert.ok(rule, 'Touch tag links pad their target with an equal negative margin, in rows 8 px (--space-1) apart.');
+  const [padding, margin] = [Number(rule[1]), Number(rule[2])];
+  const chip = 10 * 1.3 + 2 * 2 + 2; // --chip-size 10px at line-height 1.3, 2 px padding, 1 px border
+  assert.equal(padding, margin, 'The negative margin keeps the chip rows where they are.');
+  assert.ok(chip + 2 * padding >= 24, 'A tag target is at least 24 px tall: ' + (chip + 2 * padding) + ' px.');
+  assert.ok(2 * padding <= 8, 'Tag targets of two rows do not overlap: ' + 2 * padding + ' px of padding in an 8 px gap.');
+}
+// The active Guías topic has a shape cue, not only gold text (round 4 #23): the editor tabs' 2 px accent bottom rule.
+assert.match(readerCss, /\.guide-topic-jumps a\[aria-current\]\{box-shadow:inset 0 -2px 0 var\(--accent\)/);
 assert.doesNotMatch(readerCss, /mask-image/, 'No reader table is masked.');
 assert.match(readerCss, /\.markdown-section table\{[^}]*background-attachment:local,scroll/, 'The cue moves off at the end of the scroll.');
 records.clientWidth = 900;
@@ -845,14 +886,31 @@ assert.equal(guides.topics.hidden, false, 'Topics are the only view, with no sto
 assert.equal('view' in context.prepareGuideLibrary(guides.grid), false, 'The library no longer holds a view choice.');
 const topicSections = guides.topics.children.slice(1);
 const groupFor = (label) => topicSections.find((section) => section.children[0].textContent === label);
+const rowsOf = (section) => section.children.filter((node) => node.className === 'guide-topic-row');
 const shownSections = () => topicSections.filter((section) => !section.hidden);
 assert.deepEqual(shownSections().map((section) => section.children[0].textContent), ['café', 'RPA', 'Sin etiqueta'],
   'One shown section per first topic tag, alphabetical with Spanish rules, Sin etiqueta last; the placement tag is no topic.');
-assert.deepEqual(shownSections().map((section) => section.children.slice(1).filter((row) => !row.hidden).length), [1, 1, 2],
+assert.deepEqual(shownSections().map((section) => rowsOf(section).filter((row) => !row.hidden).length), [1, 1, 2],
   'Each guide is listed once, so the sections add up to the result count.');
 assert.deepEqual(shownSections().map((section) => section.children[0].id), ['guide-topic-cafe', 'guide-topic-rpa', 'guide-untagged'],
   'Section ids come from the tag, so article tag links can name them.');
 assert.equal(vm.runInContext("guideTopicId(normalize('Plantilla  Básica'))", context), 'guide-topic-plantilla-basica');
+// Round 4 #5: the topic counts are guides with the tag; a section that lists fewer ends with one link to the topic filter.
+const checkTopicCounts = (why) => shownSections().forEach((section) => {
+  const label = section.children[0].textContent;
+  const jump = guides.topics.children[0].children[1].children.find((item) => item.href === '#/guides?id=' + section.children[0].id);
+  const count = jump.children.at(-1).textContent;
+  const rows = String(rowsOf(section).filter((row) => !row.hidden).length);
+  const more = section.children.find((node) => node.className === 'guide-topic-more');
+  if (rows === count) assert.ok(!more || more.hidden, why + ': ' + label + ' lists all its ' + count + ' guides, so it has no link.');
+  else {
+    assert.ok(more && !more.hidden && section.children.at(-1) === more, why + ': ' + label + ' lists ' + rows + ' of its ' + count + ' guides and ends with the link.');
+    assert.equal(more.children[0].textContent, 'Ver las ' + count + ' guías de ' + label);
+    assert.equal(more.children[0].href, jump.href, 'The link opens the topic filter, as the topic row does.');
+  }
+});
+checkTopicCounts('Unfiltered');
+assert.ok(groupFor('café').children.at(-1).children[0].textContent === 'Ver las 2 guías de café', 'café lists 1 of its 2 guides.');
 const copiedDetail = groupFor('RPA').children[1].children[0];
 const copiedTags = copiedDetail.querySelectorAll('.tag-list span').map((tag) => tag.textContent);
 assert.deepEqual(copiedTags, ['RPA', 'Café', 'CAFE', 'A|B <tema> "x"', 'Helios', 'Seguridad'], 'Other tags stay chips as literal text; the placement tag is no chip.');
@@ -865,7 +923,7 @@ assert.equal(groupFor('RPA').children[1].children[1].children[0].textContent, en
 const rowDate = groupFor('RPA').children[1].children[1].children[1];
 assert.equal(rowDate.children.find((node) => node.tagName === 'TIME').getAttribute('datetime'), entries[0].date);
 assert.ok(rowDate.textContent.startsWith('Actualizado '), 'A Guías row date reads "Actualizado <date>" like the other reader lists.');
-assert.deepEqual(groupFor('Sin etiqueta').children.slice(1).map((row) => row.children[0].children[0].textContent),
+assert.deepEqual(rowsOf(groupFor('Sin etiqueta')).map((row) => row.children[0].children[0].textContent),
   entries.slice(2).map((entry) => entry.title), 'Topic rows retain the server order.');
 const firstCopies = topicSections.map((section) => [...section.children]);
 context.syncView();
@@ -881,15 +939,17 @@ context.setTimeout = () => {};
 context.document.activeElement = undefined;
 assert.equal(context.location.hash, '#/guides', 'With the page-scope chip, typing filters the page and stays on it.');
 assert.equal(guides.count.textContent, '1 resultado');
-assert.ok(groupFor('Sin etiqueta').children.slice(1).every((row) => row.hidden), 'A query hides every copy of unmatched guides.');
+assert.ok(rowsOf(groupFor('Sin etiqueta')).every((row) => row.hidden), 'A query hides every copy of unmatched guides.');
 assert.ok(!groupFor('RPA').children[1].hidden && groupFor('café').hidden, 'A matching guide stays visible in its topic; a topic with no match hides.');
+checkTopicCounts('Text filter');
 const picker = guides.topics.children[0];
 assert.equal(picker.tagName, 'DETAILS', 'The topic row sits in a native box that phones show closed.');
 const jumps = picker.children[1];
-assert.equal(jumps.children.filter((jump) => !jump.hidden).length, 1, 'Only topics with a matching guide keep their jump; All topics hides without a filter.');
-assert.equal(picker.children[0].textContent, 'Temas (1)', 'The box summary counts the visible topics.');
+assert.deepEqual(jumps.children.filter((jump) => !jump.hidden).map((jump) => jump.children[0].textContent), ['A|B <tema> "x"', 'café', 'Helios', 'RPA', 'Seguridad'],
+  'A text filter offers every topic tag of a visible guide (round 4 #5); All topics hides without a topic filter.');
+assert.equal(picker.children[0].textContent, 'Temas (5)', 'The box summary counts the visible topics.');
 assert.equal(jumps.children.find((jump) => jump.textContent.startsWith('RPA ')).children.at(-1).textContent, '1', 'A topic jump counts its visible guides.');
-const activeJump = jumps.children.find((jump) => !jump.hidden);
+const activeJump = jumps.children.find((jump) => jump.textContent.startsWith('RPA '));
 assert.equal(activeJump.href, '#/guides?id=guide-topic-rpa', 'A topic jump is a route: it filters the page to its tag.');
 const boxPicker = { dataset: { layout: 'box' }, open: true };
 let jumpPrevented = false;
@@ -954,9 +1014,11 @@ context.document.createElement = createElement;
 const filteredSections = guides.topics.children.slice(1);
 const seguridad = filteredSections.find((section) => section.children[0].id === 'guide-topic-seguridad');
 assert.ok(seguridad && !seguridad.hidden, 'The tag link shows its topic.');
-assert.deepEqual(seguridad.children.slice(1).filter((row) => !row.hidden).map((row) => row.children[0].children[0].textContent), ['Álvaro'],
+assert.deepEqual(rowsOf(seguridad).filter((row) => !row.hidden).map((row) => row.children[0].children[0].textContent), ['Álvaro'],
   'A guide whose tag is not its first tag is visible after following that tag link.');
 assert.ok(filteredSections.every((section) => section === seguridad || section.hidden), 'Other topics hide while a topic filter is on.');
+assert.ok(filteredSections.every((section) => section.children.every((node) => node.className !== 'guide-topic-more' || node.hidden)),
+  'A topic filter lists every guide of its topic, so no section has the link.');
 assert.equal(guides.count.textContent, '1 resultado');
 const filterJumps = guides.topics.children[0].children[1];
 assert.equal(filterJumps.children[0].href, '#/guides', 'A topic filter has a way back to all topics.');

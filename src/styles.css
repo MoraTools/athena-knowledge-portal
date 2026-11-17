@@ -86,9 +86,9 @@ body .markdown-section h2{font:600 30px/36px var(--font-display);text-wrap:balan
 :is(.article-meta,.search-result__meta)>*::before{content:'·';content:'·' / '';display:inline-block;width:var(--sep);text-align:center}
 .article-meta>.article-meta__tags{display:flex;flex-wrap:wrap;flex-basis:100%;gap:4px;padding-left:var(--sep)}.article-meta>.article-meta__tags::before{content:none}
 .article-meta__tags a{display:inline-flex;align-items:center;text-decoration:none}
-@media(pointer:coarse){:is(.article-meta__tags,.search-result__actions,.contribute-note,.boot-status) a{display:inline-flex;align-items:center;min-height:44px}}
-/* Touch: a tag link keeps its 44 px target by padding with negative margins, so chip rows sit 8 px apart, not 44 px. */
-@media(pointer:coarse){.article-meta>.article-meta__tags{row-gap:var(--space-1)}.article-meta__tags a{min-height:0;padding-block:12px;margin-block:-12px}}
+@media(pointer:coarse){:is(.article-meta__tags,.search-result__actions,.contribute-note,.boot-status,.guide-topic-more) a{display:inline-flex;align-items:center;min-height:44px}}
+/* Touch: a tag link pads its target to about 27 px with an equal negative margin (WCAG 2.5.8: 24 px); half the 8 px row gap, so rows do not overlap. */
+@media(pointer:coarse){.article-meta>.article-meta__tags{row-gap:var(--space-1)}.article-meta__tags a{min-height:0;padding-block:4px;margin-block:-4px}}
 .markdown-section .article-access{margin:calc(-1 * var(--space-1)) 0 var(--space-3);color:var(--muted);font:400 14px/1.5 var(--font-ui)}
 body .markdown-section h3{font:650 18px/24px var(--font-ui);color:var(--text)}
 .markdown-section code,.markdown-section pre{font-family:var(--font-mono)}
@@ -241,6 +241,9 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 /* Only the topic name is underlined, not its count. */
 :is(.guide-topic-jumps,.download-jumps) a{display:inline-flex;align-items:center;gap:var(--space-1);min-height:32px;max-width:24ch;color:var(--text-muted);font:var(--label-weight) var(--label-size)/1.3 var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform);overflow-wrap:anywhere;text-decoration:none}
 :is(.guide-topic-jumps,.download-jumps) a:is(:hover,:focus-visible,[aria-current]){color:var(--accent-text)}
+/* The active topic has a shape cue, not only colour: the 2 px accent bottom rule of the editor tabs. */
+.guide-topic-jumps a[aria-current]{box-shadow:inset 0 -2px 0 var(--accent);color:var(--text)}
+.guide-topic-more{margin:0;padding:var(--space-1) var(--space-2)}
 .topic-count{color:var(--text-subtle);font-variant-numeric:tabular-nums}
 .guide-topic-picker>summary{cursor:pointer;padding:var(--space-1) var(--space-2);color:var(--text-muted);font:var(--label-weight) var(--label-size)/1.3 var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform)}
 @media(pointer:coarse){.guide-topic-picker>summary,:is(.guide-topic-jumps,.download-jumps) a{min-height:44px}.guide-topic-picker>summary{padding-block:15px}}
@@ -344,11 +347,14 @@ body.article-view.has-page-tree .markdown-section{max-width:70ch}
 .markdown-section .page-tree{margin:0 0 var(--space-2)}
 .markdown-section>:is(h1,.article-meta,.article-access,.page-tree)+.article-actions{justify-content:flex-start}
 @container reader (max-width:600px){body.article-view .markdown-section h1{font-size:32px;line-height:38px}}
-/* A narrow reader shows the article actions as one row of 44 px icon buttons; the hidden label stays their name. */
+/* A narrow reader shows the article actions as one row of 44 px buttons: icon and a short word ("PDF", "Copiar", "Enlace").
+   The full label is hidden but stays in the accessible name after the short word (WCAG 2.5.3). */
+.copy-page__short{display:none}
 @container reader (max-width:600px){
-  .markdown-section .article-actions{flex-wrap:nowrap}
-  .markdown-section .article-actions .copy-page{min-width:44px;min-height:44px;padding:0}
-  .markdown-section .article-actions .copy-page>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+  .markdown-section .article-actions{flex-wrap:wrap}
+  .markdown-section .article-actions .copy-page{min-width:44px;min-height:44px;padding:0 10px}
+  .markdown-section .article-actions .copy-page__short{display:inline}
+  .markdown-section .article-actions .copy-page>span:not(.copy-page__short){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   /* The head controls sit 8 px apart, like the chip rows, so the first screen reaches the text. */
   .markdown-section .article-meta{margin-bottom:var(--space-2)}
   .markdown-section .page-tree{margin-bottom:var(--space-1)}
