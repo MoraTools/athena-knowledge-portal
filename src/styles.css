@@ -200,7 +200,8 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 .library-controls label{color:var(--muted);font-weight:700}
 .library-controls input,.library-controls select{display:block;width:100%;height:32px;margin-top:var(--space-1);padding:0 12px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--field-bg);color:var(--text);font:14px var(--font-ui)}
 .result-count{grid-column:1/-1;margin:0!important;color:var(--muted)}
-.library-card[hidden],.catalog-item[hidden],.download-section[hidden]{display:none}.library-empty{padding:var(--space-3);background:var(--surface)}
+.library-card[hidden],.catalog-item[hidden],.download-section[hidden],.timeline-post[hidden],.timeline-month[hidden]{display:none}
+#library-count{margin:0 0 var(--space-2)!important}.library-empty{padding:var(--space-3);background:var(--surface)}
 .guide-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-2);margin-bottom:var(--space-2)}
 .markdown-section .guide-heading h1{margin:0;color:var(--text)}
 .guide-controls{grid-template-columns:minmax(0,2fr) minmax(160px,1fr);gap:var(--space-1) var(--space-3);margin-bottom:var(--space-2);padding:var(--space-2)}
@@ -263,10 +264,10 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 .markdown-section .timeline-intro{color:var(--muted);margin:0 0 var(--space-3)}
 .timeline,.timeline ol{list-style:none;margin:0;padding:0}
 .markdown-section .timeline-month>h2{margin:var(--space-4) 0 var(--space-2);padding-left:calc(var(--timeline-rail) + var(--space-2));font:700 12px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text)}
-.timeline{--timeline-rail:64px;--card-pad:var(--space-4);--title-lh:2.2rem;--badge-h:56px;--badge-top:calc(1px + var(--card-pad) + 12px * 1.4 + var(--space-1) + var(--title-lh) / 2 - var(--badge-h) / 2)}
+.timeline{--timeline-rail:64px;--card-pad:var(--space-3);--title-lh:24px;--badge-h:56px;--badge-top:calc(1px + var(--card-pad) + 12px * 1.4 + var(--space-1) + var(--title-lh) / 2 - var(--badge-h) / 2)}
 /* The first month sits under the intro; the last post of a month leaves the gap to the next month heading. */
 .markdown-section .timeline-month:first-child>h2{margin-top:0}
-.timeline-post{position:relative;display:grid;grid-template-columns:var(--timeline-rail) minmax(0,1fr);gap:var(--space-2);padding:0 0 var(--space-4)}
+.timeline-post{position:relative;display:grid;grid-template-columns:var(--timeline-rail) minmax(0,1fr);gap:var(--space-2);padding:0 0 var(--space-2)}
 .timeline-post:last-child{padding-bottom:0}
 .timeline-post::before{content:"";position:absolute;left:calc(var(--timeline-rail) / 2);top:0;bottom:0;width:1px;background:var(--surface-strong)}
 .timeline-post:last-child::before{bottom:auto;height:calc(var(--badge-top) + var(--badge-h) / 2)}
@@ -275,10 +276,11 @@ body.article-view .markdown-section:has(.pdf-viewer)>:not(.pdf-viewer){max-width
 .timeline-post>time .mon{margin-top:.2rem;font:700 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent-text)}
 .timeline-card{margin:0;padding:var(--card-pad);border:1px solid var(--border)}
 .timeline-card .post-meta{display:block;margin:0 0 var(--space-1);color:var(--muted);font:12px/1.4 var(--font-mono);letter-spacing:.04em;text-transform:uppercase}
-.markdown-section .timeline-card h2{margin:0;font-size:2rem;line-height:var(--title-lh)}
-.timeline-card .post-summary{margin:var(--space-2) 0 0;font-size:17px;line-height:1.6}
-.timeline-card h2 a{text-decoration:none}
-.timeline-card h2 a:hover{color:var(--accent-text)}
+/* Update titles use the h3 voice and are the link to the post (DESIGN.md: Cormorant is for page titles). */
+.markdown-section .timeline-card :is(h2,h3){margin:0;font:650 18px/var(--title-lh) var(--font-ui)}
+.timeline-card .post-summary{margin:var(--space-1) 0 0;font-size:16px;line-height:1.5}
+.markdown-section .timeline-card :is(h2,h3) a{color:var(--text);text-decoration:none}
+.markdown-section .timeline-card :is(h2,h3) a:is(:hover,:focus-visible){color:var(--accent-text);text-decoration:underline}
 .post-actions{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:var(--space-2) 0 0}
 @container reader (max-width:600px){.timeline{--card-pad:var(--space-3)}.markdown-section .timeline-month>h2{padding-left:0}.timeline-post{grid-template-columns:1fr;gap:var(--space-1)}.timeline-post::before{display:none}.timeline-post>time{width:auto;height:auto;margin:0;flex-direction:row;justify-content:flex-start;gap:var(--space-1)}.timeline-post>time .mon{margin:0}}
 

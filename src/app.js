@@ -19,6 +19,13 @@ const normalize = (value) => String(value || '')
   .replace(/\s+/g, ' ')
   .trim();
 
+// 'primeros-pasos' places an article on the home (Primeros pasos); it is not a subject, so it is no topic and no chip.
+const PLACEMENT_TAGS = new Set(['primeros-pasos']);
+const isTopicTag = (tag) => Boolean(normalize(tag)) && !PLACEMENT_TAGS.has(normalize(tag));
+// The Guías section id of a topic (normalized tag), also used by article tag links.
+// shortcut: tags that differ only in punctuation share an id; the editor keeps one spelling per tag (600b189).
+const guideTopicId = (key) => (key ? 'guide-topic-' + key.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : 'guide-untagged');
+
 function getRouteState() {
   const raw = location.hash.slice(1) || '/';
   const queryAt = raw.indexOf('?');
@@ -157,8 +164,8 @@ function prepareGuideLibrary(library) {
     rows: [...library.querySelectorAll('.guide-row,.library-card')].map((row) => ({
       row,
       search: normalize(row.dataset.search),
-      tags: new Map([...row.querySelectorAll('.tag-list span')]
-        .map((tag) => [normalize(tag.textContent), tag.textContent.trim()]).filter(([key]) => key))
+      tags: new Map([...row.querySelectorAll('.tag-list span')].filter((tag) => isTopicTag(tag.textContent))
+        .map((tag) => [normalize(tag.textContent), tag.textContent.trim()]))
     })),
     groups: null
   };
@@ -166,51 +173,58 @@ function prepareGuideLibrary(library) {
   return state;
 }
 
+// Each guide is listed once, under its first topic tag (its other tags stay chips); topics are alphabetical, 'Sin etiqueta' last.
 function buildGuideTopics(library, state) {
   if (state.groups) return;
   const topics = library.querySelector('#guide-topics');
   const jumps = document.createElement('nav');
   jumps.className = 'guide-topic-jumps';
   jumps.setAttribute('aria-label', t('Temas de las guías'));
-  state.groups = new Map();
+  const byTopic = new Map();
   state.rows.forEach((entry) => {
-    const tags = entry.tags.size ? entry.tags : new Map([['', t('Sin etiqueta')]]);
-    tags.forEach((label, key) => {
-      let group = state.groups.get(key);
-      if (!group) {
-        const section = document.createElement('section');
-        section.className = 'guide-topic';
-        const heading = document.createElement('h2');
-        heading.id = 'guide-topic-' + (state.groups.size + 1);
-        heading.tabIndex = -1;
-        heading.textContent = label;
-        section.setAttribute('aria-labelledby', heading.id);
-        section.append(heading);
-        const jump = document.createElement('a');
-        jump.href = '#/guides?id=' + heading.id;
-        jump.dataset.guideTopic = heading.id;
-        const name = document.createElement('span');
-        name.textContent = label;
-        const count = document.createElement('span');
-        count.className = 'topic-count';
-        jump.append(name, ' ', count);
-        jumps.append(jump);
-        topics.append(section);
-        group = { section, jump, count, entries: [] };
-        state.groups.set(key, group);
-      }
+    const [key, label] = entry.tags.entries().next().value || ['', t('Sin etiqueta')];
+    if (!byTopic.has(key)) byTopic.set(key, { label, entries: [] });
+    byTopic.get(key).entries.push(entry);
+  });
+  const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
+  const order = [...byTopic.keys()].sort((left, right) => (!left) - (!right) || collator.compare(byTopic.get(left).label, byTopic.get(right).label));
+  state.groups = new Map();
+  order.forEach((key) => {
+    const { label, entries } = byTopic.get(key);
+    const section = document.createElement('section');
+    section.className = 'guide-topic';
+    const heading = document.createElement('h2');
+    heading.id = guideTopicId(key);
+    heading.tabIndex = -1;
+    heading.textContent = label;
+    section.setAttribute('aria-labelledby', heading.id);
+    section.append(heading);
+    const jump = document.createElement('a');
+    jump.href = '#/guides?id=' + heading.id;
+    jump.dataset.guideTopic = heading.id;
+    const name = document.createElement('span');
+    name.textContent = label;
+    const count = document.createElement('span');
+    count.className = 'topic-count';
+    jump.append(name, ' ', count);
+    jumps.append(jump);
+    topics.append(section);
+    const group = { section, jump, count, entries: [] };
+    entries.forEach((entry) => {
       const article = document.createElement('article');
       article.className = 'guide-topic-row';
       const detail = entry.row.querySelector('.guide-detail').cloneNode(true);
+      detail.querySelectorAll('.tag-list span').forEach((tag) => { if (!isTopicTag(tag.textContent)) tag.remove(); });
       const meta = document.createElement('div');
       meta.className = 'guide-topic-meta';
       const author = document.createElement('span');
       author.textContent = entry.row.querySelector('.guide-author').textContent;
       meta.append(author, entry.row.querySelector('time').cloneNode(true));
       article.append(detail, meta);
-      group.section.append(article);
+      section.append(article);
       group.entries.push({ entry, article });
     });
+    state.groups.set(key, group);
   });
   // Phones get the topics in a closed native box; wider readers see the open row (updateGuideTopicsLayout).
   const picker = document.createElement('details');
@@ -223,6 +237,15 @@ function buildGuideTopics(library, state) {
   state.picker = { name, count };
   topics.prepend(picker);
   updateGuideTopicsLayout();
+  // An article tag link (#/guides?id=<topic>) arrives before the sections exist, so Docsify cannot scroll to it.
+  const target = getRouteState().params.get('id');
+  const group = [...state.groups.values()].find(({ section }) => section.children[0].id === target);
+  if (group) showGuideTopic(group.section.children[0]);
+}
+
+function showGuideTopic(heading) {
+  heading.focus({ preventScroll: true });
+  heading.scrollIntoView({ block: 'start' });
 }
 
 function updateGuideTopicsLayout() {
@@ -311,6 +334,42 @@ function filterDownloads() {
     empty.hidden = visible !== 0;
     showFilterActions(empty);
   }
+}
+
+// Herramientas and Actualizaciones: the same page-scope filter and live count as Guías (title, summary, author and tags).
+function filterLibrary() {
+  const list = document.querySelector('.markdown-section .library-grid, .markdown-section .timeline');
+  const cards = list ? [...list.querySelectorAll('.library-card')] : [];
+  if (!cards.length) return;
+  const updates = list.matches('.timeline');
+  let count = document.querySelector('#library-count');
+  if (!count) {
+    count = document.createElement('p');
+    count.id = 'library-count';
+    count.className = 'result-count';
+    count.setAttribute('role', 'status');
+    count.setAttribute('aria-live', 'polite');
+    count.setAttribute('aria-atomic', 'true');
+    list.before(count);
+    const empty = document.createElement('p');
+    empty.className = 'library-empty';
+    empty.hidden = true;
+    empty.textContent = updates ? 'No hay actualizaciones que coincidan con este filtro.' : 'No hay herramientas que coincidan con este filtro.';
+    list.after(empty);
+  }
+  const query = normalize(searchScope === 'tool' || searchScope === 'update' ? document.querySelector('#athena-search-input')?.value || '' : '');
+  let visible = 0;
+  cards.forEach((card) => {
+    const item = card.closest('.timeline-post') || card;
+    const text = card.dataset.search || [...card.querySelectorAll('h2, h3, .post-summary, .post-meta, .tag-list')].map((node) => node.textContent).join(' ');
+    item.hidden = Boolean(query && !normalize(text).includes(query));
+    if (!item.hidden) visible += 1;
+  });
+  list.querySelectorAll('.timeline-month').forEach((month) => { month.hidden = !month.querySelector('.timeline-post:not([hidden])'); });
+  count.textContent = countLabel(visible, 'resultado', 'resultados');
+  const empty = list.nextElementSibling;
+  empty.hidden = visible !== 0;
+  showFilterActions(empty);
 }
 
 // A table wider than its box is a keyboard stop with a right-edge cue until the reader reaches its end.
@@ -693,11 +752,12 @@ function createSearchResult(entry, terms) {
   }
   const tail = document.createElement('p');
   tail.className = 'search-result__tail';
-  if (entry.tags.length) {
+  const chips = entry.tags.filter(isTopicTag);
+  if (chips.length) {
     const tags = document.createElement('span');
     tags.className = 'tag-list';
     tags.lang = 'es';
-    entry.tags.forEach((value) => {
+    chips.forEach((value) => {
       const tag = document.createElement('span');
       tag.textContent = value;
       tags.append(tag);
@@ -826,16 +886,26 @@ async function renderSearchPage() {
   }
 }
 
+// The page-scope chip and the field placeholder per filtered page; the scope is also the search type on submit.
+const SCOPE_LABELS = {
+  guide: ['En Guías', 'Filtrar guías'],
+  download: ['En Descargas', 'Filtrar descargas'],
+  tool: ['En Herramientas', 'Filtrar herramientas'],
+  update: ['En Actualizaciones', 'Filtrar actualizaciones']
+};
+
 function syncSearch() {
   const input = document.querySelector('#athena-search-input');
   const scope = document.querySelector('#search-scope');
   if (!input || !scope) return;
   const { path, params } = getRouteState();
-  const page = document.querySelector('.guide-library, #download-count');
+  const page = document.querySelector('.guide-library, #download-count, .markdown-section .library-grid, .markdown-section .timeline');
   // Docsify syncs before and after rendering, and again when the language changes.
   if (path !== searchPath || page !== searchPageNode) {
     searchScope = path === '/guides' && document.querySelector('.guide-library') ? 'guide'
-      : path === '/downloads' && document.querySelector('#download-count') ? 'download' : '';
+      : path === '/downloads' && document.querySelector('#download-count') ? 'download'
+        : path === '/tools' && document.querySelector('.library-grid .library-card') ? 'tool'
+          : path === '/updates' && document.querySelector('.timeline .library-card') ? 'update' : '';
     if (path !== '/search') input.value = '';
     searchPath = path;
     searchPageNode = page;
@@ -843,8 +913,9 @@ function syncSearch() {
   // Same value: no write, so the caret stays where the reader is typing.
   if (path === '/search' && input.value !== (params.get('q') || '')) input.value = params.get('q') || '';
   scope.hidden = !searchScope;
-  scope.querySelector('span').textContent = t(searchScope === 'guide' ? 'En Guías' : 'En Descargas');
-  input.placeholder = t(searchScope === 'guide' ? 'Filtrar guías' : searchScope === 'download' ? 'Filtrar descargas' : 'Buscar en Athena');
+  const [chip, placeholder] = SCOPE_LABELS[searchScope] || ['', 'Buscar en Athena'];
+  scope.querySelector('span').textContent = t(chip);
+  input.placeholder = t(placeholder);
   document.querySelector('#athena-search kbd').textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
 }
 
@@ -887,8 +958,10 @@ async function buildArticleMeta() {
   const heading = document.querySelector('.markdown-section h1');
   if (!route.startsWith('/content/') || !heading || document.querySelector('.unavailable-page')) return;
   let entry;
+  let index;
   try {
-    entry = (await loadSearchIndex()).find((item) => item.route === '#' + route);
+    index = await loadSearchIndex();
+    entry = index.find((item) => item.route === '#' + route);
   } catch {
     return;
   }
@@ -914,13 +987,17 @@ async function buildArticleMeta() {
     updated.append(label, ' ', date);
     meta.append(updated);
   }
-  if (entry.tags.length) {
+  const topicTags = entry.tags.filter(isTopicTag);
+  if (topicTags.length) {
+    // A guide tag that is a Guías section (some guide's first topic tag) opens that section; other tags search Athena.
+    const sections = new Set(entry.kind === 'guide' ? index.filter((item) => item.kind === 'guide')
+      .map((item) => normalize(item.tags.find(isTopicTag))) : []);
     const tags = document.createElement('span');
     tags.className = 'article-meta__tags';
     tags.lang = 'es';
-    entry.tags.forEach((tag) => {
+    topicTags.forEach((tag) => {
       const link = document.createElement('a');
-      link.href = buildSearchHash(tag, '');
+      link.href = sections.has(normalize(tag)) ? '#/guides?id=' + guideTopicId(normalize(tag)) : buildSearchHash(tag, '');
       // The link is the touch target; the chip inside it keeps the chip size.
       const chip = document.createElement('span');
       chip.textContent = tag;
@@ -936,7 +1013,7 @@ async function buildArticleMeta() {
 
 // The interface may be English; articles, their titles, excerpts and tags are Spanish.
 const SPANISH_CONTENT = '[data-article-title],.guide-title,.guide-summary,.guide-author,.guide-topic-meta>span,.guide-topic h2,'
-  + '.guide-topic-jumps a,.tag-list,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div';
+  + '.guide-topic-jumps a,.tag-list,.library-card>:is(h2,h3),.library-card>p:not([class]),.post-summary,.catalog-item>div';
 
 function markSpanishContent() {
   document.querySelectorAll(SPANISH_CONTENT).forEach((node) => { node.lang = 'es'; });
@@ -1341,6 +1418,7 @@ function syncView() {
   syncSearch();
   filterGuides();
   filterDownloads();
+  filterLibrary();
   buildPageTree();
   buildPdfViewer();
   buildHtmlArticle();
@@ -1465,6 +1543,7 @@ document.addEventListener('click', async (event) => {
     syncSearch();
     filterGuides();
     filterDownloads();
+    filterLibrary();
     document.querySelector('#athena-search-input').focus();
   }
   document.querySelectorAll('.crumb-collapse[open]').forEach((menu) => { if (!menu.contains(event.target)) menu.open = false; });
@@ -1476,8 +1555,7 @@ document.addEventListener('click', async (event) => {
       // The phone box closes after a jump, like the inline page tree.
       const picker = topicJump.closest('.guide-topic-picker');
       if (picker?.dataset.layout === 'box') picker.open = false;
-      heading.focus({ preventScroll: true });
-      heading.scrollIntoView({ block: 'start' });
+      showGuideTopic(heading);
     }
   }
   const pageTreeLink = event.target.closest('.page-tree a');
@@ -1539,6 +1617,7 @@ document.addEventListener('input', (event) => {
   if (!event.target.matches('#athena-search-input')) return;
   filterGuides();
   filterDownloads();
+  filterLibrary();
   if (getRouteState().path === '/search') {
     const type = document.querySelector('#athena-search-type')?.value || '';
     replaceSearchUrl(event.target.value, type);

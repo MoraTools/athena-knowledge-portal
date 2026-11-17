@@ -349,6 +349,12 @@ class Element {
     }
     return null;
   }
+  // Descendants by the tag of the last simple selector ('.tag-list span' finds every SPAN).
+  querySelectorAll(selector) {
+    const tag = selector.trim().split(/\s+/).at(-1).split(/[.[]/)[0].toUpperCase();
+    return this.childNodes.flatMap((child) => child.tagName ? [...(child.tagName === tag ? [child] : []), ...child.querySelectorAll(selector)] : []);
+  }
+  remove() { this.parentElement.childNodes = this.parentElement.childNodes.filter((node) => node !== this); }
   addEventListener(name, handler) { (this.listeners[name] ||= []).push(handler); }
   click() { (this.listeners.click || []).forEach((handler) => handler({ target: this })); }
 }
@@ -630,7 +636,8 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
   context.document.querySelector = (selector) => selector === '.markdown-section h1' ? title : null;
   context.fetch = async (url) => ({ ok: url === '/search-index.json', json: async () => [
     { route: '#/content/other', kind: 'tool', title: 'Other', author: 'X', date: '2026-01-01', tags: [] },
-    { route: '#/content/guide', kind: 'guide', title: 'Guide', author: 'Ana Pérez', date: '2026-11-15', tags: ['RPA', 'Colas'] }
+    { route: '#/content/guide', kind: 'guide', title: 'Guide', author: 'Ana Pérez', date: '2026-11-15', tags: ['primeros-pasos', 'RPA', 'Colas'] },
+    { route: '#/content/tool', kind: 'tool', title: 'Tool', author: 'X', date: '2026-01-01', tags: ['Colas'] }
   ] });
   vm.runInContext('searchIndexPromise = undefined', context);
   await context.buildArticleMeta();
@@ -647,8 +654,13 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
   const [label, , date] = updated.children;
   assert.equal(label.textContent, 'Actualizado');
   assert.equal(date.dateTime, '2026-11-15');
-  assert.deepEqual(tagLinks.children.map((link) => link.href), ['#/search?q=RPA', '#/search?q=Colas']);
-  assert.deepEqual(tagLinks.children.map((link) => link.children[0].textContent), ['RPA', 'Colas'], 'Each tag link holds its chip.');
+  // RPA is a guide's first topic tag, so a Guías section; no guide starts with Colas, so it searches Athena.
+  assert.deepEqual(tagLinks.children.map((link) => link.href), ['#/guides?id=guide-topic-rpa', '#/search?q=Colas']);
+  assert.deepEqual(tagLinks.children.map((link) => link.children[0].textContent), ['RPA', 'Colas'], 'Each tag link holds its chip; the placement tag is none.');
+  context.location.hash = '#/content/tool';
+  section.childNodes = [title];
+  await context.buildArticleMeta();
+  assert.deepEqual(section.children[1].children.at(-1).children.map((link) => link.href), ['#/search?q=Colas'], 'Other kinds keep the search link.');
   context.location.hash = '#/content/draft';
   section.childNodes = [title];
   await context.buildArticleMeta();
@@ -749,8 +761,8 @@ context.document.querySelector = (selector) => ({
 })[selector] || null;
 context.document.querySelectorAll = () => [];
 const entries = [
-  { title: 'Álvaro', author: 'Jeiser Vargas', summary: 'ZZ solución de problemas', date: '2026-01-02', tags: ['RPA', 'Café', 'CAFE', 'A|B <tema> "x"', 'Helios', 'Seguridad'] },
-  { title: 'Alvaro', author: 'Other author', summary: 'AA resumen', date: '2026-10-13', tags: ['RPA avanzado'] },
+  { title: 'Álvaro', author: 'Jeiser Vargas', summary: 'ZZ solución de problemas', date: '2026-01-02', tags: ['Primeros-Pasos', 'RPA', 'Café', 'CAFE', 'A|B <tema> "x"', 'Helios', 'Seguridad'] },
+  { title: 'Alvaro', author: 'Other author', summary: 'AA resumen', date: '2026-10-13', tags: ['café', 'RPA avanzado'] },
   { title: 'Sin tema', author: 'Another author', summary: 'Sin etiquetas', date: '2025-01-01', tags: [] },
   { title: 'Tema vacío', author: 'Another author', summary: 'Sin etiquetas útiles', date: '2026-01-03', tags: ['  '] }
 ];
@@ -763,20 +775,22 @@ assert.equal(guides.topics.hidden, false, 'Topics are the only view, with no sto
 assert.equal('view' in context.prepareGuideLibrary(guides.grid), false, 'The library no longer holds a view choice.');
 const topicSections = guides.topics.children.slice(1);
 const groupFor = (label) => topicSections.find((section) => section.children[0].textContent === label);
-assert.equal(topicSections.length, 7, 'Normalized duplicate tags share a group.');
-assert.equal(groupFor('Sin etiqueta').children.length, 3, 'Untagged and blank-tag guides remain available.');
-assert.equal(groupFor('CAFE').children.length, 2);
-assert.equal(groupFor('A|B <tema> "x"').children[0].textContent, 'A|B <tema> "x"', 'Odd tags are literal text, not HTML or delimiters.');
-assert.equal(new Set(topicSections.map((section) => section.children[0].id)).size, topicSections.length);
-assert.ok(topicSections.every((section) => /^guide-topic-\d+$/.test(section.children[0].id)), 'IDs do not depend on tag syntax.');
-assert.match(groupFor('Helios').children[1].textContent, /Seguridad/);
-const copiedDetail = groupFor('Helios').children[1].children[0];
+assert.deepEqual(topicSections.map((section) => section.children[0].textContent), ['café', 'RPA', 'Sin etiqueta'],
+  'One section per first topic tag, alphabetical with Spanish rules, Sin etiqueta last; the placement tag is no topic.');
+assert.deepEqual(topicSections.map((section) => section.children.length - 1), [1, 1, 2], 'Each guide is listed once, so the sections add up to the result count.');
+assert.deepEqual(topicSections.map((section) => section.children[0].id), ['guide-topic-cafe', 'guide-topic-rpa', 'guide-untagged'],
+  'Section ids come from the tag, so article tag links can name them.');
+assert.equal(vm.runInContext("guideTopicId(normalize('Plantilla  Básica'))", context), 'guide-topic-plantilla-basica');
+const copiedDetail = groupFor('RPA').children[1].children[0];
+const copiedTags = copiedDetail.querySelectorAll('.tag-list span').map((tag) => tag.textContent);
+assert.deepEqual(copiedTags, ['RPA', 'Café', 'CAFE', 'A|B <tema> "x"', 'Helios', 'Seguridad'], 'Other tags stay chips as literal text; the placement tag is no chip.');
+assert.equal(guides.rows[0].querySelectorAll('.tag-list span').length, 7, 'The hidden source record keeps every tag.');
 assert.deepEqual(copiedDetail.children.filter((child) => child.tagName === 'A').map((link) => link.getAttribute('href')),
   ['#/content/guide-0', '/pdf/guide-0.pdf', 'https://example.test/guide-0', '#/downloads'], 'Topic copies keep every rendered conditional action.');
 assert.match(copiedDetail.textContent, /Estable/);
 assert.notEqual(copiedDetail, guides.rows[0].children[0], 'Topic details are copies of the source record.');
-assert.equal(groupFor('Helios').children[1].children[1].children[0].textContent, entries[0].author);
-assert.equal(groupFor('Helios').children[1].children[1].children[1].getAttribute('datetime'), entries[0].date);
+assert.equal(groupFor('RPA').children[1].children[1].children[0].textContent, entries[0].author);
+assert.equal(groupFor('RPA').children[1].children[1].children[1].getAttribute('datetime'), entries[0].date);
 assert.deepEqual(groupFor('Sin etiqueta').children.slice(1).map((row) => row.children[0].children[0].textContent),
   entries.slice(2).map((entry) => entry.title), 'Topic rows retain the server order.');
 const firstCopies = topicSections.map((section) => [...section.children]);
@@ -794,12 +808,12 @@ context.document.activeElement = undefined;
 assert.equal(context.location.hash, '#/guides', 'With the page-scope chip, typing filters the page and stays on it.');
 assert.equal(guides.count.textContent, '1 resultado');
 assert.ok(groupFor('Sin etiqueta').children.slice(1).every((row) => row.hidden), 'A query hides every copy of unmatched guides.');
-assert.ok(['RPA', 'CAFE', 'Helios', 'Seguridad'].every((label) => !groupFor(label).children[1].hidden), 'A matching guide stays visible in each of its topics.');
+assert.ok(!groupFor('RPA').children[1].hidden && groupFor('café').hidden, 'A matching guide stays visible in its topic; a topic with no match hides.');
 const picker = guides.topics.children[0];
 assert.equal(picker.tagName, 'DETAILS', 'The topic row sits in a native box that phones show closed.');
 const jumps = picker.children[1];
-assert.equal(jumps.children.filter((jump) => !jump.hidden).length, 5, 'A matching guide keeps each of its topic jumps.');
-assert.equal(picker.children[0].textContent, 'Temas (5)', 'The box summary counts the visible topics.');
+assert.equal(jumps.children.filter((jump) => !jump.hidden).length, 1, 'Only topics with a matching guide keep their jump.');
+assert.equal(picker.children[0].textContent, 'Temas (1)', 'The box summary counts the visible topics.');
 assert.equal(jumps.children.find((jump) => jump.textContent.startsWith('RPA ')).children.at(-1).textContent, '1', 'A topic jump counts its visible guides.');
 const activeJump = jumps.children.find((jump) => !jump.hidden);
 const activeHeading = groupFor('RPA').children[0];
@@ -837,6 +851,20 @@ context.localStorage = {
   getItem(key) { storageCalls.push(['get', key]); return 'index'; },
   setItem(key, value) { storageCalls.push(['set', key, value]); }
 };
+// An article tag link arrives at #/guides?id=<topic>: the new section is focused and scrolled to, once.
+context.location.hash = '#/guides?id=guide-topic-rpa';
+guides = guidePage(entries);
+const arrivals = [];
+const createElement = context.document.createElement;
+context.document.createElement = (tag) => Object.assign(createElement(tag), {
+  focus(options) { arrivals.push([this.id, 'focus', options.preventScroll]); },
+  scrollIntoView(options) { arrivals.push([this.id, 'scroll', options.block]); }
+});
+context.syncView();
+context.syncView();
+context.document.createElement = createElement;
+assert.deepEqual(arrivals, [['guide-topic-rpa', 'focus', true], ['guide-topic-rpa', 'scroll', 'start']]);
+context.location.hash = '#/guides';
 guides = guidePage([entries[2]]);
 context.syncView();
 assert.equal(guides.count.textContent, '1 resultado');
