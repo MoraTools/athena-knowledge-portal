@@ -10,6 +10,7 @@ let searchRenderVersion = 0;
 let searchScope = '';
 let searchPageNode;
 let searchPath;
+let searchTyping;
 
 const normalize = (value) => String(value || '')
   .normalize('NFD')
@@ -578,17 +579,24 @@ function metadataMatchLabel(entry, terms) {
   return sources.length ? t('Coincidencia en:') + ' ' + sources.join(', ') : '';
 }
 
+// Matching uses the full text; the excerpt comes from the prose (no code, no paths in code) and shows only terms
+// that the title and summary do not already show. "Ir a" links a section other than the first.
 function findSnippet(entry, terms) {
-  const headingMatch = entry.headings
-    .map((heading) => ({ heading, score: matchStrength(heading.title + ' ' + heading.text, terms) }))
-    .sort((left, right) => right.score - left.score)[0];
-  const bodyScore = matchStrength(entry.text, terms);
-  if (bodyScore > (headingMatch?.score || 0)) return { text: excerptAround(entry.text, terms), heading: null, source: '' };
-  if (headingMatch?.score) {
-    const sectionText = [headingMatch.heading.title, headingMatch.heading.text].filter(Boolean).join('. ');
-    return { text: excerptAround(sectionText, terms), heading: headingMatch.heading, source: '' };
-  }
-  return { text: '', heading: null, source: metadataMatchLabel(entry, terms) };
+  const shown = normalize(entry.title + ' ' + entry.summary);
+  const rest = terms.filter((term) => !shown.includes(term));
+  if (!rest.length) return { text: '', heading: null, source: '' };
+  const prose = (heading) => [heading.title, heading.prose].filter(Boolean).join('. ');
+  const sections = entry.headings.map((heading) => ({
+    heading, prose: matchStrength(prose(heading), rest), text: matchStrength(heading.title + ' ' + heading.text, rest)
+  }));
+  const link = (heading) => (heading === entry.headings[0] ? null : heading);
+  const byProse = [...sections].sort((left, right) => right.prose - left.prose)[0];
+  if (matchStrength(entry.prose, rest) > (byProse?.prose || 0)) return { text: excerptAround(entry.prose, rest), heading: null, source: '' };
+  if (byProse?.prose) return { text: excerptAround(prose(byProse.heading), rest), heading: link(byProse.heading), source: '' };
+  // Only code matched: no excerpt, but the link still leads to that section.
+  const byText = [...sections].sort((left, right) => right.text - left.text)[0];
+  if (byText?.text) return { text: '', heading: link(byText.heading), source: '' };
+  return { text: '', heading: null, source: metadataMatchLabel(entry, rest) };
 }
 
 const accentPatterns = {
@@ -759,6 +767,7 @@ async function renderSearchPage() {
   const count = document.querySelector('#search-result-count');
   const typeSelect = document.querySelector('#athena-search-type');
   if (!results || !count || !typeSelect) return;
+  count.setAttribute('role', 'status');
 
   const version = ++searchRenderVersion;
   const { params } = getRouteState();
@@ -806,8 +815,13 @@ async function renderSearchPage() {
     retry.type = 'button';
     retry.className = 'account-button';
     retry.textContent = t('Reintentar');
-    // loadSearchIndex forgets a failed request, so this asks the server again.
-    retry.addEventListener('click', renderSearchPage);
+    // loadSearchIndex forgets a failed request, so this asks the server again. The button goes away, so keyboard
+    // focus moves to the result count, a status that announces the outcome.
+    retry.addEventListener('click', () => {
+      count.tabIndex = -1;
+      count.focus();
+      renderSearchPage();
+    });
     results.replaceChildren(createSearchState('No se pudo cargar la búsqueda', 'Revise la conexión e intente de nuevo.', retry));
   }
 }
@@ -826,7 +840,8 @@ function syncSearch() {
     searchPath = path;
     searchPageNode = page;
   }
-  if (path === '/search') input.value = params.get('q') || '';
+  // Same value: no write, so the caret stays where the reader is typing.
+  if (path === '/search' && input.value !== (params.get('q') || '')) input.value = params.get('q') || '';
   scope.hidden = !searchScope;
   scope.querySelector('span').textContent = t(searchScope === 'guide' ? 'En Guías' : 'En Descargas');
   input.placeholder = t(searchScope === 'guide' ? 'Filtrar guías' : searchScope === 'download' ? 'Filtrar descargas' : 'Buscar en Athena');
@@ -1521,15 +1536,23 @@ document.addEventListener('submit', (event) => {
 });
 
 document.addEventListener('input', (event) => {
-  if (event.target.matches('#athena-search-input')) {
-    filterGuides();
-    filterDownloads();
-  }
-  if (event.target.matches('#athena-search-input') && getRouteState().path === '/search') {
+  if (!event.target.matches('#athena-search-input')) return;
+  filterGuides();
+  filterDownloads();
+  if (getRouteState().path === '/search') {
     const type = document.querySelector('#athena-search-type')?.value || '';
     replaceSearchUrl(event.target.value, type);
     renderSearchPage();
+    return;
   }
+  // A pause in typing opens search (one history entry; later typing replaces it). A page-scope chip filters the page.
+  clearTimeout(searchTyping);
+  const input = event.target;
+  searchTyping = setTimeout(() => {
+    if (!searchScope && input.value.trim() && document.activeElement === input && getRouteState().path !== '/search') {
+      location.hash = buildSearchHash(input.value, '');
+    }
+  }, 250);
 });
 
 document.addEventListener('change', (event) => {

@@ -144,7 +144,9 @@ for (const entry of readerEntries.entries) {
   const prepared = context.prepareSearchEntry(entry);
   assert.equal(prepared.headings.map((heading) => heading.id).join(','), renderedIds.join(','), entry.markdown);
   const snippet = context.findSnippet(prepared, context.searchTerms('needle'));
-  assert.ok(snippet.heading && renderedIds.includes(snippet.heading.id), entry.markdown);
+  assert.match(snippet.text, /needle/, entry.markdown);
+  // The first section is the top of the article: no "Ir a" link to it.
+  assert.ok(snippet.heading ? renderedIds.includes(snippet.heading.id) && snippet.heading !== prepared.headings[0] : true, entry.markdown);
 }
 for (const page of readerEntries.pages) {
   const compiler = new context.window.DocsifyCompiler(context.window.$docsify, router);
@@ -179,7 +181,8 @@ const excerptEntry = context.prepareSearchEntry({
   author: 'Test',
   tags: ['Solución de problemas'],
   text: 'de ' + filler + 'problemas importantes y solución comprobada',
-  headings: [{ level: 2, title: 'Introducción', text: 'de ' + filler }]
+  prose: 'de ' + filler + 'problemas importantes y solución comprobada',
+  headings: [{ level: 2, title: 'Introducción', text: 'de ' + filler, prose: 'de ' + filler }]
 });
 const excerpt = context.findSnippet(excerptEntry, context.searchTerms('Solución de problemas'));
 assert.match(fold(excerpt.text), /problemas/);
@@ -192,10 +195,30 @@ const headingEntry = context.prepareSearchEntry({
   author: 'Test',
   tags: ['Solución de problemas'],
   text: 'de detalles adicionales',
-  headings: [{ level: 2, title: 'Solución', text: 'de detalles adicionales' }]
+  prose: 'de detalles adicionales',
+  headings: [{ level: 2, title: 'Solución', text: 'de detalles adicionales', prose: 'de detalles adicionales' }]
 });
 const headingExcerpt = context.findSnippet(headingEntry, context.searchTerms('Solución de problemas'));
 assert.match(fold(headingExcerpt.text), /solucion/);
+
+// Code and paths are never the excerpt: a match only in code links its section with no excerpt line.
+const codeEntry = context.prepareSearchEntry({
+  kind: 'guide', title: 'Lectura de archivos', summary: 'Pasos para leer archivos', author: 'Test', tags: [],
+  text: 'Abra el proceso. Guarde la evidencia en evidencias/excel-1 y revise. $ruta = "C:\\Bots\\excel"',
+  prose: 'Abra el proceso. Guarde la evidencia en … y revise.',
+  headings: [
+    { level: 2, title: 'Antes de empezar', text: 'Abra el proceso.', prose: 'Abra el proceso.' },
+    { level: 2, title: 'Pasos', text: 'Guarde la evidencia en evidencias/excel-1 y revise. $ruta = "C:\\Bots\\excel"', prose: 'Guarde la evidencia en … y revise.' }
+  ]
+});
+const codeOnly = context.findSnippet(codeEntry, context.searchTerms('excel'));
+assert.equal(codeOnly.text, '', 'A match only in code shows no excerpt.');
+assert.equal(codeOnly.heading.title, 'Pasos');
+const prosePick = context.findSnippet(codeEntry, context.searchTerms('evidencia'));
+assert.equal(prosePick.text, 'Pasos. Guarde la evidencia en … y revise.', 'The excerpt is the prose of the matched section.');
+assert.equal(context.findSnippet(codeEntry, context.searchTerms('abra')).heading, null, 'The first section gets no "Ir a" link.');
+const shownOnly = context.findSnippet(codeEntry, context.searchTerms('archivos'));
+assert.deepEqual([shownOnly.text, shownOnly.heading, shownOnly.source], ['', null, ''], 'Terms the title and summary show need no excerpt.');
 
 const metadataEntry = context.prepareSearchEntry({
   kind: 'guide',
@@ -239,6 +262,23 @@ assert.equal(returnTarget(), '/#/search?q=new+query+%26+caf%C3%A9&type=guide');
 input.value = 'submitted';
 handlers.submit({ preventDefault() {}, target: { matches: () => true, querySelector: () => input } });
 assert.equal(returnTarget(), '/#/search?q=submitted&type=guide');
+
+// A pause in typing on another page opens search with the typed words, while the field keeps focus.
+const typingTimers = [];
+context.setTimeout = (callback, delay) => typingTimers.push([callback, delay]);
+context.location.hash = '#/content/example';
+input.value = 'typed words';
+handlers.input({ target: input });
+context.document.activeElement = null;
+typingTimers[0][0]();
+assert.equal(context.location.hash, '#/content/example', 'Typing that lost focus does not change the page.');
+context.document.activeElement = input;
+handlers.input({ target: input });
+assert.equal(typingTimers[1][1], 250);
+typingTimers[1][0]();
+assert.equal(context.location.hash, '#/search?q=typed+words');
+context.setTimeout = () => {};
+context.document.activeElement = undefined;
 
 if (process.argv.includes('--reader-integration')) {
   const schema = JSON.parse(readFileSync(new URL('../server/openapi.json', import.meta.url), 'utf8'));
@@ -744,7 +784,14 @@ context.syncView();
 context.syncView();
 topicSections.forEach((section, i) => assert.deepEqual(section.children, firstCopies[i], 'Repeated Docsify sync keeps the same groups and rows.'));
 guides.query.value = ' SOLUCION ';
+const scopedTimers = [];
+context.setTimeout = (callback) => scopedTimers.push(callback);
+context.document.activeElement = guides.query;
 handlers.input({ target: guides.query });
+scopedTimers.forEach((callback) => callback());
+context.setTimeout = () => {};
+context.document.activeElement = undefined;
+assert.equal(context.location.hash, '#/guides', 'With the page-scope chip, typing filters the page and stays on it.');
 assert.equal(guides.count.textContent, '1 resultado');
 assert.ok(groupFor('Sin etiqueta').children.slice(1).every((row) => row.hidden), 'A query hides every copy of unmatched guides.');
 assert.ok(['RPA', 'CAFE', 'Helios', 'Seguridad'].every((label) => !groupFor(label).children[1].hidden), 'A matching guide stays visible in each of its topics.');
