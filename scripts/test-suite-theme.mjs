@@ -66,6 +66,10 @@ for (const path of ['src/index.html', 'src/request-access.html', 'server/athena/
   assert.equal((source.match(/data-suite-toggle=/g) || []).length, 2, path + ': exactly two toggles');
   assert(!/<script(?![^>]*\bsrc=)[^>]*>\s*\S/.test(source), path + ': external scripts only');
 }
+// Account pages: one wordmark. With the rail (signed in) the rail lockup is the wordmark; the page header shows only without it.
+assert.match(read('server/athena/templates/base.html'), /\{% if not user\.is_authenticated %\}<header class="account-header">/);
+// The password page command bar is a reader command bar: on a phone it has the reader's 16 px side padding (accounts.css loads later).
+assert.match(read('src/styles.css'), /@media\(max-width:760px\)\{[^@]*\.account-command\.reader-command\{padding:var\(--s-2\) var\(--space-2\)\}/);
 // The admin head: boot.js and the suite tokens replace Django's dark_mode.css and theme.js; the suite scripts end the body.
 const adminBase = read('server/athena/templates/admin/base_site.html');
 assert(/\{% block dark-mode-vars %\}<script src="\/assets\/boot\.js"><\/script>.*suite-tokens\.css.*\{% endblock %\}/.test(adminBase), 'admin: boot.js and tokens in the first head block');

@@ -247,6 +247,44 @@ const metadata = context.findSnippet(metadataEntry, context.searchTerms('Especia
 assert.equal(metadata.text, '');
 assert.equal(metadata.source, 'Coincidencia en: etiqueta');
 
+// Round 4 #10: the excerpt never joins two text blocks (each "\n" line of the index prose is one block).
+const blockEntry = context.prepareSearchEntry({ kind: 'guide', title: 'Bloques', summary: 'Resumen', author: 'Test', tags: [], text: '',
+  prose: 'Primer bloque sin el término.\nSegundo bloque con aguja en medio.\nTercer bloque aparte.', headings: [] });
+assert.equal(context.findSnippet(blockEntry, context.searchTerms('aguja')).text, 'Segundo bloque con aguja en medio.',
+  'The excerpt is the block that holds the match, not its neighbours.');
+// Round 4 #10, contract 2: an HTML article's sections keep the element ids of the index; "Ir a" only for a later section.
+const htmlEntry = context.prepareSearchEntry({ kind: 'guide', route: '#/content/demos', title: 'Demos', summary: 'Resumen', author: 'Test', tags: [],
+  text: 'Inicio de la página. Lee la cola de cuotas vencidas.', prose: 'Inicio de la página.\nLee la cola de cuotas vencidas.',
+  headings: [{ level: 2, raw: 'Inicio', title: 'Inicio', text: 'Inicio de la página.', prose: 'Inicio de la página.', id: 'inicio' },
+    { level: 3, raw: 'Cobranzas automáticas', title: 'Cobranzas automáticas', text: 'Lee la cola de cuotas vencidas.', prose: 'Lee la cola de cuotas vencidas.', id: 'demo-cobranzas' }] });
+assert.deepEqual(htmlEntry.headings.map((heading) => heading.id), ['inicio', 'demo-cobranzas'], 'HTML sections keep their element ids.');
+const htmlSnippet = context.findSnippet(htmlEntry, context.searchTerms('vencidas'));
+assert.deepEqual([htmlSnippet.heading?.id, htmlSnippet.text], ['demo-cobranzas', 'Cobranzas automáticas. Lee la cola de cuotas vencidas.']);
+assert.equal(context.findSnippet(htmlEntry, context.searchTerms('pagina')).heading, null, 'The first section gets no "Ir a" link.');
+// A route to a frame section (#/content/demos?id=<id>) scrolls to it and focuses it once the frame reports its outline
+// and its height, in either order (the bridge can send the outline first, while the page is still too short to scroll).
+{
+  const posted = [];
+  const scrolls = [];
+  const classes = new Set();
+  vm.runInContext('htmlFrame = { isConnected: true, style: {}, classList: frameClasses, getBoundingClientRect: () => ({ top: 300 }), contentWindow: { postMessage: (data) => postedFrame.push(data) } }',
+    Object.assign(context, { postedFrame: posted, frameClasses: { add: (name) => classes.add(name), contains: (name) => classes.has(name) } }));
+  Object.assign(context.window, { scrollY: 0, scrollTo: (options) => scrolls.push(options.top) });
+  context.requestAnimationFrame = () => 0;
+  context.location.hash = '#/content/demos?id=demo-cobranzas';
+  const outline = [{ id: 'inicio', text: 'Inicio', level: 1, top: 40 }, { id: 'demo-cobranzas', text: 'Cobranzas automáticas', level: 2, top: 900 }];
+  context.updateHtmlOutline(outline);
+  assert.equal(scrolls.length, 0, 'No scroll before the frame has its height.');
+  const frame = vm.runInContext('htmlFrame', context);
+  for (const value of [2400, 2600]) context.handleHtmlFrameMessage({ source: frame.contentWindow, data: { type: 'athena:height', value } });
+  context.updateHtmlOutline(outline);
+  assert.deepEqual(JSON.parse(JSON.stringify([scrolls, posted.filter(({ type }) => type === 'athena:focus')])), [[1200 - 16], [{ type: 'athena:focus', value: 'demo-cobranzas' }]],
+    'The section shows below the command bar and takes focus, once.');
+  vm.runInContext('htmlFrame = null; htmlOutline = []; htmlViewportPending = false', context);
+  delete context.requestAnimationFrame;
+  context.location.hash = '#/';
+}
+
 // One copy flow for page, link and code: copied state, the status line, the accessible name, then back after 2 s.
 {
   const status = { textContent: '' };
@@ -707,6 +745,75 @@ assert.match(readerCss, /:is\(\.article-meta,\.search-result__meta,\.item-meta\)
 // Round 4 #31: Herramientas card titles in the Inter row voice; underline on hover and focus only.
 assert.match(readerCss, /\.markdown-section \.library-card h2\{margin:0;font:650 18px\/24px var\(--font-ui\)\}/);
 assert.match(readerCss, /\.markdown-section :is\(\.timeline-card,\.library-card\) :is\(h2,h3\) a\{color:var\(--text\);text-decoration:none\}/);
+// Round 4 #37: no results offer the rail sections in rail order and, under a type, the same words in all of Athena.
+{
+  const createElement = context.document.createElement;
+  const querySelector = context.document.querySelector;
+  context.document.createElement = (tag) => new Element(tag);
+  context.document.querySelector = (selector) => (selector === '.rail-nav a[href="#/downloads"]' ? {} : null);
+  const links = (state) => state.children.at(-1).children.map((link) => [link.textContent, link.href]);
+  assert.deepEqual(links(context.noResultsState('zzz', '')), [['Guías', '#/guides'], ['Actualizaciones', '#/updates'], ['Herramientas', '#/tools'], ['Descargas', '#/downloads']]);
+  assert.deepEqual(links(context.noResultsState('zzz', 'pdf'))[0], ['Buscar en todo Athena', '#/search?q=zzz'], 'A type filter can be cleared in one step.');
+  context.document.querySelector = () => null;
+  assert.ok(!links(context.noResultsState('zzz', '')).some(([, href]) => href === '#/downloads'), 'Descargas only where the rail offers it.');
+  Object.assign(context.document, { createElement, querySelector });
+  assert.match(readerCss, /\.markdown-section :is\(\.post-summary,\.library-card>p:not\(\[class\]\)\)\{max-width:70ch\}/);
+}
+// Round 4 #38: a code copy button names its language ("Copiar código python"); the visible word stays first.
+{
+  const createElement = context.document.createElement;
+  const querySelectorAll = context.document.querySelectorAll;
+  context.document.createElement = (tag) => new Element(tag);
+  const pre = new Element('pre');
+  pre.dataset.lang = 'python';
+  pre.before = () => {};
+  const plain = new Element('pre');
+  plain.before = () => {};
+  context.document.querySelectorAll = (selector) => (selector === '.markdown-section pre:not(.code-block > pre)' ? [pre, plain] : []);
+  context.buildCodeCopy();
+  const names = [pre, plain].map((block) => block.parentElement.children[0].children.at(-1).getAttribute('aria-label'));
+  assert.deepEqual(names, ['Copiar código python', 'Copiar código']);
+  Object.assign(context.document, { createElement, querySelectorAll });
+}
+// Round 4 #38: file sizes follow the interface number format (the server writes the bytes in <data value>).
+{
+  const sizes = [426, 9011, 1153434].map((value) => ({ value: String(value), textContent: '' }));
+  const querySelectorAll = context.document.querySelectorAll;
+  context.document.querySelectorAll = (selector) => (selector === '.markdown-section data.file-size' ? sizes : []);
+  context.document.documentElement.lang = 'en';
+  context.formatFileSizes();
+  assert.deepEqual(sizes.map((size) => size.textContent), ['426 bytes', '8.8 KB', '1.1 MB']);
+  context.document.documentElement.lang = 'es';
+  context.formatFileSizes();
+  assert.deepEqual(sizes.map((size) => size.textContent), ['426 bytes', '8,8 KB', '1,1 MB']);
+  delete context.document.documentElement.lang;
+  context.document.querySelectorAll = querySelectorAll;
+}
+// Round 4 #40: on a wide reader the actions are the first child of the article, before the h1, so Tab follows the drawn order.
+{
+  const heading = { tagName: 'H1', parentElement: null };
+  const meta = { matches: (selector) => selector.includes('.article-meta') };
+  heading.nextElementSibling = meta;
+  const actions = {};
+  const article = { firstElementChild: heading, querySelector: (selector) => ({ h1: heading, ':scope > .article-actions': actions })[selector] || null,
+    prepend(node) { this.firstElementChild = node; } };
+  heading.parentElement = article;
+  const main = { clientWidth: 1200 };
+  const querySelector = context.document.querySelector;
+  context.document.querySelector = (selector) => ({ '.markdown-section': article, 'div#main': main })[selector] || null;
+  const getComputedStyle = context.getComputedStyle;
+  context.getComputedStyle = () => ({ paddingLeft: '0px', getPropertyValue: () => '' });
+  context.placeArticleHead();
+  assert.equal(article.firstElementChild, actions, 'Wide reader: the actions come before the h1 in the DOM.');
+  let after;
+  meta.after = (node) => { after = node; };
+  meta.nextElementSibling = null;
+  main.clientWidth = 600;
+  context.placeArticleHead();
+  assert.equal(after, actions, 'Narrow reader: the actions follow the title and meta line, where they are drawn.');
+  Object.assign(context, { getComputedStyle });
+  context.document.querySelector = querySelector;
+}
 // Round 4 #29: short inline code stays on one line; a value over 40 characters may wrap anywhere.
 {
   const codes = ['run-tests', 'x'.repeat(41), 'y'.repeat(40)].map((text) => ({ textContent: text, classes: new Set(),
@@ -773,7 +880,15 @@ context.document.activeElement = buttons[0];
 buttons[0].click();
 assert.equal(order(), '1,2,3,0', 'Explicit names ignore other cell metadata and use Spanish, accent-insensitive and numeric-aware comparison.');
 assert.equal(columns[0].getAttribute('aria-sort'), 'ascending');
-assert.match(buttons[0].getAttribute('aria-label'), /descendente$/);
+// Round 4 #38: the sort name is built from its parts: the interface words in the interface language, the column name in Spanish.
+const sortName = (button) => button.children.filter((node) => node.getAttribute?.('aria-hidden') !== 'true').map((node) => node.textContent).join('');
+assert.equal(buttons[0].getAttribute('aria-label'), null, 'No aria-label that mixes two languages.');
+assert.equal(sortName(buttons[0]), 'Ordenar ' + buttons[0].children[1].textContent + ' en orden descendente');
+context.document.documentElement.lang = 'en';
+context.setSortName(buttons[0], false);
+assert.deepEqual(buttons[0].children.slice(0, 3).map((node) => node.lang), ['en', 'es', 'en']);
+delete context.document.documentElement.lang;
+context.setSortName(buttons[0], true);
 assert.equal(context.document.activeElement, buttons[0], 'Moving body rows preserves header focus.');
 context.syncView();
 buttons[0].click();

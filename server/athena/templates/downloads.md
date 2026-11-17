@@ -13,7 +13,7 @@ Archivos aprobados. Solo para usuarios de Athena.
 {% endif %}{% if key == 'previous' %}<details class="download-archive"><summary><span class="archive-closed">Mostrar {{ items|length }} archivo{{ items|length|pluralize }}</span><span class="archive-open">Ocultar archivos</span></summary>
 {% endif %}<div class="catalog-list">
 {% for item in items %}<article class="catalog-item" id="download-file-{{ item.slug }}" data-search="{{ item.title }} {{ item.filename }} {{ label }} {{ item.note }}">
-<div><strong>{{ item.title }}</strong><small>{{ item.size|filesizeformat }} · <time datetime="{{ item.created_at|date:'Y-m-d' }}">{{ item.created_at|date:'Y-m-d' }}</time></small><code>{{ item.filename }}</code>{% if item.note %}<p>{{ item.note }}</p>{% endif %}</div>
+<div><strong>{{ item.title }}</strong><small><data class="file-size" value="{{ item.size }}">{{ item.size|filesizeformat }}</data> · <time datetime="{{ item.created_at|date:'Y-m-d' }}">{{ item.created_at|date:'Y-m-d' }}</time></small><code>{{ item.filename }}</code>{% if item.note %}<p>{{ item.note }}</p>{% endif %}</div>
 {% if item.pk == current_pk %}<p class="post-actions"><span class="status">Versión actual</span><a class="download-link" href="/downloads/{{ item.slug }}" download>Descargar<span class="visually-hidden" lang="es"> {{ item.title }}</span></a></p>{% else %}<a class="account-button" href="/downloads/{{ item.slug }}" download>Descargar<span class="visually-hidden" lang="es"> {{ item.title }}</span></a>{% endif %}
 </article>
 {% endfor %}</div>{% if key == 'previous' %}

@@ -314,6 +314,7 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 /* Update titles use the h3 voice and are the link to the post (DESIGN.md: Cormorant is for page titles). */
 .markdown-section .timeline-card :is(h2,h3){margin:0;font:650 18px/var(--title-lh) var(--font-ui)}
 .timeline-card .post-summary{margin:var(--space-1) 0 0;font-size:16px;line-height:1.5}
+.markdown-section :is(.post-summary,.library-card>p:not([class])){max-width:70ch}
 .markdown-section :is(.timeline-card,.library-card) :is(h2,h3) a{color:var(--text);text-decoration:none}
 .markdown-section :is(.timeline-card,.library-card) :is(h2,h3) a:is(:hover,:focus-visible){color:var(--accent-text);text-decoration:underline}
 .post-actions{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:var(--space-2) 0 0}
@@ -423,6 +424,8 @@ ol.command-crumbs>li+li::before{content:"›";content:"›" / "";color:var(--tex
 html{scroll-padding-top:68px}
 @media(max-width:760px){
   .reader-command{height:auto;min-height:113px;flex-wrap:wrap;gap:var(--s-2);padding:var(--s-2) var(--space-2)}
+  /* The password page bar is also .account-command, whose 24 px padding (accounts.css) loads after this file. */
+  .account-command.reader-command{padding:var(--s-2) var(--space-2)}
   .reader-command .command-lead{flex:1 1 0;min-width:0}
   .command-crumbs{display:none}
   .reader-command .access-label{display:none!important}

@@ -1591,7 +1591,7 @@ class ReaderPageTests(TestCase):
         self.assertIn(f'<a class="account-button" href="/downloads/{package.slug}" download>Descargar{hidden.format(package.title)}</a>', page)
         self.assertEqual(page.count('class="download-link"'), 1)  # One gold primary: only the current Framework file.
         self.assertEqual(page.count('Versión actual'), 1)  # Only Framework has a rule for "current".
-        self.assertIn(f'<small>1\xa0byte · <time datetime="{timezone.localdate(current.created_at).isoformat()}">', page)
+        self.assertIn(f'<small><data class="file-size" value="1">1\xa0byte</data> · <time datetime="{timezone.localdate(current.created_at).isoformat()}">', page)
         self.assertIn(current.filename, self.client.get('/downloads/framework/latest')['Content-Disposition'])
 
     def test_search_text_drops_fences_escapes_and_controls(self):

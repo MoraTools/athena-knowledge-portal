@@ -2,7 +2,6 @@ const t = (text) => window.AthenaI18n?.t(text) || text;
 const currentLang = () => document.documentElement.lang || 'es';
 const countLabel = (count, single, plural) => new Intl.NumberFormat(currentLang()).format(count) + ' ' + t(count === 1 ? single : plural);
 const formatDate = (value) => new Intl.DateTimeFormat(currentLang(), { dateStyle: 'medium' }).format(new Date(value + 'T12:00:00'));
-const sortLabel = (label, descending = false) => t('Ordenar') + ' ' + t(label) + ' ' + t('en orden') + ' ' + t(descending ? 'descendente' : 'ascendente');
 
 let pageTreeItems = [];
 let searchIndexPromise;
@@ -458,13 +457,17 @@ function buildTableSorting() {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'table-sort';
-      button.setAttribute('aria-label', sortLabel(label));
+      const before = document.createElement('span');
       const text = document.createElement('span');
+      text.lang = 'es';
       text.append(...header.childNodes);
+      const after = document.createElement('span');
+      before.className = after.className = 'visually-hidden';
       const indicator = document.createElement('span');
       indicator.className = 'table-sort-direction';
       indicator.setAttribute('aria-hidden', 'true');
-      button.append(text, indicator);
+      button.append(before, text, after, indicator);
+      setSortName(button);
       header.append(button);
       button.addEventListener('click', () => {
         const descending = header.getAttribute('aria-sort') === 'ascending';
@@ -484,13 +487,22 @@ function buildTableSorting() {
           .forEach(({ row }) => body.append(row));
         headers.forEach((other) => {
           other.setAttribute('aria-sort', 'none');
-          other.querySelector('button').setAttribute('aria-label', sortLabel(other.querySelector('button').textContent.trim()));
+          setSortName(other.querySelector('button'));
         });
         header.setAttribute('aria-sort', descending ? 'descending' : 'ascending');
-        button.setAttribute('aria-label', sortLabel(label, !descending));
+        setSortName(button, !descending);
       });
     });
   });
+}
+
+// A sort button is named "Ordenar <column> en orden ascendente" from its own parts: the interface words in the interface
+// language, the column name (article text) in Spanish, so a screen reader speaks each part in its language.
+function setSortName(button, descending = false) {
+  const [before, , after] = button.children;
+  before.lang = after.lang = currentLang();
+  before.textContent = t('Ordenar') + ' ';
+  after.textContent = ' ' + t('en orden') + ' ' + t(descending ? 'descendente' : 'ascendente');
 }
 
 let railPromise;
@@ -568,7 +580,9 @@ function docsifyHeadingIds(pageTitle, headings) {
 }
 
 function prepareSearchEntry(entry) {
-  const headings = docsifyHeadingIds(entry.title, Array.isArray(entry.headings) ? entry.headings : []);
+  const raw = Array.isArray(entry.headings) ? entry.headings : [];
+  // An HTML article's sections carry their element ids (h2[id], h3[id] in its frame); Markdown ids are Docsify's slugs.
+  const headings = raw.length && raw.every((heading) => heading.id) ? raw : docsifyHeadingIds(entry.title, raw);
   const tags = Array.isArray(entry.tags) ? entry.tags.filter(Boolean).map(String) : [];
   const prepared = { ...entry, headings, tags };
   prepared._title = normalize(entry.title);
@@ -633,7 +647,9 @@ function scoreSearchEntry(entry, terms, query) {
 }
 
 function excerptAround(text, terms) {
-  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  // Each "\n" line of the index prose is one text block (a paragraph, list item or card): the excerpt never joins two.
+  const blocks = String(text || '').split('\n').map((block) => block.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const clean = blocks.reduce((best, block) => (matchStrength(block, terms) > matchStrength(best, terms) ? block : best), blocks[0] || '');
   if (!clean) return '';
   const folded = normalize(clean);
   const pivotTerm = [...terms]
@@ -838,6 +854,16 @@ function createSearchResult(entry, terms) {
   return article;
 }
 
+// No results: under a type, the same words in all of Athena first; then the rail sections in rail order.
+function noResultsState(query, type) {
+  // Descargas only where the rail offers it (signed-in readers).
+  const sections = [['Guías', '#/guides'], ['Actualizaciones', '#/updates'], ['Herramientas', '#/tools'], ['Descargas', '#/downloads']]
+    .filter(([, href]) => href !== '#/downloads' || document.querySelector('.rail-nav a[href="#/downloads"]'));
+  if (type) sections.unshift(['Buscar en todo Athena', buildSearchHash(query, '')]);
+  return createSearchState('Sin resultados', 'Pruebe menos palabras, cambie el tipo de contenido o revise la escritura.',
+    ...sections.map(([label, href]) => stateLink(label, href)));
+}
+
 async function renderSearchPage() {
   const results = document.querySelector('#search-results');
   const count = document.querySelector('#search-result-count');
@@ -874,11 +900,7 @@ async function renderSearchPage() {
 
     count.textContent = countLabel(matches.length, 'resultado', 'resultados');
     if (!matches.length) {
-      // Descargas only where the rail offers it (signed-in readers).
-      const sections = [['Guías', '#/guides'], ['Herramientas', '#/tools'], ['Descargas', '#/downloads']]
-        .filter(([, href]) => href !== '#/downloads' || document.querySelector('.rail-nav a[href="#/downloads"]'));
-      results.replaceChildren(createSearchState('Sin resultados', 'Pruebe menos palabras, cambie el tipo de contenido o revise la escritura.',
-        ...sections.map(([label, href]) => stateLink(label, href))));
+      results.replaceChildren(noResultsState(query, type));
       return;
     }
     const fragment = document.createDocumentFragment();
@@ -1060,6 +1082,7 @@ function markSpanishContent() {
 let htmlFrame = null;
 let htmlViewportPending = false;
 let htmlOutline = [];
+let htmlOutlineTarget;
 
 // The frame's headings for the page tree, from athena:outline. Text only; invalid items are dropped.
 const OUTLINE_ID = /^[A-Za-z][\w:.-]{0,127}$/;
@@ -1082,6 +1105,18 @@ function updateHtmlOutline(items) {
   // New tops alone move only the current link; new headings or text rebuild the tree.
   if (sameTree && (!next.length || document.querySelector('.page-tree'))) updatePageTreeCurrent();
   else buildPageTree();
+  showHtmlSection();
+}
+
+// A section route (#/content/<slug>?id=<id>, the search "Ir a" link) shows that frame heading once, when both its
+// outline and the frame height have arrived (the bridge can send the outline first; a short page cannot scroll).
+function showHtmlSection() {
+  const target = htmlOutline.find((item) => item.id === getRouteState().params.get('id'));
+  if (target && htmlFrame?.classList.contains('is-ready') && htmlOutlineTarget !== location.hash) {
+    htmlOutlineTarget = location.hash;
+    scrollReaderTo(htmlFrame.getBoundingClientRect().top + target.top);
+    sendHtmlFrame('athena:focus', target.id);
+  }
 }
 
 // Puts a point given relative to the viewport just below the command bar, as in-page links do.
@@ -1408,6 +1443,7 @@ function handleHtmlFrameMessage(event) {
     frame.style.height = Math.min(Math.ceil(value), 100000) + 'px';
     frame.classList.add('is-ready');
     queueHtmlViewport();
+    showHtmlSection();
   } else if (type === 'athena:ready' || type === 'athena:viewport-request') {
     syncHtmlFrame();
     if (type === 'athena:ready') watchHtmlStatus(frame);
@@ -1486,6 +1522,20 @@ function buildPermalinkCopy() {
   link.after(' ', button);
 }
 
+// "Copiar código python": the language tells the blocks apart in a list of buttons; the visible word comes first.
+const codeCopyName = (button) => t('Copiar código') + (button.dataset.lang ? ' ' + button.dataset.lang : '');
+
+// The server writes file sizes as <data class="file-size" value="<bytes>"> (downloads.md); they follow the interface
+// number format, like the dates. Units as Django's filesizeformat: 1024 per step.
+function formatFileSizes() {
+  document.querySelectorAll('.markdown-section data.file-size').forEach((node) => {
+    const bytes = Number(node.value);
+    const power = bytes < 1024 ? 0 : Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 4);
+    const value = new Intl.NumberFormat(currentLang(), { maximumFractionDigits: 1 }).format(power ? Math.round(bytes / 1024 ** power * 10) / 10 : bytes);
+    node.textContent = value + ' ' + (power ? ['KB', 'MB', 'GB', 'TB'][power - 1] : t(bytes === 1 ? 'byte' : 'bytes'));
+  });
+}
+
 // Each code block gets a head row with its language and a 'Copiar' button; the block keeps its own scroll.
 function buildCodeCopy() {
   document.querySelectorAll('.markdown-section pre:not(.code-block > pre)').forEach((pre) => {
@@ -1502,7 +1552,8 @@ function buildCodeCopy() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'copy-page code-copy';
-    button.setAttribute('aria-label', t('Copiar código'));
+    button.dataset.lang = pre.dataset.lang || '';
+    button.setAttribute('aria-label', codeCopyName(button));
     button.innerHTML = COPY_ICONS;
     const label = document.createElement('span');
     label.textContent = t('Copiar');
@@ -1534,6 +1585,7 @@ function syncView() {
   labelArticleActions();
   markLongCode();
   buildFigureZoom();
+  formatFileSizes();
   buildCodeCopy();
   buildPermalinkCopy();
   placeArticleHead();
@@ -1816,12 +1868,10 @@ document.addEventListener('suite:theme', () => {
 document.addEventListener('suite:lang', () => {
   sendHtmlFrame('athena:lang', currentLang());
   syncView();
-  document.querySelectorAll('.table-sort').forEach((button) => {
-    button.setAttribute('aria-label', sortLabel(button.textContent.trim(), button.closest('th').getAttribute('aria-sort') === 'ascending'));
-  });
+  document.querySelectorAll('.table-sort').forEach((button) => setSortName(button, button.closest('th').getAttribute('aria-sort') === 'ascending'));
   // The translator leaves article bodies alone, so the code buttons relabel themselves.
   document.querySelectorAll('.code-copy:not(.copied)').forEach((button) => {
-    button.setAttribute('aria-label', t('Copiar código'));
+    button.setAttribute('aria-label', codeCopyName(button));
     button.querySelector('span').textContent = t('Copiar');
   });
 });
