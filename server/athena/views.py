@@ -190,28 +190,44 @@ class HtmlText(HTMLParser):
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.parts, self.skip = [], None  # skip: [tag that opened the skipped part, its open count]
+        # skips: open skipped elements as [tag, its open count, text and spacing held since it opened].
+        self.parts, self.skips = [], []
+
+    def out(self):
+        return self.skips[-1][2] if self.skips else self.parts
+
+    def release(self, depth):
+        # A skipped element that never closes hides nothing: its held text goes back in place.
+        while len(self.skips) > depth:
+            held = self.skips.pop()[2]
+            self.out().extend(held)
 
     def handle_starttag(self, tag, attrs):
-        if self.skip:
-            self.skip[1] += tag == self.skip[0]
-        elif tag not in self.VOID and (tag in self.SKIP or ('aria-hidden', 'true') in attrs):
-            self.skip = [tag, 1]
-        elif tag not in self.INLINE:
-            self.parts.append(' ')
+        if tag not in self.VOID and (tag in self.SKIP or ('aria-hidden', 'true') in attrs):
+            self.skips.append([tag, 1, []])
+            return
+        if self.skips and tag == self.skips[-1][0]:
+            self.skips[-1][1] += 1
+        if tag not in self.INLINE:
+            self.out().append(' ')
 
     def handle_endtag(self, tag):
-        if self.skip:
-            if tag == self.skip[0]:
-                self.skip[1] -= 1
-                if not self.skip[1]:
-                    self.skip = None
-        elif tag not in self.INLINE:
-            self.parts.append(' ')
+        depth = next((i for i in range(len(self.skips) - 1, -1, -1) if self.skips[i][0] == tag), None)
+        if depth is not None:
+            self.release(depth + 1)
+            self.skips[depth][1] -= 1
+            if not self.skips[depth][1]:
+                self.skips.pop()  # Closed normally: drop what it held.
+                return
+        if tag not in self.INLINE:
+            self.out().append(' ')
 
     def handle_data(self, data):
-        if not self.skip:
-            self.parts.append(data)
+        self.out().append(data)
+
+    def close(self):
+        super().close()
+        self.release(0)
 
 
 def html_text(body):

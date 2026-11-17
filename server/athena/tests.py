@@ -1431,6 +1431,20 @@ class ReaderPageTests(TestCase):
         self.assertEqual(html_text('<p>Demo <button>Pantalla completa ▶</button><span aria-hidden="true">✓<b>x</b></span>'
                                    '<video controls>Sin video</video><img aria-hidden="true" alt=""> fin</p>'), 'Demo fin')
 
+    def test_search_text_keeps_text_after_an_unclosed_hidden_element(self):
+        from .views import search_text
+        for opener in ['<p aria-hidden="true">', '<button>', '<video src=a.mp4>', '<span aria-hidden="true">']:
+            with self.subTest(opener=opener):
+                text = search_text(opener + 'x\n\n## Later\n\ntext')
+                self.assertIn('Later', text)
+                self.assertIn('text', text)
+        text = search_text('Antes <span aria-hidden="true">medio\n\n## Después\n\nfin')
+        self.assertLess(text.index('Antes'), text.index('medio'))
+        self.assertLess(text.index('medio'), text.index('Después'))
+        self.assertLess(text.index('Después'), text.index('fin'))
+        self.assertEqual(search_text('Antes <span aria-hidden="true">oculto</span> después\n\n## Later\n\ntext'),
+                         'Antes después Later text')
+
     def test_pdf_export_has_the_reader_meta_line_and_address(self):
         article = Article(title='Guía', slug='guia', author='Ana & Co', published=True, body='# Guía\n\nTexto',
                           updated_at=datetime(2026, 11, 14, 15, tzinfo=LIMA))
