@@ -1589,7 +1589,8 @@ function updateCommand(path) {
   box.append(current);
   // The phone back link goes to the nearest level that is a page.
   const parent = levels.slice(0, -1).findLast((level) => level.href), back = document.querySelector('.command-parent');
-  back.hidden = !parent;
+  // The home has no parent page: no back link on the phone.
+  back.hidden = !parent || path === '/';
   if (parent) {
     back.href = parent.href;
     back.querySelector('span').textContent = label(parent);
@@ -1615,6 +1616,14 @@ function updateSignInLinks() {
     link.href = '/accounts/login/?next=' + encodeURIComponent('/' + location.hash);
   });
 }
+
+// Docsify focuses the target of a section link (#/downloads?id=download-<key>); the focus cue goes on its heading, not the whole list.
+document.addEventListener('focusin', (event) => {
+  const heading = event.target.matches?.('.download-section') && event.target.querySelector('h2');
+  if (!heading) return;
+  heading.tabIndex = -1;
+  heading.focus({ preventScroll: true });
+});
 
 document.addEventListener('click', async (event) => {
   if (event.target.closest('.skip-link')) {

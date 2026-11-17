@@ -25,15 +25,16 @@
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
     collapse: '<path d="m15 6-6 6 6 6"/><path d="M5 5v14"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
-    log: '<path d="M12 3v9m-4-4 4 4 4-4"/><path d="M4 16h16M4 20h10"/>',
+    archive: '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v12h14V8M10 12h4"/>',
+    list: '<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>',
     dot: '<circle cx="12" cy="12" r="3"/>'
   };
   // Icons follow the link label from /_sidebar.md and the admin model names.
   const LABEL_ICONS = {
-    Home: 'home', Guides: 'book', Updates: 'clock', Tools: 'tool', Downloads: 'download', Contribute: 'plus', 'My account': 'user', 'Sign in': 'user', 'Administration': 'gear', 'API for agents': 'code', Articles: 'file', 'API keys': 'key', 'Download files': 'download', 'Logged downloads': 'log', Users: 'users',
+    Home: 'home', Guides: 'book', Updates: 'clock', Tools: 'tool', Downloads: 'download', Contribute: 'plus', 'My account': 'user', 'Sign in': 'user', 'Administration': 'gear', 'API for agents': 'code', Articles: 'file', 'API keys': 'key', 'Download files': 'archive', 'Logged downloads': 'list', Users: 'users',
     Inicio: 'home', 'Guías': 'book', Actualizaciones: 'clock', Herramientas: 'tool', Descargas: 'download',
     Contribuir: 'plus', 'Mi cuenta': 'user', Ingresar: 'user', 'Administración': 'gear', 'API para agentes': 'code',
-    'Artículos': 'file', 'Claves de API': 'key', 'Archivos de descarga': 'download', 'Descargas registradas': 'log', Usuarios: 'users'
+    'Artículos': 'file', 'Claves de API': 'key', 'Archivos de descarga': 'archive', 'Descargas registradas': 'list', Usuarios: 'users'
   };
   const tip = document.createElement('div');
   tip.className = 'rail-tip';

@@ -181,6 +181,8 @@ for (const page of readerEntries.pages) {
     }
     assert.ok(html.includes('<summary><span class="archive-closed">Mostrar 1 archivo</span><span class="archive-open">Ocultar archivos</span></summary>'), html);
     assert.ok(!html.includes('download-section"><option'), 'The section select is gone.');
+    // Contract 3: each file row has an id, so a "Ver en Descargas" link can name it.
+    for (const slug of ['file', 'old']) assert.ok(html.includes(`<article class="catalog-item" id="download-file-${slug}"`), html);
   }
 }
 
@@ -287,6 +289,28 @@ for (const [kind, parent] of [['guide', '#/guides'], ['tool', '#/tools'], ['anno
   assert.ok(!levels.at(-1).href);
 }
 assert.equal(context.commandLevels('/content/private', 'Artículo no disponible', 'guide', true).length, 2, 'Unavailable content must disclose no section.');
+// The phone back link goes to the nearest page; the home has none (round 4 #13).
+{
+  const back = { hidden: false, href: '', label: { textContent: '' }, querySelector() { return this.label; } };
+  const box = { replaceChildren() {}, append() {} };
+  const [querySelector, createElement] = [context.document.querySelector, context.document.createElement];
+  context.document.querySelector = (selector) => ({ '.command-crumbs': box, '.command-parent': back })[selector] || null;
+  context.document.createElement = () => ({ dataset: {}, setAttribute() {}, append() {} });
+  context.updateCommand('/');
+  assert.equal(back.hidden, true, 'The home has no back link.');
+  context.updateCommand('/guides');
+  assert.ok(!back.hidden && back.href === '#/' && back.label.textContent === 'Athena', 'A section goes back to the home.');
+  Object.assign(context.document, { querySelector, createElement });
+}
+// A Descargas section link: when Docsify focuses the section, the focus moves to its heading (round 4 #6).
+{
+  const heading = { focused: 0, focus(options) { this.focused += 1; this.preventScroll = options.preventScroll; } };
+  const section = { matches: (selector) => selector === '.download-section', querySelector: (selector) => (selector === 'h2' ? heading : null) };
+  handlers.focusin({ target: section });
+  handlers.focusin({ target: { matches: () => false } });
+  handlers.focusin({ target: context.document });
+  assert.deepEqual([heading.focused, heading.tabIndex, heading.preventScroll], [1, -1, true], 'Only a focused Descargas section hands its focus to the heading.');
+}
 
 // Query typing, filtering and submitting all update the sign-in return target without a hashchange.
 const signIn = { href: '/accounts/login/' };
@@ -674,6 +698,9 @@ const readerCss = readFileSync(new URL('../src/styles.css', import.meta.url), 'u
   assert.ok(chip + 2 * padding >= 24, 'A tag target is at least 24 px tall: ' + (chip + 2 * padding) + ' px.');
   assert.ok(2 * padding <= 8, 'Tag targets of two rows do not overlap: ' + 2 * padding + ' px of padding in an 8 px gap.');
 }
+// The article action row starts at the h1 edge on every article type (round 4 #4).
+assert.match(readerCss, /^\.article-actions\{display:flex;flex-wrap:wrap;justify-content:flex-start;/m);
+assert.doesNotMatch(readerCss, /article-actions\{[^}]*flex-end/);
 // The active Guías topic has a shape cue, not only gold text (round 4 #23): the editor tabs' 2 px accent bottom rule.
 assert.match(readerCss, /\.guide-topic-jumps a\[aria-current\]\{box-shadow:inset 0 -2px 0 var\(--accent\)/);
 assert.doesNotMatch(readerCss, /mask-image/, 'No reader table is masked.');

@@ -57,7 +57,7 @@ body .content,body.close .content{position:static;inset:auto;max-width:none;padd
 .markdown-section{width:100%;max-width:var(--content-max);margin:0;padding:var(--space-3) var(--space-3) var(--space-5);color:var(--text);overflow-wrap:anywhere}
 @media (min-width:1600px){.markdown-section{margin:0 auto}}
 .markdown-section>:last-child{margin-bottom:0}
-.article-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--space-1);margin-bottom:var(--space-2)}
+.article-actions{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:var(--space-1);margin-bottom:var(--space-2)}
 .page-tree{margin:var(--space-3) var(--space-3) 0;background:var(--surface);font-size:.9rem}
 .download-archive[open]>summary{margin-bottom:var(--space-2)}
 .page-tree summary,.download-archive summary{cursor:pointer;font:600 11px/1.3 var(--font-mono);letter-spacing:.06em;text-transform:uppercase}
@@ -111,7 +111,7 @@ body .markdown-section p.tip:before{color:var(--on-accent)}
 /* Docsify keeps wide tables in their own scroll area; all reader tables use the dark reading surface. */
 /* A table that scrolls shows a right-edge shadow until the reader reaches its end: the local cover moves over the fixed
    shadow at the end of the scroll. A background, not a mask, so the focus ring and the last column stay whole. */
-.markdown-section table{display:block;width:100%;max-width:100%;margin:var(--space-3) 0;overflow:auto;scrollbar-color:var(--line-strong) var(--surface);background:linear-gradient(to left,var(--surface) 50%,transparent) right/48px 100% no-repeat,linear-gradient(to left,color-mix(in oklab,var(--text) 16%,transparent),transparent) right/24px 100% no-repeat var(--surface);background-attachment:local,scroll}
+.markdown-section table{display:block;width:100%;max-width:100%;margin:var(--space-3) 0;overflow:auto;scrollbar-color:var(--line-strong) var(--surface);background:linear-gradient(to left,var(--surface),transparent) right/24px 100% no-repeat,linear-gradient(to left,color-mix(in oklab,var(--text) 12%,transparent),transparent) right/12px 100% no-repeat var(--surface);background-attachment:local,scroll}
 .markdown-section tr,.markdown-section tr:nth-child(2n){background:transparent;border-color:var(--line)}
 /* break-word, not the section's anywhere: a column keeps at least its longest word, so a wide table scrolls instead. */
 .markdown-section td,.markdown-section th{padding:8px 12px;border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}
@@ -246,7 +246,8 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 .guide-topic-more{margin:0;padding:var(--space-1) var(--space-2)}
 .topic-count{color:var(--text-subtle);font-variant-numeric:tabular-nums}
 .guide-topic-picker>summary{cursor:pointer;padding:var(--space-1) var(--space-2);color:var(--text-muted);font:var(--label-weight) var(--label-size)/1.3 var(--label-font);letter-spacing:var(--label-tracking);text-transform:var(--label-transform)}
-@media(pointer:coarse){.guide-topic-picker>summary,:is(.guide-topic-jumps,.download-jumps) a{min-height:44px}.guide-topic-picker>summary{padding-block:15px}}
+/* Touch: jump links pad their target to about 30 px with an equal negative margin, half the 16 px row gap, so rows sit close and do not overlap. */
+@media(pointer:coarse){.guide-topic-picker>summary{min-height:44px;padding-block:15px}:is(.guide-topic-jumps,.download-jumps){row-gap:var(--space-2)}:is(.guide-topic-jumps,.download-jumps) a{min-height:0;padding-block:var(--space-1);margin-block:calc(-1 * var(--space-1))}}
 /* Above a 600px reader the topics are an open row and the summary is hidden (app.js keeps the box open there). */
 @container reader (min-width:601px){.guide-topic-picker>summary{display:none}}
 @container reader (max-width:600px){.guide-topic-picker{margin:0 0 var(--space-2);border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}.guide-topic-picker .guide-topic-jumps{margin:0;padding:0 var(--space-2) var(--space-1);border-bottom:0}}
@@ -259,7 +260,7 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 /* Recientes: type and date in two columns, so the dates line up from row to row. */
 .recent-list .guide-topic-meta{display:grid;grid-template-columns:13ch auto;justify-content:start}
 .guide-library [hidden],:is(.guide-topic-jumps,.download-jumps) [hidden]{display:none!important}
-@container reader (max-width:600px){.guide-controls{grid-template-columns:1fr;gap:var(--space-2);padding:var(--space-2)}.guide-topic-row{grid-template-columns:1fr;gap:var(--space-1)}.guide-topic-meta{justify-content:flex-start}.guide-topic-meta span{flex:initial}:is(.guide-topic-jumps,.download-jumps){gap:0 var(--space-2)}}
+@container reader (max-width:600px){.guide-controls{grid-template-columns:1fr;gap:var(--space-2);padding:var(--space-2)}.guide-topic-row{grid-template-columns:1fr;gap:var(--space-1)}.guide-topic-meta{justify-content:flex-start}.guide-topic-meta span{flex:initial}:is(.guide-topic-jumps,.download-jumps){column-gap:var(--space-2)}}
 /* One chip for tags and status in guide rows, tool cards, the feed, search results and the article meta line. */
 .tag-list{display:flex;flex-wrap:wrap;gap:4px}
 .tag-list span,.markdown-section .status,.article-meta__tags a>span{display:inline-flex;align-items:center;width:auto;margin:0;padding:2px 6px;border:1px solid var(--border);border-radius:var(--radius-chip);background:var(--surface-strong);color:var(--text-muted);font:var(--chip-weight) var(--chip-size)/1.3 var(--chip-font);letter-spacing:var(--chip-tracking);text-transform:var(--chip-transform);text-decoration:none;overflow-wrap:anywhere}
@@ -273,8 +274,10 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 .catalog-item>div::before{content:'';flex-basis:100%;order:2}
 .catalog-item .post-actions{margin:0}
 /* A narrow reader keeps the button beside the row; the current-version chip goes above it. */
-@container reader (max-width:600px){.catalog-item .post-actions{flex-direction:column;align-items:flex-end;gap:var(--space-1)}}
+/* Phone: the row text uses the full width; the Versión actual chip and Descargar sit on one line under it, and the URL is its own block. */
+@container reader (max-width:600px){.catalog-item{grid-template-columns:minmax(0,1fr);justify-items:start}.download-permalink{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-1)}}
 .catalog-item>div>code{order:3}.catalog-item>div>p{order:4;margin:0;color:var(--muted);font-size:.9rem}
+.download-section>h2:focus-visible{outline-offset:4px}
 .download-controls{margin:0 0 var(--space-2)}.download-jumps a{max-width:none}.download-controls .result-count{margin:0 0 var(--space-1)}
 /* The archive summary says what a click does: show the files, or hide them again. */
 .download-archive[open] .archive-closed,.download-archive:not([open]) .archive-open{display:none}
@@ -282,7 +285,7 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 .catalog-item strong{overflow-wrap:anywhere}
 .catalog-item small{margin:0;font:13px/1.4 var(--font-mono);font-variant-numeric:tabular-nums}
 .folder-files{list-style:none;margin:.85rem 0 0;padding:0}.folder-files li{display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0}.folder-files li small{flex:none;margin:0}
-@container reader (min-width:900px){body.has-page-tree .content{display:grid;grid-template-columns:minmax(0,1fr) 216px;align-items:start;gap:var(--space-3);max-width:var(--content-max);padding:var(--space-3) var(--space-3) var(--space-5)}body.has-page-tree .markdown-section{grid-column:1;grid-row:1;max-width:none;padding:0}.page-tree{grid-column:2;grid-row:1;position:sticky;top:calc(52px + var(--space-3));max-height:calc(100vh - 100px);margin:0;overflow:auto;background:transparent}}
+@container reader (min-width:900px){body.has-page-tree .content{display:grid;grid-template-columns:minmax(0,1fr) 216px;align-items:start;gap:var(--space-3);max-width:var(--content-max);padding:var(--space-3) var(--space-3) var(--space-5)}body.has-page-tree .markdown-section{grid-column:1;grid-row:1;max-width:none;padding:0}body.has-page-tree .markdown-section>table{max-width:calc(100% - var(--space-3))}.page-tree{grid-column:2;grid-row:1;position:sticky;top:calc(52px + var(--space-3));max-height:calc(100vh - 100px);margin:0;overflow:auto;background:transparent}}
 @media (min-width:1600px){body.has-page-tree .content{margin:0 auto}}
 .account-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:var(--space-2);align-items:start}
 .account-grid.no-keys{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
@@ -345,7 +348,6 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 body.article-view .markdown-section{max-width:calc(70ch + 48px);font-size:17px;line-height:1.65}
 body.article-view.has-page-tree .markdown-section{max-width:70ch}
 .markdown-section .page-tree{margin:0 0 var(--space-2)}
-.markdown-section>:is(h1,.article-meta,.article-access,.page-tree)+.article-actions{justify-content:flex-start}
 @container reader (max-width:600px){body.article-view .markdown-section h1{font-size:32px;line-height:38px}}
 /* A narrow reader shows the article actions as one row of 44 px buttons: icon and a short word ("PDF", "Copiar", "Enlace").
    The full label is hidden but stays in the accessible name after the short word (WCAG 2.5.3). */
@@ -394,6 +396,10 @@ body .markdown-section :is(p.tip,p.warn,p.callout) code{background:var(--surface
 .command-crumbs a:hover,.command-parent:hover{color:var(--accent-text);text-decoration:underline}
 .command-crumbs>[aria-current]{overflow:hidden;text-overflow:ellipsis}
 .command-crumbs>[aria-current]{color:var(--text-muted)}
+/* The password page crumbs are a list (<ol>, no › in the markup): the separator is drawn and left out of the accessible name. */
+ol.command-crumbs{margin:0;padding:0;list-style:none}
+ol.command-crumbs>li{display:flex;align-items:center;gap:var(--s-2);min-width:0}
+ol.command-crumbs>li+li::before{content:"›";content:"›" / "";color:var(--text-muted)}
 .command-parent{display:none}
 .reader-command .athena-search{flex:0 100 420px;width:420px;min-width:240px;margin:0 0 0 auto!important;background:transparent}
 .reader-command .input-wrap{position:relative;display:flex;align-items:center;gap:var(--s-2);height:var(--control-h);padding:0 var(--s-2);border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--field-bg)}
