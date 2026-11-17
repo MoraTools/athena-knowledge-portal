@@ -1431,6 +1431,23 @@ class ReaderPageTests(TestCase):
         self.assertEqual(html_text('<p>Demo <button>Pantalla completa ▶</button><span aria-hidden="true">✓<b>x</b></span>'
                                    '<video controls>Sin video</video><img aria-hidden="true" alt=""> fin</p>'), 'Demo fin')
 
+    def test_search_entry_sections_and_full_text(self):
+        from .views import search_entry
+        body = ('Intro con **negrita** y `código`.\n\n## Instalar\n\nPaso uno.\n\n```powershell\n$ruta = "C:\\\\Bots"\n```\n\n'
+                '<span aria-hidden="true">oculto</span> visible\n\nDetalles\n--------\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n'
+                '### Notas &amp; avisos\n\n> Cita final.')
+        article = Article(title='Guía <A&B>', slug='guia', kind='guide', summary='s', author='a', body=body,
+                          published=False, pdf_name='g.pdf', updated_at=timezone.now())
+        entry = search_entry(article)
+        # The text is the stored body; the sections follow the reader's body, with its title heading and PDF link.
+        self.assertEqual(entry['text'], 'Intro con negrita y código. Instalar Paso uno. $ruta = "C:\\\\Bots" visible '
+                                        'Detalles a b 1 2 Notas & avisos Cita final.')
+        self.assertEqual(entry['headings'], [
+            {'level': 1, 'raw': 'Guía &lt;A&amp;B&gt;', 'title': 'Guía <A&B>', 'text': 'Intro con negrita y código.'},
+            {'level': 2, 'raw': 'Instalar', 'title': 'Instalar', 'text': 'Paso uno. $ruta = "C:\\\\Bots" visible'},
+            {'level': 2, 'raw': 'Detalles', 'title': 'Detalles', 'text': 'a b 1 2'},
+            {'level': 3, 'raw': 'Notas &amp; avisos', 'title': 'Notas & avisos', 'text': 'Cita final. Abrir PDF original'}])
+
     def test_search_text_keeps_text_after_an_unclosed_hidden_element(self):
         from .views import search_text
         for opener in ['<p aria-hidden="true">', '<button>', '<video src=a.mp4>', '<span aria-hidden="true">']:

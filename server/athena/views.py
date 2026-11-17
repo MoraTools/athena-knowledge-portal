@@ -249,19 +249,24 @@ def search_entry(article):
                 'date': timezone.localdate(article.updated_at).isoformat(), 'tags': article.tags, 'route': '#/content/' + article.slug,
                 'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '', 'text': html_text(article.body),
                 'headings': []}
-    body = article_body(article)
-    lines = body.splitlines(keepends=True)
-    tokens = MARKDOWN.parse(body)
-    headings = [(token, tokens[i + 1]) for i, token in enumerate(tokens) if token.type == 'heading_open']
+    # One parse and one render per article: the text is the stored body, the sections come from the reader's body.
+    prefix, body, suffix = article_parts(article)
+    env = {}
+    body_tokens = MARKDOWN.parse(body, env)
+    tokens = MARKDOWN.parse(prefix) + body_tokens + MARKDOWN.parse(suffix)
+    starts = [i for i, token in enumerate(tokens) if token.type == 'heading_open'] + [len(tokens)]
+
+    def text(part):
+        return html_text(MARKDOWN.renderer.render(part, MARKDOWN.options, env))
+
     return {
         'title': article.title, 'kind': article.kind, 'summary': article.summary,
         'author': article.author, 'date': timezone.localdate(article.updated_at).isoformat(), 'tags': article.tags,
         'route': '#/content/' + article.slug, 'pdf': '/pdf/' + article.slug + '.pdf' if article.pdf_name else '',
-        'text': search_text(article.body), 'headings': [
-            {'level': int(heading.tag[1:]), 'raw': inline.content,
-             'title': html_text(MARKDOWN.renderer.render([inline], MARKDOWN.options, {})),
-             'text': search_text(''.join(lines[heading.map[1]:headings[i + 1][0].map[0] if i + 1 < len(headings) else len(lines)]))}
-            for i, (heading, inline) in enumerate(headings)
+        'text': text(body_tokens), 'headings': [
+            {'level': int(tokens[a].tag[1:]), 'raw': tokens[a + 1].content, 'title': text([tokens[a + 1]]),
+             'text': text(tokens[a + 3:b])}
+            for a, b in zip(starts, starts[1:])
         ],
     }
 
@@ -285,18 +290,23 @@ def search_index(request):
 
 def article_body(article):
     """The article Markdown the reader and the PDF export share: title heading, draft notice, original PDF link."""
-    body = article.body
+    return ''.join(article_parts(article))
+
+
+def article_parts(article):
+    """article_body as (added before, body, added after)."""
+    body, prefix, suffix = article.body, '', ''
     if article.format == 'html':
         # src/app.js replaces this marker with the sandboxed frame; DOMPurify drops a literal iframe.
         body = (f'<div class="html-article" data-src="/article-html/{article.slug}/" '
                 f'data-source="/article-html/{article.slug}/source" data-title="{escape(article.title)}"></div>')
     if not re.match(r'^\s*#\s+', body):
-        body = f'# {escape(article.title)}\n\n' + body
+        prefix = f'# {escape(article.title)}\n\n'
     if not article.published:
-        body = '> **Borrador.** Solo visible para editores.\n\n' + body
+        prefix = '> **Borrador.** Solo visible para editores.\n\n' + prefix
     if article.pdf_name:
-        body += f'\n\n<p class="article-pdf"><a href="/pdf/{article.slug}.pdf">Abrir PDF original</a></p>\n'
-    return body
+        suffix = f'\n\n<p class="article-pdf"><a href="/pdf/{article.slug}.pdf">Abrir PDF original</a></p>\n'
+    return prefix, body, suffix
 
 
 # 24px line icons, the stroke style of the "Copiar página" button (src/config.js).
