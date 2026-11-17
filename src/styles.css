@@ -86,6 +86,8 @@ body .markdown-section h2{font:600 30px/36px var(--font-display);text-wrap:balan
 .article-meta>.article-meta__tags{display:flex;flex-wrap:wrap;flex-basis:100%;gap:4px;padding-left:var(--sep)}.article-meta>.article-meta__tags::before{content:none}
 .article-meta__tags a{display:inline-flex;align-items:center;text-decoration:none}
 @media(pointer:coarse){:is(.article-meta__tags,.search-result__actions,.contribute-note,.boot-status) a{display:inline-flex;align-items:center;min-height:44px}}
+/* Touch: a tag link keeps its 44 px target by padding with negative margins, so chip rows sit 8 px apart, not 44 px. */
+@media(pointer:coarse){.article-meta>.article-meta__tags{row-gap:var(--space-1)}.article-meta__tags a{min-height:0;padding-block:12px;margin-block:-12px}}
 .markdown-section .article-access{margin:calc(-1 * var(--space-1)) 0 var(--space-3);color:var(--muted);font:400 14px/1.5 var(--font-ui)}
 body .markdown-section h3{font:650 18px/24px var(--font-ui);color:var(--text)}
 .markdown-section code,.markdown-section pre{font-family:var(--font-mono)}
@@ -325,6 +327,19 @@ body.article-view.has-page-tree .markdown-section{max-width:70ch}
 .markdown-section .page-tree{margin:0 0 var(--space-2)}
 .markdown-section>:is(h1,.article-meta,.article-access,.page-tree)+.article-actions{justify-content:flex-start}
 @container reader (max-width:600px){body.article-view .markdown-section h1{font-size:32px;line-height:38px}}
+/* A narrow reader shows the article actions as one row of 44 px icon buttons; the hidden label stays their name. */
+@container reader (max-width:600px){
+  .markdown-section .article-actions{flex-wrap:nowrap}
+  .markdown-section .article-actions .copy-page{min-width:44px;min-height:44px;padding:0}
+  .markdown-section .article-actions .copy-page>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+  /* The head controls sit 8 px apart, like the chip rows, so the first screen reaches the text. */
+  .markdown-section .article-meta{margin-bottom:var(--space-2)}
+  .markdown-section .page-tree{margin-bottom:var(--space-1)}
+  .markdown-section .article-actions+p{margin-top:var(--space-2)}
+}
+/* A task-list label is the target of its box (24 px at least, WCAG 2.5.8); the box stays on the first text line. */
+.markdown-section .task-list-item label{display:flex;align-items:flex-start;gap:var(--space-1);min-block-size:24px}
+.markdown-section .task-list-item input{flex:none;inline-size:18px;block-size:18px;margin:calc((1lh - 18px) / 2) 0 0}
 body.article-view.has-page-tree .markdown-section:has(.html-article,.html-article-frame,.pdf-viewer){max-width:var(--content-max)}
 .page-tree{border:1px solid var(--border);border-radius:var(--radius)}
 .page-tree summary,.download-archive summary{color:var(--text-muted);font:600 11px/1.3 var(--font-mono);letter-spacing:.06em}
