@@ -1076,11 +1076,25 @@ async function buildArticleMeta() {
   // Every sync (route, language) rebuilds the line; only the newest one stays.
   heading.parentElement.querySelectorAll('.article-meta').forEach((old) => old.remove());
   heading.after(meta);
+  // Contract 2: a Versión article whose file is in Descargas (signed-in readers) links its file row, beside the other actions.
+  const actions = document.querySelector('.markdown-section .article-actions');
+  if (entry.download && actions && !actions.querySelector('a[href^="#/downloads"]')) {
+    const link = document.createElement('a');
+    link.className = 'copy-page copy-page--ghost';
+    link.href = '#/downloads?id=' + entry.download;
+    link.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11m-5-4 5 5 5-5"/><path d="M4 20h16"/></svg>';
+    const label = document.createElement('span');
+    label.textContent = t('Ver en Descargas');
+    link.append(label);
+    actions.prepend(link);
+    labelArticleActions();
+  }
 }
 
-// The interface may be English; articles, their titles, excerpts and tags are Spanish.
+// The interface may be English; articles, their titles, excerpts and tags are Spanish. A file row's size · date line, with
+// its "Notas de la versión" link, is interface text.
 const SPANISH_CONTENT = '[data-article-title],.guide-title,.guide-summary,.item-meta__author,.guide-topic h2,'
-  + '.guide-topic-jumps a,.tag-list,.library-card>:is(h2,h3),.library-card>p:not([class]),.post-summary,.catalog-item>div';
+  + '.guide-topic-jumps a,.tag-list,.library-card>:is(h2,h3),.library-card>p:not([class]),.post-summary,.catalog-item>div>:is(strong,code,p),.download-archive h3';
 
 function markSpanishContent() {
   document.querySelectorAll(SPANISH_CONTENT).forEach((node) => { node.lang = 'es'; });
@@ -1496,7 +1510,8 @@ function labelArticleActions() {
     const word = document.createElement('span');
     word.className = 'copy-page__short';
     word.setAttribute('aria-hidden', 'true');
-    word.textContent = t(button.classList.contains('copy-link') ? 'Enlace' : button.hasAttribute('download') ? 'PDF' : button.tagName === 'A' ? 'Editar' : 'Copiar');
+    word.textContent = t(button.classList.contains('copy-link') ? 'Enlace' : button.hasAttribute('download') ? 'PDF'
+      : String(button.href).includes('#/downloads') ? 'Descargas' : button.tagName === 'A' ? 'Editar' : 'Copiar');
     button.querySelector('span').before(word);
   });
 }

@@ -105,9 +105,12 @@ for authenticated in (False, True):
                           'user': user, 'section': section, 'articles': [sample], 'tags': ['RPA']
                       })})
 pages.append({'name': 'downloads.md', 'markdown': render_to_string('downloads.md', {
-    'sections': [('framework', 'Framework', [SimpleNamespace(title='File', filename='file.zip', size=100,
-                                                          slug='file', note='Download note')]),
-                 ('previous', 'Versiones anteriores', [SimpleNamespace(title='Old', filename='old.zip', size=10, slug='old', note='')])],
+    'sections': [('framework', 'Framework', [SimpleNamespace(title='File', filename='file.zip', size=100, section='framework',
+                                                          slug='file', note='Download note', family='File', notes_slug='file-notes')]),
+                 ('previous', 'Versiones anteriores', [
+                     SimpleNamespace(title='Paquete 2.0', filename='p2.zip', size=10, section='previous', slug='p2', note='', family='Paquete', notes_slug=''),
+                     SimpleNamespace(title='Old', filename='old.zip', size=10, section='previous', slug='old', note='', family='Old', notes_slug=''),
+                     SimpleNamespace(title='Paquete 1.0', filename='p1.zip', size=10, section='previous', slug='p1', note='', family='Paquete', notes_slug='')])],
     'latest_url': 'https://athena.test/downloads/framework/latest'
 })})
 print(json.dumps({'entries': entries, 'pages': pages}))
@@ -179,7 +182,12 @@ for (const page of readerEntries.pages) {
       assert.ok(html.includes('<nav class="download-jumps"'), html);
       assert.ok(html.includes(`id="download-${key}"`), `${page.name}: ${html}`);
     }
-    assert.ok(html.includes('<summary><span class="archive-closed">Mostrar 1 archivo</span><span class="archive-open">Ocultar archivos</span></summary>'), html);
+    assert.ok(html.includes('<summary><span class="archive-closed">Mostrar 3 archivos</span><span class="archive-open">Ocultar archivos</span></summary>'), html);
+    // Contract 2 (round 5 #35): a file row ends its meta line with its release notes; Versiones anteriores has one h3 per
+    // package family, each keeping the newest-first order of its files.
+    assert.ok(html.includes(' · <a href="#/content/file-notes">Notas de la versión</a></small>'), html);
+    assert.deepEqual([...html.matchAll(/<h3[^>]*>([^<]+)<\/h3>|id="download-file-(p\d|old)"/g)].map((match) => match[1] || match[2]), ['Old', 'old', 'Paquete', 'p2', 'p1'], html);
+    assert.equal((html.match(/<h3/g) || []).length, 2, 'Only Versiones anteriores is grouped.');
     assert.ok(!html.includes('download-section"><option'), 'The section select is gone.');
     // Contract 3: each file row has an id, so a "Ver en Descargas" link can name it.
     for (const slug of ['file', 'old']) assert.ok(html.includes(`<article class="catalog-item" id="download-file-${slug}"`), html);
@@ -611,7 +619,8 @@ context.document.querySelectorAll = () => [];
       querySelector: (selector) => ({ span, '.copy-page__short': nodes.find((node) => node.className === 'copy-page__short') || null })[selector] };
   };
   const actions = [['Copiar', button('BUTTON', ['copy-page'], 'Copiar página')], ['Enlace', button('BUTTON', ['copy-page', 'copy-link'], 'Copiar enlace')],
-    ['PDF', button('A', ['copy-page'], 'Exportar PDF', ['download'])], ['Editar', button('A', ['copy-page'], 'Editar artículo')]];
+    ['PDF', button('A', ['copy-page'], 'Exportar PDF', ['download'])], ['Editar', button('A', ['copy-page'], 'Editar artículo')],
+    ['Descargas', Object.assign(button('A', ['copy-page'], 'Ver en Descargas'), { href: 'https://athena.test/#/downloads?id=download-file-x' })]];
   context.document.querySelectorAll = (selector) => selector === '.markdown-section .article-actions .copy-page' ? actions.map(([, item]) => item) : [];
   context.document.createElement = (tag) => ({ tagName: tag.toUpperCase(), attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } });
   context.labelArticleActions?.();
@@ -971,6 +980,10 @@ assert.match(readerCss, /\.download-section>h2\{padding:var\(--s-1\) var\(--spac
   const downloadsMd = readFileSync(new URL('../server/athena/templates/downloads.md', import.meta.url), 'utf8');
   // Round 5 #23: the Descargas sections use the Guías phone box (one native box, open as a row on wider readers).
   assert.match(downloadsMd, /<details class="guide-topic-picker"><summary><span>Secciones<\/span> <span>\(\{\{ sections\|length \}\}\)<\/span><\/summary><nav class="download-jumps"/);
+  // Round 5 #35, contract 2: a file row links its release notes; Versiones anteriores is grouped by package family.
+  assert.match(downloadsMd, /\{% if item\.notes_slug %\} · <a href="#\/content\/\{\{ item\.notes_slug \}\}">Notas de la versión<\/a>\{% endif %\}<\/small>/);
+  assert.match(downloadsMd, /\{% regroup items\|dictsort:'family' by family as groups %\}/);
+  assert.match(downloadsMd, /\{% if key == 'previous' %\}<h3>\{\{ group\.grouper \}\}<\/h3>\{% endif %\}/);
 }
 // Round 5 #13: at 360 px and below the article h1 is 28/34; nothing else in the phone head changes.
 assert.match(readerCss, /@container reader \(max-width:360px\)\{body\.article-view \.markdown-section h1\{font-size:28px;line-height:34px\}\}/);
@@ -1053,7 +1066,8 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
   context.fetch = async (url) => ({ ok: url === '/search-index.json', json: async () => [
     { route: '#/content/other', kind: 'tool', title: 'Other', author: 'X', date: '2026-01-01', tags: [] },
     { route: '#/content/guide', kind: 'guide', title: 'Guide', author: 'Ana Pérez', date: '2026-11-15', tags: ['primeros-pasos', 'RPA', 'Colas'] },
-    { route: '#/content/tool', kind: 'tool', title: 'Tool', author: 'X', date: '2026-01-01', tags: ['Colas'] }
+    { route: '#/content/tool', kind: 'tool', title: 'Tool', author: 'X', date: '2026-01-01', tags: ['Colas'] },
+    { route: '#/content/release', kind: 'release', title: 'Plantilla base 3.2.0', author: 'X', date: '2026-01-01', tags: [], download: 'download-file-plantilla-base-3-2-0' }
   ] });
   vm.runInContext('searchIndexPromise = undefined', context);
   await context.buildArticleMeta();
@@ -1108,6 +1122,37 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
     const summary = built.children[0].children[1];
     assert.deepEqual([summary.lang, summary.textContent], [lang, 'Archivo aprobado en Framework.']);
     assert.deepEqual(built.children[1].children[0].children.map((chip) => chip.tagName), ['SPAN', 'SPAN']);
+  }
+  // Round 5 #35, contract 2: a Versión article whose file is in Descargas links its row in the article actions, once;
+  // its phone word is "Descargas", and the full label stays the accessible name.
+  {
+    const actions = new Element('div');
+    const copy = new Element('button');
+    copy.className = 'copy-page';
+    actions.append(copy);
+    const querySelector = context.document.querySelector;
+    const querySelectorAll = context.document.querySelectorAll;
+    context.document.querySelector = (selector) => ({ '.markdown-section h1': title, '.markdown-section .article-actions': actions })[selector] || null;
+    const actionLinks = () => actions.children.filter((node) => node.tagName === 'A');
+    context.document.querySelectorAll = (selector) => selector === '.markdown-section .article-actions .copy-page' ? actions.children : [];
+    const labelArticleActions = context.labelArticleActions;
+    let labelled = 0;
+    context.labelArticleActions = () => { labelled += 1; };
+    context.location.hash = '#/content/release';
+    for (const run of [1, 2]) {
+      section.childNodes = [title];
+      await context.buildArticleMeta();
+    }
+    assert.deepEqual(actionLinks().map((link) => [link.className, link.href, link.textContent]),
+      [['copy-page copy-page--ghost', '#/downloads?id=download-file-plantilla-base-3-2-0', 'Ver en Descargas']]);
+    assert.equal(labelled, 1, 'The new action gets its phone word.');
+    context.location.hash = '#/content/tool';
+    actions.childNodes = [copy];
+    section.childNodes = [title];
+    await context.buildArticleMeta();
+    assert.equal(actionLinks().length, 0, 'Only a Versión entry with a download gets the link.');
+    Object.assign(context.document, { querySelector, querySelectorAll });
+    context.labelArticleActions = labelArticleActions;
   }
   context.location.hash = '#/content/draft';
   section.childNodes = [title];
