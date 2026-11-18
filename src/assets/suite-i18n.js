@@ -64,7 +64,7 @@
     'Descargar': 'Download', 'Todavía no hay archivos publicados.': 'No files have been published yet.', 'No hay archivos que coincidan.': 'No files match.',
     'Lector · Última sesión': 'Reader · Last sign-in', 'Administrador · Última sesión': 'Administrator · Last sign-in', 'Lectura': 'Read', 'Lectura y escritura': 'Read and write', 'Administrador': 'Administrator', 'Lector': 'Reader', 'Última sesión': 'Last sign-in', 'nunca': 'never', 'Sesión': 'Session',
     'Cambie su contraseña o cierre la sesión en este navegador. Cambiar la contraseña cierra sus otras sesiones y revoca sus claves de API.': 'Change your password or sign out of this browser. Changing your password closes your other sessions and revokes your API keys.',
-    'alta': 'joined', '· sesión': '· last sign-in', '· sesión nunca': '· last sign-in never', 'Cambiar contraseña': 'Change password', 'Contraseña actual': 'Current password', 'Contraseña nueva': 'New password',
+    'alta': 'joined', '· sesión': '· last sign-in', '· sesión nunca': '· last sign-in never', 'Alta': 'Joined', '· Sesión': '· Last sign-in', '· Sesión Nunca': '· Last sign-in never', 'Cambiar contraseña': 'Change password', 'Contraseña actual': 'Current password', 'Contraseña nueva': 'New password',
     'Repita la contraseña nueva': 'Repeat the new password', 'Escriba otra vez la contraseña nueva.': 'Type the new password again.', 'Cerrar sesión': 'Sign out', 'Mis claves de API': 'My API keys', 'Nombre': 'Name',
     'Permiso': 'Permission', 'Vence': 'Expires', 'Todavía no tiene claves de API.': 'You do not have any API keys yet.', 'Crear clave': 'Create key',
     'Guía de la API': 'API guide', 'Pida una clave a un administrador.': 'Ask an administrator for a key.',

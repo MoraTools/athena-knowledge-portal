@@ -61,7 +61,8 @@
 .directory-panel { min-width: 0; margin: 0; padding: var(--space-4); border-left: 1px solid var(--border); background: var(--surface); scroll-margin-top: var(--space-2); }
 .directory-panel header { margin: 0 0 var(--space-4); }
 .directory-panel h2 { margin: 0; color: var(--text); font: 600 var(--title-size)/32px var(--font-display); overflow-wrap: anywhere; text-wrap: balance; }
-.directory .mono { margin: var(--space-1) 0 0; color: var(--text-subtle); font: 500 12px/1.45 var(--font-mono); font-variant-numeric: tabular-nums; }
+/* The list meta voice of the reader (.item-meta): mono 13px, muted, sentence case. */
+.directory .mono { margin: var(--space-1) 0 0; color: var(--text-muted); font: 400 13px/1.5 var(--font-mono); font-variant-numeric: tabular-nums; }
 .directory .label { display: block; margin: 0 0 var(--space-1); padding: 0; color: var(--text-muted); font: var(--label); letter-spacing: .06em; text-transform: uppercase; }
 .directory .compact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2); }
 .directory .compact > * { min-width: 0; }

@@ -129,6 +129,20 @@ class AdminEditorTests(TestCase):
         self.client.force_login(self.viewer)
         self.assertNotIn('<span>Borradores</span>', self.client.get('/admin/').content.decode())
 
+    def test_download_events_take_the_article_event_shape(self):
+        # Line 1 the file title (a link to its admin row only with view permission on Download), line 2 the meta voice.
+        download = Download.objects.create(title='Plantilla base', section='framework', slug='plantilla-base')
+        DownloadEvent.objects.create(download=download, username='luis', title='Plantilla base', filename='p.zip', size=1,
+                                     path='/downloads/plantilla-base')
+        meta = '<span class="mini quiet"><strong>luis</strong> descargó · ahora</span>'
+        page = self.client.get('/admin/').content.decode()
+        self.assertIn(f'<li class="downloadlink"><a href="/admin/athena/download/{download.pk}/change/">Plantilla base</a>'
+                      f' {meta}</li>', page)
+        self.assertNotIn('p.zip', page)
+        self.viewer.user_permissions.add(*permissions(['athena.view_downloadevent']))
+        self.client.force_login(User.objects.get(pk=self.viewer.pk))
+        self.assertIn(f'<li class="downloadlink">Plantilla base {meta}</li>', self.client.get('/admin/').content.decode())
+
     def test_list_filters_are_selects_with_list_filter_parameters(self):
         page = self.client.get('/admin/athena/article/?access=restricted&o=1').content.decode()
         for name in ['published__exact', 'access', 'kind__exact']:
@@ -205,7 +219,7 @@ class AdminEditorTests(TestCase):
 
     def test_one_create_verb_and_ver_for_the_read_only_log(self):
         page = self.client.get('/admin/athena/article/').content.decode()
-        self.assertIn('class="button default">Nuevo artículo</a>', page)
+        self.assertIn('</svg>Nuevo artículo</a>', page)
         self.assertNotIn('Añadir artículo', page)
         # The app page (/admin/athena/) still lists the models through the app_list.html copy.
         page = self.client.get('/admin/athena/').content.decode()
@@ -225,9 +239,11 @@ class AdminEditorTests(TestCase):
                 page = self.client.get(reverse(base + '_changelist') + '?o=1').content.decode()
                 add = self.client.get(reverse(base + '_add')).content.decode()
                 title = re.search(r'<title>(.+?) · Athena</title>', add)[1]
-                # One slot: the button in the title row, no Django object tools.
+                # One slot: the button in the title row, no Django object tools; the plus icon of Nuevo usuario. Gold: the
+                # list has no other primary (the directory's Nuevo usuario is outline beside the inspector's Guardar).
                 self.assertRegex(page, rf'<div class="page-head"><h1>[^<]+</h1>\s*<a href="{reverse(base + "_add")}'
-                                       rf'\?_changelist_filters=o%3D1" class="button default">{title}</a></div>')
+                                       rf'\?_changelist_filters=o%3D1" class="button default"><svg viewBox="0 0 24 24" '
+                                       rf'aria-hidden="true" focusable="false"><path d="M12 4v16M4 12h16"/></svg>{title}</a></div>')
                 self.assertNotIn('class="object-tools"', page)
                 checked.append(title)
         self.assertEqual(sorted(checked), ['Nueva clave de API', 'Nueva descarga', 'Nuevo artículo'])
@@ -244,6 +260,23 @@ class AdminEditorTests(TestCase):
         self.assertEqual(changed, [(theirs_line.replace("{% translate 'View' %}", 'Ver'), theirs_line)
                                    for theirs_line in theirs if "{% translate 'View' %}" in theirs_line])
         self.assertEqual(len(changed), 1)
+
+    def test_change_list_results_is_django_s_with_the_cues_after_the_label(self):
+        # A copy of Django's template: a Django update that changes the original must fail here, so the copy follows it.
+        from pathlib import Path
+        import django
+        ours = (settings.BASE_DIR / 'server/athena/templates/admin/change_list_results.html').read_text().splitlines()
+        theirs = (Path(django.__file__).parent / 'contrib/admin/templates/admin/change_list_results.html').read_text().splitlines()
+        self.assertTrue(ours[0].startswith('{#') and ours[0].endswith('#}'), ours[0])
+        th = '<th scope="col"{{ header.class_attrib }}>'
+        aria = ('<th scope="col"{{ header.class_attrib }}{% if header.sortable %} aria-sort="{% if header.sort_priority == 1 %}'
+                "{{ header.ascending|yesno:'ascending,descending' }}{% else %}none{% endif %}\"{% endif %}>")
+        # The same lines, with the text div moved above the sort options and aria-sort on the th.
+        text = next(line for line in theirs if line.lstrip().startswith('<div class="text">'))
+        start = theirs.index(next(line for line in theirs if '{% if header.sortable and header.sort_priority > 0 %}' in line))
+        expected = [aria if line == th else line for line in theirs if line != text]
+        expected.insert(start, text)
+        self.assertEqual(ours[1:], expected)
 
     def test_dashboard_has_no_app_table_and_the_rail_reaches_every_model(self):
         from django.contrib import admin
@@ -285,6 +318,19 @@ class AdminEditorTests(TestCase):
         self.assertIn('<td class="field-access"><span class="pill warn">Restringido (0)</span></td>', page)
         self.assertNotIn('pill gold', page)
 
+    def test_sort_cues_follow_the_label_and_aria_sort_names_the_first_sort(self):
+        page = self.client.get('/admin/athena/article/?o=-1.6').content.decode()
+        heads = {name: (attrs, inner) for name, attrs, inner in
+                 re.findall(r'<th scope="col" class="[^"]*column-(\w+)[^"]*"([^>]*)>(.*?)</th>', page, re.S)}
+        self.assertIn('aria-sort="descending"', heads['title'][0])
+        for name in ['kind', 'article_date']:  # Unsorted, and sorted second: "none".
+            self.assertIn('aria-sort="none"', heads[name][0], name)
+        self.assertNotIn('aria-sort', heads['controls'][0])  # Not sortable.
+        # The priority number and the chevron come right after the label.
+        for name in ['title', 'article_date']:
+            inner = heads[name][1]
+            self.assertLess(inner.index('class="text"'), inner.index('class="sortoptions"'), name)
+
     def test_download_lists_name_what_they_search(self):
         for url, text in [('/admin/athena/download/', 'Buscar archivos de descarga'),
                           ('/admin/athena/downloadevent/', 'Buscar en el registro')]:
@@ -310,7 +356,9 @@ class AdminEditorTests(TestCase):
                 row = re.search(rf'<tr[^>]*data-search="{user.username} .*?</tr>', page, re.S).group()
                 self.assertIn(f'">{role}</span></td>', row)
         # The inspector shows the selected account's role; its access choice names editors, as the roster does.
-        self.assertIn('<p class="mono"><span class="pill">Editor</span> alta', page)
+        # Its meta line is in sentence case, as the reader's list meta.
+        self.assertIn('<p class="mono"><span class="pill">Editor</span> Alta <time', page)
+        self.assertIn('· Sesión Nunca</p>', page)
         self.assertRegex(page, r'<label class="directory-choice"><input[^>]*value="admin"[^>]*>Editor</label>')
         users = self.client.get('/admin/auth/user/?sort=role').context['users']
         self.assertEqual([row[2] for row in users], ['Administrador', 'Editor', 'Editor', 'Lector'])

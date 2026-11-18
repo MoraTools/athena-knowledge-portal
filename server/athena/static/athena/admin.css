@@ -46,7 +46,7 @@ code, kbd { padding: 1px 5px; background: var(--surface-strong); border-radius: 
 /* Label voice: mono 11px uppercase, the same as the rail and the directory. */
 div.breadcrumbs, thead th, .module h2, .module caption, .inline-group h2, fieldset .fieldset-heading,
 .aligned label, .login .form-row label, #changelist-filter h2, #changelist-filter h3, #changelist-filter summary,
-.bulk-count, .paginator, #toolbar .quiet, #change-history tbody th {
+.bulk-count, #toolbar .quiet, #change-history tbody th {
   font: var(--label); letter-spacing: .06em; text-transform: uppercase;
 }
 /* Data voice: dates and times, one line each. */
@@ -283,6 +283,7 @@ a.delete-related { --icon: url('/static/admin/img/icon-deletelink.svg'); }
 /* Page head: the h1 and the list's create button in one row (admin/change_list.html, the user directory). */
 .page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); margin: 0 0 var(--space-3); }
 #content .page-head h1 { margin: 0; }
+.page-head .button > svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; }
 
 /* Pills: the kit's chip, shared by changelist booleans and the directory. */
 .pill {
@@ -309,7 +310,11 @@ thead th.sorted .text a, thead th.sorted .text span { color: var(--accent-text);
 table thead th .text span, table thead th .text a { box-sizing: border-box; min-height: 36px; padding: var(--cell-pad-y) var(--cell-pad-x); }
 table thead th .text a { display: flex; align-items: center; }
 table thead th .text a:hover, table thead th .text a:focus { background: transparent; }
-table thead th.sorted .sortoptions { padding: 11px 12px 0 0; }
+/* change_list_results.html puts the cues after the label: priority number and chevron next to it, the hover-only remove last. */
+table thead th.sorted .text { display: inline-block; padding-right: 0; vertical-align: middle; }
+table thead th.sorted .text a { padding-right: 0; }
+table thead th.sorted .sortoptions { display: inline-flex; float: none; align-items: center; gap: 2px; margin-left: 6px; padding: 0 var(--cell-pad-x) 0 0; vertical-align: middle; }
+table thead th.sorted .sortoptions a.sortremove { order: 1; }
 /* Sort cue: the drawn chevrons of the user directory and the reader tables (.table-sort-direction), as masks (only their shape is used).
    A pair on a sortable column; one chevron, gold, on the sorted column's direction toggle; Django's priority number stays. */
 #changelist thead th.sortable:not(.sorted) .text a::after { content: ''; flex: 0 0 12px; height: 18px; margin-left: 6px; background: var(--text-subtle);
@@ -346,6 +351,11 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 /* Dates keep one line at their own width and a draft's access note wraps, so the title column takes the free width. */
 #changelist td:has(> time) { width: 1%; white-space: nowrap; }
 #changelist td.field-access .state-next { white-space: normal; }
+/* Article list: one-line authors and narrow date headers; the title column takes about 22rem where the table still fits
+   (at 1440 with the rail open, 22rem pushes the last date under the sticky row controls). */
+@media (min-width: 1600px) { .model-article #changelist th.field-title { min-width: 22rem; } }
+.model-article #changelist td.field-author { white-space: nowrap; }
+.model-article #changelist thead th:is(.column-article_date, .column-last_updated) .text a { white-space: normal; }
 
 /* Changelist toolbar, bulk bar, row controls and pagination */
 #changelist.module { background: transparent; border: 0; }
@@ -389,9 +399,10 @@ a.icon-button:hover, a.icon-button:focus-visible { background: var(--surface-rai
 a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: var(--crit); background: var(--crit-fill); color: var(--crit-text); }
 .icon-button[aria-disabled] { opacity: .5; cursor: not-allowed; }
 .icon-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+/* The result count reads like the reader count ("2 claves de API"): Inter, muted, sentence case. */
 .paginator, #changelist .paginator, #change-history .paginator {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 16px 0; margin: 0;
-  border: 0; background: transparent; color: var(--text-subtle); line-height: 1.5; overflow: visible;
+  border: 0; background: transparent; color: var(--text-muted); font: 400 14px/1.5 var(--font-ui); overflow: visible;
 }
 .paginator a:link, .paginator a:visited, .paginator .this-page { min-width: var(--control-height); padding: 0 10px; font: 500 13px/1 var(--font-mono); letter-spacing: normal; }
 .paginator .this-page { border-color: var(--accent-edge); color: var(--accent-text); cursor: default; }

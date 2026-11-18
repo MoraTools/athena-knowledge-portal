@@ -70,7 +70,7 @@
     </div>
     <footer id="desk-image-footer" class="desk-image-footer"></footer>
     <dialog id="article-details" class="desk-dialog" open aria-labelledby="desk-dialog-title">
-      <header class="desk-dialog-header"><h2 id="desk-dialog-title">Detalles del artículo</h2></header>
+      <header class="desk-dialog-header"><h2 id="desk-dialog-title">Detalles del artículo</h2><button class="icon-button" type="button" aria-label="Cerrar" data-cancel-details><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
       <div class="desk-detail-tabs" role="tablist" aria-label="Detalles del artículo">
         {% for fieldset in adminform %}<button type="button" role="tab" id="desk-detail-tab-{{ forloop.counter }}" aria-controls="desk-detail-panel-{{ forloop.counter }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"{% if not forloop.first %} tabindex="-1"{% endif %} data-detail-tab>{{ fieldset.name }}</button>{% endfor %}
       </div>
@@ -92,8 +92,8 @@
         {% endfor %}
       </div>
       <footer class="desk-dialog-footer">
-        {# One control: Aplicar keeps the changes in the form and closes; Guardar in the bar saves. Read-only pages only close. #}
-        {% if has_change_permission or add and has_add_permission %}<button class="button default" type="button" data-close-details>Aplicar</button>{% else %}<button class="button" type="button" data-close-details>Cerrar</button>{% endif %}
+        {# Aplicar keeps the changes in the form and closes; Cancelar, × and Esc put back the values of the open; Guardar in the bar saves. Read-only pages only close. #}
+        {% if has_change_permission or add and has_add_permission %}<button class="button" type="button" data-cancel-details>Cancelar</button><button class="button default" type="button" data-close-details>Aplicar</button>{% else %}<button class="button" type="button" data-close-details>Cerrar</button>{% endif %}
       </footer>
     </dialog>
     <script id="django-admin-form-add-constants" src="{% static 'admin/js/change_form.js' %}"{% if add %} data-model-name="{{ opts.model_name }}"{% endif %} async></script>

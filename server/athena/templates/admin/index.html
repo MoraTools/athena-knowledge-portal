@@ -15,7 +15,8 @@
     <ul class="actionlist">
     {% for entry in admin_log %}
       {% if entry.downloaded_at %}
-      <li class="downloadlink"><strong>{{ entry.username }}</strong> descargó <span class="download-file">{{ entry.title }} ({{ entry.filename }})</span> · {{ entry.downloaded_at|since }}</li>
+      {# The article event shape. The file title links to its admin row only for users who may view Download rows. #}
+      <li class="downloadlink">{% if entry.download_id and perms.athena.view_download %}<a href="{% url 'admin:athena_download_change' entry.download_id %}">{{ entry.title }}</a>{% else %}{{ entry.title }}{% endif %} <span class="mini quiet"><strong>{{ entry.username }}</strong> descargó · {{ entry.downloaded_at|since }}</span></li>
       {% else %}
       <li class="{% if entry.is_addition %}addlink{% elif entry.is_change %}changelink{% else %}deletelink{% endif %}">
         {% if entry.is_deletion or not entry.get_admin_url %}{{ entry.object_repr }}{% else %}<a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>{% endif %}

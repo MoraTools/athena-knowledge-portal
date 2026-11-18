@@ -113,7 +113,12 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
         this.open = false;
         closeEvents.push(() => { for (const callback of this.listeners.close || []) callback(); });
       },
-      dispatchEvent(event) { for (const callback of this.listeners[event.type] || []) callback(event); }
+      dispatchEvent(event) {
+        // A dispatched Event has no target here: give it this node, then bubble as the DOM does.
+        const fired = event.target ? event : { type: event.type, bubbles: event.bubbles, target: this, preventDefault() {} };
+        for (const callback of this.listeners[fired.type] || []) callback(fired);
+        if (fired.bubbles) this.parent?.dispatchEvent(fired);
+      }
     };
     nodes.set(id, node);
     return node;
@@ -147,7 +152,8 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
   form.querySelector = () => ({ value: 'csrf-token' });
   const overflow = element('overflow'), mainOpener = element('opener'), importOpener = element('import', overflow);
   importOpener.dataset.detailFocus = 'id_markdown_file';
-  const close = element('close', dialog), workspace = element('workspace');
+  const close = element('close', dialog), dismiss = element('dismiss', dialog), cancel = element('cancel', dialog);
+  const workspace = element('workspace');
   const paneTabs = ['source', 'preview'].map(pane => { const tab = element(pane); tab.dataset.pane = pane; return tab; });
   form.elements = { namedItem: name => readOnly ? null : fields[name] ?? null };
   const csrf = form.querySelector;
@@ -157,7 +163,10 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
     return !firstInvalid;
   };
   form.reportValidity = () => {};
-  dialog.querySelectorAll = selector => selector === '[data-detail-tab]' ? detailTabs : panels;
+  dialog.querySelectorAll = selector => selector === '[data-detail-tab]' ? detailTabs
+    : selector === '[data-cancel-details]' ? [dismiss, cancel]
+    : selector === 'input, select, textarea' ? [...nodes.values()].filter(node => node.name && node !== dialog && dialog.contains(node))
+    : panels;
   dialog.querySelector = () => serverError && fields[serverError];
   const queries = { '.desk-overflow': overflow, '[data-open-details]': mainOpener,
     '[data-close-details]': close, '.desk-workspace': workspace };
@@ -186,7 +195,7 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
     addEventListener(type, callback) { handlers['global:' + type] = callback; }
   });
   handlers.DOMContentLoaded();
-  return { form, dialog, panels, detailTabs, fields, tool, close, mainOpener, importOpener, handlers, preview, posts, nodes,
+  return { form, dialog, panels, detailTabs, fields, tool, close, dismiss, cancel, element, mainOpener, importOpener, handlers, preview, posts, nodes,
     focused: () => focused, invalidate(field) { firstInvalid = fields[field]; },
     flushClose() { for (const callback of closeEvents.splice(0)) callback(); } };
 }
@@ -281,21 +290,75 @@ for (const field of ['date', 'pdf_file']) {
   assert.equal(state.focused(), state.fields[field]);
   assert.equal(state.fields[field].parent.hidden, false);
 }
-{
+// The Detalles dialog keeps the values it had when it opened: the header × (Cerrar), Cancelar and Esc put them back
+// and close; Aplicar keeps the changes. The text outside the dialog stays as it is.
+for (const how of ['escape', 'dismiss', 'cancel', 'apply']) {
   const state = editor();
-  await state.form.fire('change', { target: state.fields.kind });
+  // A field the script does not know (as a field added later) is in the snapshot too.
+  const later = Object.assign(state.element('id_later', state.panels[0]), { name: 'later', value: 'Colas' });
+  const shown = [];
+  later.addEventListener('change', event => shown.push(event.target.value));
+  Object.assign(state.fields.is_public, { type: 'checkbox', checked: false });
+  state.fields.pdf_file.type = 'file';
+  const noFile = state.fields.pdf_file.files;
   let unloadBlocked = false;
+  // An edit before the dialog opens (the dialog is modal) stays unsaved.
+  state.fields.body.value = 'Edited body';
+  await state.form.fire('input', { target: state.fields.body });
+  await state.mainOpener.fire('click');
+  state.fields.summary.value = 'Changed summary';
+  state.fields.kind.value = 'tool';
+  await state.form.fire('change', { target: state.fields.kind });
+  assert.equal(state.tool.open, true);
+  later.value = 'Excel';
+  state.fields.is_public.checked = true;
+  state.fields.pdf_file.files = [{ name: 'new.pdf' }];
+  assert.equal(state.nodes.get('desk-save-state').textContent, 'Cambios sin guardar');
+  if (how === 'escape') {
+    assert.equal((await state.dialog.fire('cancel')).defaultPrevented, false, 'Esc closes the dialog.');
+    state.dialog.close();
+  } else await state[how === 'apply' ? 'close' : how].fire('click');
+  assert.equal(state.dialog.open, false, how);
+  state.flushClose();
+  assert.equal(state.focused(), state.mainOpener);
+  assert.equal(state.fields.body.value, 'Edited body', 'The text outside Detalles is not part of the snapshot.');
+  if (how === 'apply') {
+    assert.deepEqual([state.fields.summary.value, state.fields.kind.value, later.value, state.fields.is_public.checked,
+      state.fields.pdf_file.files[0]?.name], ['Changed summary', 'tool', 'Excel', true, 'new.pdf']);
+    continue;
+  }
+  assert.deepEqual([state.fields.summary.value, state.fields.kind.value, later.value, state.fields.is_public.checked,
+    state.fields.pdf_file.files], ['', 'guide', 'Colas', false, noFile], how);
+  assert.equal(state.tool.open, false, 'The kind hooks see the old kind.');
+  assert.deepEqual(shown, ['Colas'], 'A field that changed gets a change event, so its own widget shows the old value.');
+  // The edit outside the dialog keeps the page unsaved.
   state.handlers.beforeunload({ preventDefault() { unloadBlocked = true; } });
   assert.equal(unloadBlocked, true);
+}
+// With no edit outside the dialog, a discarded dialog leaves the page saved: no "Cambios sin guardar", no unload prompt.
+{
+  const state = editor();
   await state.mainOpener.fire('click');
-  const cancel = await state.dialog.fire('cancel');
-  assert.equal(cancel.defaultPrevented, false);
-  state.dialog.close();
-  assert.equal(state.fields.body.value, 'Unsaved Markdown');
+  state.fields.summary.value = 'Changed summary';
+  await state.form.fire('input', { target: state.fields.summary });
+  await state.dismiss.fire('click');
+  assert.equal(state.fields.summary.value, '');
+  assert.equal(state.nodes.get('desk-save-state').textContent, undefined);
+  let unloadBlocked = false;
+  state.handlers.beforeunload({ preventDefault() { unloadBlocked = true; } });
+  assert.equal(unloadBlocked, false);
+  // A second open takes a new snapshot: Aplicar, then Cancelar, keeps what Aplicar kept.
+  await state.mainOpener.fire('click');
+  state.fields.summary.value = 'Applied';
+  await state.close.fire('click');
+  await state.mainOpener.fire('click');
+  state.fields.summary.value = 'Discarded';
+  await state.cancel.fire('click');
+  assert.equal(state.fields.summary.value, 'Applied');
   assert.equal((await state.form.fire('submit')).defaultPrevented, false);
   unloadBlocked = false;
   state.handlers.beforeunload({ preventDefault() { unloadBlocked = true; } });
-  assert.equal(unloadBlocked, false);
+  assert.equal(unloadBlocked, false, 'A submit does not ask to leave.');
 }
 {
   const state = editor();
@@ -309,7 +372,7 @@ for (const field of ['date', 'pdf_file']) {
   assert.equal((await state.form.fire('submit')).defaultPrevented, true);
   assert.equal(state.focused(), state.fields.markdown_file);
   assert.equal((await state.dialog.fire('cancel')).defaultPrevented, true);
-  await state.close.fire('click');
+  for (const button of [state.close, state.dismiss, state.cancel]) await button.fire('click');
   assert.equal(state.dialog.open, true);
   finishRead(new TextEncoder().encode('<!-- athena: imported -->\n# Imported\n\nBody.').buffer);
   await importing;

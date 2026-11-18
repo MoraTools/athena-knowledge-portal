@@ -77,7 +77,7 @@ class DownloadEventTests(TestCase):
 
     def test_recent_activity_and_list_follow_the_permission(self):
         self.get(self.reader, '/downloads/' + self.item.slug)
-        line = '<strong>reader</strong> descargó <span class="download-file">Framework actual (Plantilla 1.zip)</span> · ahora'
+        line = '<span class="mini quiet"><strong>reader</strong> descargó · ahora</span>'
         self.client.force_login(self.root)
         page = self.client.get('/admin/')
         self.assertContains(page, line, html=False)

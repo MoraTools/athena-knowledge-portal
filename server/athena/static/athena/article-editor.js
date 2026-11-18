@@ -116,16 +116,57 @@
       if (target && toolFields.contains(target)) toolFields.open = true;
       opener = button && overflow.contains(button) ? overflow.querySelector('summary') : button || document.querySelector('[data-open-details]');
       overflow.open = false;
-      if (!dialog.open) dialog.showModal();
+      if (!dialog.open) {
+        snapshot = { dirty, saveText: saveState?.textContent, controls: [...dialog.querySelectorAll('input, select, textarea')].map(control => [control, readControl(control)]) };
+        dialog.showModal();
+      }
       target?.focus();
       // A field that cannot take focus leaves it on the selected tab, never on the dialog's first tab.
       if (!target || document.activeElement !== target) detailTabs.find(tab => tab.getAttribute('aria-selected') === 'true').focus();
       target?.scrollIntoView({ block: 'center' });
     }
+    // ×, Cancelar and Esc put back every control of the dialog as it was at open; Aplicar keeps the changes.
+    // Django's SelectFilter2 keeps its lists in SelectBox.cache, so those are put back from there.
+    let snapshot = null;
+    function readControl(control) {
+      const box = window.SelectBox?.cache?.[control.id];
+      if (box) return JSON.stringify(box);
+      if (control.type === 'checkbox' || control.type === 'radio') return control.checked;
+      if (control.type === 'file') return control.files;
+      if (control.multiple) return JSON.stringify([...control.options].map(option => option.selected));
+      return control.value;
+    }
+    function writeControl(control, state) {
+      if (window.SelectBox?.cache?.[control.id]) {
+        window.SelectBox.cache[control.id] = JSON.parse(state);
+        window.SelectBox.redisplay(control.id);
+      } else if (control.type === 'checkbox' || control.type === 'radio') control.checked = state;
+      else if (control.type === 'file') control.files = state;
+      else if (control.multiple) JSON.parse(state).forEach((selected, index) => { control.options[index].selected = selected; });
+      else control.value = state;
+    }
+    function discardDetails() {
+      for (const [control, state] of snapshot?.controls ?? []) {
+        if (readControl(control) === state) continue;
+        writeControl(control, state);
+        // The form hooks (kind, preview, chips) and each widget's own listeners see the old value.
+        control.dispatchEvent(new Event('input', { bubbles: true }));
+        control.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      if (snapshot && !snapshot.dirty) {
+        dirty = false;
+        if (saveState) saveState.textContent = snapshot.saveText;
+      }
+    }
     dialog.close();
     document.querySelectorAll('[data-open-details]').forEach(button => button.addEventListener('click', () => openDetails(button, button.dataset.detailFocus)));
     document.querySelector('[data-close-details]').addEventListener('click', () => { if (!importing) dialog.close(); });
-    dialog.addEventListener('cancel', event => { if (importing) event.preventDefault(); });
+    dialog.querySelectorAll('[data-cancel-details]').forEach(button => button.addEventListener('click', () => {
+      if (importing) return;
+      discardDetails();
+      dialog.close();
+    }));
+    dialog.addEventListener('cancel', event => { if (importing) event.preventDefault(); else discardDetails(); });
     dialog.addEventListener('close', () => opener?.focus());
     document.addEventListener('keydown', event => { if (event.key === 'Escape') overflow.open = false; });
     document.addEventListener('click', event => { if (!overflow.contains(event.target)) overflow.open = false; });

@@ -46,8 +46,10 @@ class ArticleEditorTests(TestCase):
                 for name in fields:
                     self.assertIn(f'name="{name}"', panels[index - 1])
                 self.assertNotIn(' hidden', panels[index - 1])  # Without JavaScript all groups stay reachable.
-            # The dialog applies; the bar's Guardar is the one save.
-            self.assertContains(response, '<button class="button default" type="button" data-close-details>Aplicar</button>')
+            # The dialog applies or cancels (also the header ×); the bar's Guardar is the one save.
+            self.assertContains(response, '<button class="button" type="button" data-cancel-details>Cancelar</button>'
+                                          '<button class="button default" type="button" data-close-details>Aplicar</button>')
+            self.assertContains(response, '<button class="icon-button" type="button" aria-label="Cerrar" data-cancel-details>')
             self.assertNotContains(response, 'Guardar cambios')
             self.assertNotContains(response, 'Cerrar conserva')
             self.assertContains(response, 'name="loaded_revision"', count=1)
