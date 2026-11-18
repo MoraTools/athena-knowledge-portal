@@ -462,6 +462,16 @@ class TagTests(TestCase):
         self.assertEqual(self.topic_form('Colas, Excel', '', ['Colas', 'Excel'], kind='tool').cleaned_data['tags'],
                          ['Colas', 'Excel'])
 
+    def test_otro_tema_needs_a_name(self):
+        # An empty "Tema nuevo" would drop the guide's section (Etiquetas no longer holds it): the form says so.
+        form = self.topic_form('Excel, primeros-pasos', '__other__', ['Colas', 'Excel', 'primeros-pasos'], other='  ')
+        self.assertEqual(form.errors.get('topic_other'), ['Escriba el tema nuevo'])
+
+    def test_otro_tema_has_no_comma(self):
+        # The tag field splits at commas, so a later save would make two tags of it.
+        form = self.topic_form('Excel', '__other__', ['Colas', 'Excel'], other='Colas, Excel')
+        self.assertEqual(form.errors.get('topic_other'), ['El tema no puede tener comas'])
+
     def test_tema_row_is_in_details_above_etiquetas(self):
         self.client.force_login(User.objects.create_superuser('root'))
         guide = Article.objects.create(title='G', slug='g', body='x', tags=['Colas', 'Excel'])

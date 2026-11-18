@@ -131,7 +131,7 @@ DELETE_LOSSES = {
 def release_line(request, article):
     """Detalles of a Versión article: the published Download the reader links for its title (views.release_rows)."""
     from . import views  # views imports this module (sidebar_markdown).
-    row = article and views.release_rows().get(release_key(article.title))
+    row = views.release_rows().get(release_key(article.title))
     download = row and Download.objects.filter(slug=row.removeprefix('download-file-')).first()
     if not download:
         return 'Ningún archivo de Descargas tiene este título'
@@ -472,7 +472,6 @@ class ArticleAdmin(RowControlsAdmin):
 
     def add_view(self, request, form_url='', extra_context=None):
         return super().add_view(request, form_url, {'title': self.add_title, 'state_chips': state_chips(None),
-                                                    'release_line': release_line(request, None),
                                                     'placement_tags': PLACEMENT_TAGS, **(extra_context or {})})
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
@@ -483,7 +482,7 @@ class ArticleAdmin(RowControlsAdmin):
         return super().change_view(request, object_id, form_url, {
             'title': title, 'subtitle': None, 'state_chips': state_chips(article) if article else '',
             'saved_at': timezone.localtime(article.updated_at) if saved else None, 'placement_tags': PLACEMENT_TAGS,
-            'release_line': release_line(request, article),
+            'release_line': release_line(request, article) if article else '',
             **(extra_context or {})})
 
     def delete_view(self, request, object_id, extra_context=None):

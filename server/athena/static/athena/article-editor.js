@@ -360,6 +360,7 @@
     title.addEventListener('keydown', event => { if (event.key === 'Enter') event.preventDefault(); });
     form.addEventListener('input', event => {
       if (event.target === title && /[\r\n]/.test(title.value)) title.value = title.value.replace(/\s*[\r\n]+\s*/g, ' ');
+      if (event.target === title) showToolFields();
       markDirty();
       clearTimeout(timer);
       timer = setTimeout(updatePreview, 120);
@@ -382,7 +383,8 @@
       const kind = value('kind', form.dataset.articleKind);
       toolFields.open = kind === 'tool' || Boolean(toolFields.querySelector('.errors'));
       const release = document.getElementById('desk-release');
-      if (release) release.hidden = kind !== 'release';
+      const key = text => text.trim().toLowerCase();  // models.release_key
+      if (release) release.hidden = kind !== 'release' || key(title.value) !== key(release.dataset.title);
       const topic = document.getElementById('id_topic'), topicOther = document.getElementById('id_topic_other');
       if (topic) topic.closest('.form-row').hidden = kind !== 'guide';
       if (topicOther) topicOther.closest('.form-row').hidden = kind !== 'guide' || topic?.value !== '__other__';

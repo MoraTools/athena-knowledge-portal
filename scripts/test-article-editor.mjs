@@ -388,12 +388,23 @@ for (const kind of ['guide', 'tool']) {
 {
   const state = editor();
   const line = Object.assign(state.element('desk-release', state.panels[0]), { hidden: true });
+  line.dataset.title = 'Title';  // The saved title; the harness title field holds 'Title'.
   state.fields.kind.value = 'release';
   await state.form.fire('change', { target: state.fields.kind });
   assert.equal(line.hidden, false);
   state.fields.kind.value = 'guide';
   await state.form.fire('change', { target: state.fields.kind });
   assert.equal(line.hidden, true);
+  // The line names the file of the saved title: it hides while the title differs (trim and case fold, as release_key).
+  state.fields.kind.value = 'release';
+  await state.form.fire('change', { target: state.fields.kind });
+  assert.equal(line.hidden, false);
+  state.fields.title.value = 'Title 2';
+  await state.form.fire('input', { target: state.fields.title });
+  assert.equal(line.hidden, true);
+  state.fields.title.value = '  TITLE ';
+  await state.form.fire('input', { target: state.fields.title });
+  assert.equal(line.hidden, false);
 }
 // With no edit outside the dialog, a discarded dialog leaves the page saved: no "Cambios sin guardar", no unload prompt.
 {

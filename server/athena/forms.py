@@ -234,7 +234,12 @@ class AdminArticleForm(ArticleForm):
         data = super().clean()
         topic = data.get('topic_other') if data.get('topic') == OTHER_TOPIC else data.get('topic')
         topic = ' '.join((topic or '').split())
-        if topic and 'tags' in data:
+        if data.get('topic') == OTHER_TOPIC:  # Etiquetas no longer holds the old section, so an empty name would drop it.
+            if not topic:
+                self.add_error('topic_other', 'Escriba el tema nuevo')
+            elif ',' in topic:  # The tag field splits at commas: a later save would make two tags of it.
+                self.add_error('topic_other', 'El tema no puede tener comas')
+        if topic and 'tags' in data and 'topic_other' not in self.errors:
             # Tema replaces the old first topic tag at its place (after the placement tags that stood before it);
             # a tag equal to Tema by topic key is dropped from the others, so it is never stored twice.
             topic = self.tag_spellings.get(topic.casefold(), topic)

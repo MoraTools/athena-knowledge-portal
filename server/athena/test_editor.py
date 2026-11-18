@@ -72,24 +72,26 @@ class ArticleEditorTests(TestCase):
         # titles equal after trim and case fold (models.release_key).
         def line():
             page = self.client.get(self.path).content.decode()
-            return re.search(r'<p class="desk-release help" id="desk-release"[^>]*>(.*?)</p>', page, re.S)
+            self.assertNotIn('{#', page)  # A Django comment shows as text when it spans two lines.
+            return re.search(r'<p class="desk-release help" id="desk-release" data-title="([^"]*)">(.*?)</p>', page, re.S)
         self.article.kind = 'release'
         self.article.title = 'Plantilla base 3.1.0'
         self.article.save()
         Download.objects.create(title='Plantilla base 3.1.0', slug='plantilla-310-borrador', published=False)
-        self.assertEqual(line()[1], 'Ningún archivo de Descargas tiene este título')
+        self.assertEqual(line()[2], 'Ningún archivo de Descargas tiene este título')
+        self.assertEqual(line()[1], 'Plantilla base 3.1.0')  # The saved title: article-editor.js hides the line when it changes.
         Download.objects.create(title='Plantilla base 3.1.0', slug='plantilla-310-a')
         newest = Download.objects.create(title='  PLANTILLA BASE 3.1.0 ', slug='plantilla-310-b')
-        self.assertEqual(line()[1], f'Archivo en Descargas: <a href="/admin/athena/download/{newest.pk}/change/">'
+        self.assertEqual(line()[2], f'Archivo en Descargas: <a href="/admin/athena/download/{newest.pk}/change/">'
                                     f'  PLANTILLA BASE 3.1.0 </a>')
         # Without view permission on Download rows the title is plain text.
         editor = User.objects.create_user('release-editor', is_staff=True)
         editor.user_permissions.set(permissions(['athena.view_article', 'athena.change_article']))
         self.client.force_login(editor)
-        self.assertEqual(line()[1], 'Archivo en Descargas:   PLANTILLA BASE 3.1.0 ')
-        # A new article has no file yet; article-editor.js shows the line only while Tipo is Versión.
+        self.assertEqual(line()[2], 'Archivo en Descargas:   PLANTILLA BASE 3.1.0 ')
+        # A new article has no saved title to match: no line.
         self.client.force_login(self.admin)
-        self.assertIsNotNone(re.search(r'id="desk-release"[^>]*>Ningún archivo', self.client.get('/admin/athena/article/add/').content.decode()))
+        self.assertNotIn('id="desk-release"', self.client.get('/admin/athena/article/add/').content.decode())
 
     def test_view_only_has_source_and_history_without_save_or_upload(self):
         viewer = User.objects.create_user('viewer', is_staff=True)
