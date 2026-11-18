@@ -10,7 +10,7 @@
     {% for filter in article_filters %}
     <label><span>{{ filter.label }}</span>
       <select name="{{ filter.name }}">
-        <option value="">Todos</option>
+        <option value="">{{ filter.all|default:"Todos" }}</option>
         {% for value, text in filter.options %}<option value="{{ value }}"{% if value == filter.value %} selected{% endif %}>{{ text }}</option>{% endfor %}
       </select>
     </label>

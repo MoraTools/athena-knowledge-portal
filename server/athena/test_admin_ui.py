@@ -370,6 +370,20 @@ class TagTests(TestCase):
         options = re.findall(r'<option value="([^"]*)">', html)
         self.assertEqual(options, ['Demos', 'Excel', 'excel tips', 'Plantilla base'])
 
+    def test_tag_help_names_the_guides_section_and_new_topics(self):
+        self.assertIn('La primera etiqueta de tema es la sección del artículo en Guías; una etiqueta nueva crea un tema.',
+                      self.form().fields['tags'].help_text)
+
+    def test_article_list_filters_by_a_readable_tag(self):
+        self.client.force_login(self.editor)
+        page = self.client.get('/admin/athena/article/?tag=excel').content.decode()
+        titles = re.findall(r'class="field-title"><a href="[^"]+">([^<]+)</a>', page)
+        self.assertEqual(sorted(titles), ['Dos', 'Uno'])  # Whole tags in any case; "excel tips" is another tag.
+        select = re.search(r'(?s)<select name="tag">(.*?)</select>', page)[1]
+        self.assertEqual(re.findall(r'<option value="([^"]*)"', select), ['', 'Demos', 'Excel', 'excel tips', 'Plantilla base'])
+        self.assertIn('<option value="">Todas</option>', select)
+        self.assertIn('<option value="Excel" selected>Excel</option>', select)  # The spelling in use, whatever case was sent.
+
     def test_save_trims_and_keeps_the_spelling_in_use(self):
         form = self.form(tags='  excel ,Plantilla   base, EXCEL, Nuevo ,, ')
         form.is_valid()

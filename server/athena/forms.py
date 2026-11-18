@@ -89,7 +89,7 @@ class ArticleForm(forms.ModelForm):
                                     help_text='Opcional. Reemplaza el contenido. Máximo 1 MiB.')
     pdf_file = forms.FileField(label='Adjuntar PDF', required=False, help_text='Opcional. Máximo 25 MiB.')
     remove_pdf = forms.BooleanField(label='Quitar PDF actual', required=False)
-    tags = forms.CharField(label='Etiquetas', required=False, widget=TagsInput, help_text='Separe las etiquetas con comas. Con la etiqueta primeros-pasos, el artículo aparece en Primeros pasos en el inicio.')
+    tags = forms.CharField(label='Etiquetas', required=False, widget=TagsInput, help_text='Separe las etiquetas con comas. La primera etiqueta de tema es la sección del artículo en Guías; una etiqueta nueva crea un tema. Con la etiqueta primeros-pasos, el artículo aparece en Primeros pasos en el inicio.')
     access = forms.ChoiceField(label='Acceso', required=False, choices=ACCESS_CHOICES, help_text=(
         'Público: si está publicado, cualquier persona lo lee sin una cuenta. Con cuenta: cualquier usuario que ingresa. '
         'Usuarios seleccionados: solo los usuarios de la lista y los superusuarios. Las imágenes y los PDF siguen este acceso.'))

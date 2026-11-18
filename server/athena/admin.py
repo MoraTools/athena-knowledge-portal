@@ -25,7 +25,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from .forms import (AdminArticleForm, ApiKeyForm, DirectoryUserCreationForm, DirectoryUserForm,
-                    SafeUserChangeForm, may_manage_user, permissions, user_permission_names)
+                    SafeUserChangeForm, may_manage_user, permissions, tag_spellings, user_permission_names)
 from .images import attached_image_ids
 from .models import PLACEMENT_TAGS, ApiKey, Article, Download, DownloadEvent, readable_articles
 
@@ -146,6 +146,28 @@ class AccessFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         lookup = self.lookups_by_value.get(self.value())
         return queryset.filter(**lookup) if lookup else queryset
+
+
+class TagFilter(admin.SimpleListFilter):
+    """Articles with one tag, whole and in any case (a JSON list: SQLite has no contains lookup for it)."""
+    title = 'etiqueta'
+    parameter_name = 'tag'
+
+    def lookups(self, request, model_admin):
+        return [(tag, tag) for tag in readable_tags(request.user)]
+
+    def queryset(self, request, queryset):
+        tag = (self.value() or '').casefold()
+        if not tag:
+            return queryset
+        # shortcut: a scan of the readable articles; fine for this knowledge base, index the tags if it grows large.
+        return queryset.filter(pk__in=[pk for pk, tags in queryset.values_list('pk', 'tags')
+                                       if tag in (name.casefold() for name in tags)])
+
+
+def readable_tags(user):
+    """The tags of the articles this user can read, one spelling each (as the editor's tag field offers them)."""
+    return sorted(tag_spellings(readable_articles(user, Article.objects.all())).values(), key=str.casefold)
 
 
 def role_label(user):
@@ -335,7 +357,7 @@ class ArticleAdmin(RowControlsAdmin):
     form = AdminArticleForm
     change_form_template = 'admin/athena/article/change_form.html'
     list_display = ['title', 'kind', 'state', 'access', 'author', 'article_date', 'last_updated', 'controls']
-    list_filter = ['published', AccessFilter, 'kind']
+    list_filter = ['published', AccessFilter, 'kind', TagFilter]
     search_fields = ['title', 'summary', 'author', 'body']
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ['last_updated', 'current_pdf']
@@ -417,7 +439,13 @@ class ArticleAdmin(RowControlsAdmin):
         filters = [{'label': label, 'name': name, 'value': request.GET.get(name, ''), 'options': options} for label, name, options in [
             ('Estado', 'published__exact', [('1', 'Publicado'), ('0', 'Borrador')]),
             ('Acceso', AccessFilter.parameter_name, list(ACCESS_LABELS.items())),
-            ('Tipo', 'kind__exact', Article.KINDS)]]
+            ('Tipo', 'kind__exact', Article.KINDS),
+            ('Etiqueta', TagFilter.parameter_name, [(tag, tag) for tag in readable_tags(request.user)])]]
+        tag_filter = filters[-1]
+        tag_filter['all'] = 'Todas'
+        # The select shows the spelling in use for a tag sent in another case.
+        tag_filter['value'] = next((tag for tag, _ in tag_filter['options'] if tag.casefold() == tag_filter['value'].casefold()),
+                                   tag_filter['value'])
         names = [f['name'] for f in filters]
         # "Todos" sends an empty value, which Django's filters reject (?e=1): drop it from the address.
         if any(request.GET.get(name) == '' for name in names):
