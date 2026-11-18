@@ -335,6 +335,17 @@ for (const how of ['escape', 'dismiss', 'cancel', 'apply']) {
   state.handlers.beforeunload({ preventDefault() { unloadBlocked = true; } });
   assert.equal(unloadBlocked, true);
 }
+// #41: the Descargas file line shows only while Tipo is Versión.
+{
+  const state = editor();
+  const line = Object.assign(state.element('desk-release', state.panels[0]), { hidden: true });
+  state.fields.kind.value = 'release';
+  await state.form.fire('change', { target: state.fields.kind });
+  assert.equal(line.hidden, false);
+  state.fields.kind.value = 'guide';
+  await state.form.fire('change', { target: state.fields.kind });
+  assert.equal(line.hidden, true);
+}
 // With no edit outside the dialog, a discarded dialog leaves the page saved: no "Cambios sin guardar", no unload prompt.
 {
   const state = editor();

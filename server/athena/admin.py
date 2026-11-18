@@ -27,7 +27,7 @@ from django.utils.safestring import mark_safe
 from .forms import (AdminArticleForm, ApiKeyForm, DirectoryUserCreationForm, DirectoryUserForm,
                     SafeUserChangeForm, may_manage_user, permissions, tag_spellings, user_permission_names)
 from .images import attached_image_ids
-from .models import PLACEMENT_TAGS, ApiKey, Article, Download, DownloadEvent, readable_articles
+from .models import PLACEMENT_TAGS, ApiKey, Article, Download, DownloadEvent, readable_articles, release_key
 
 admin.site.site_header = 'Athena · Administración'
 admin.site.site_title = 'Athena'
@@ -126,6 +126,19 @@ DELETE_LOSSES = {
     (False, True, True): 'Las imágenes y el PDF del artículo dejan de funcionar.',
     (True, True, True): 'El enlace para compartir, las imágenes y el PDF del artículo dejan de funcionar.',
 }
+
+
+def release_line(request, article):
+    """Detalles of a Versión article: the published Download the reader links for its title (views.release_rows)."""
+    from . import views  # views imports this module (sidebar_markdown).
+    row = article and views.release_rows().get(release_key(article.title))
+    download = row and Download.objects.filter(slug=row.removeprefix('download-file-')).first()
+    if not download:
+        return 'Ningún archivo de Descargas tiene este título'
+    if request.user.has_perm('athena.view_download'):
+        return format_html('Archivo en Descargas: <a href="{}">{}</a>', reverse('admin:athena_download_change', args=[download.pk]),
+                           download.title)
+    return format_html('Archivo en Descargas: {}', download.title)
 
 
 def delete_losses(article):
@@ -459,6 +472,7 @@ class ArticleAdmin(RowControlsAdmin):
 
     def add_view(self, request, form_url='', extra_context=None):
         return super().add_view(request, form_url, {'title': self.add_title, 'state_chips': state_chips(None),
+                                                    'release_line': release_line(request, None),
                                                     'placement_tags': PLACEMENT_TAGS, **(extra_context or {})})
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
@@ -469,6 +483,7 @@ class ArticleAdmin(RowControlsAdmin):
         return super().change_view(request, object_id, form_url, {
             'title': title, 'subtitle': None, 'state_chips': state_chips(article) if article else '',
             'saved_at': timezone.localtime(article.updated_at) if saved else None, 'placement_tags': PLACEMENT_TAGS,
+            'release_line': release_line(request, article),
             **(extra_context or {})})
 
     def delete_view(self, request, object_id, extra_context=None):

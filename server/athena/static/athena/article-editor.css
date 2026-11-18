@@ -128,7 +128,7 @@
 .desk-dialog-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin-bottom: var(--space-2); padding: var(--space-1) var(--space-2); border-radius: var(--radius); background: var(--surface-raised); font-size: 12px; }
 .desk-detail-fallback-heading { margin: 0; padding: var(--space-2) 0; font: var(--label); letter-spacing: .06em; text-transform: uppercase; }
 .desk-dialog[data-enhanced] .desk-detail-fallback-heading { display: none; }
-.desk-detail-panel[hidden] { display: none; }
+.desk-detail-panel[hidden], .desk-dialog .desk-release[hidden] { display: none; }
 .desk-dialog .desk-detail-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2) var(--space-3); min-width: 0; margin: 0; padding: 0; border: 0; background: none; }
 .desk-dialog .form-row { grid-column: 1 / -1; min-width: 0; padding: 0; border: 0; }
 .desk-dialog .field-author, .desk-dialog .field-kind { grid-column: auto; }
@@ -145,6 +145,7 @@
 .desk-dialog .field-summary textarea { height: 80px; min-height: 80px; resize: vertical; }
 .desk-dialog input[type=file] { width: 100%; min-width: 0; font: 13px/1.5 var(--font-ui); }
 .desk-dialog .errorlist { margin: 0 0 var(--space-1); }
+.desk-dialog .desk-release { margin: var(--space-2) 0 0; }
 /* Share image: preview at the 1.91:1 crop that chat apps show, then the link to copy. */
 .share-image { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); min-width: 0; }
 .share-image-preview { display: block; width: min(100%, 360px); aspect-ratio: 1200 / 630; object-fit: cover; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-strong); }

@@ -377,7 +377,12 @@
         option.disabled = used.has(tag.toLowerCase());
       }
     });
-    function showToolFields() { toolFields.open = value('kind', form.dataset.articleKind) === 'tool' || Boolean(toolFields.querySelector('.errors')); }
+    function showToolFields() {
+      const kind = value('kind', form.dataset.articleKind);
+      toolFields.open = kind === 'tool' || Boolean(toolFields.querySelector('.errors'));
+      const release = document.getElementById('desk-release');
+      if (release) release.hidden = kind !== 'release';
+    }
     showToolFields();
     form.addEventListener('change', event => {
       markDirty();

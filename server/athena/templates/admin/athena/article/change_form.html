@@ -83,6 +83,8 @@
               {% for line in fieldset %}{% for field in line %}{% if field.field.name != 'title' and field.field.name != 'body' and field.field.name != 'format' and field.field.name != 'status' and field.field.name != 'url' and field.field.name != 'download_file' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}
             </fieldset>
             {% if forloop.first %}
+              {# The Descargas file the reader links for this title; article-editor.js shows it only while Tipo is Versión. #}
+              <p class="desk-release help" id="desk-release">{{ release_line }}</p>
               <details id="desk-tool-fields" class="desk-tool-fields">
                 <summary>Campos de herramienta</summary>
                 <fieldset class="module aligned desk-detail-fields">{% for line in fieldset %}{% for field in line %}{% if field.field.name == 'status' or field.field.name == 'url' or field.field.name == 'download_file' %}{% include 'admin/athena/article/field.html' %}{% endif %}{% endfor %}{% endfor %}</fieldset>
