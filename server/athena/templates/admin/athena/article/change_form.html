@@ -75,7 +75,7 @@
         {% for fieldset in adminform %}<button type="button" role="tab" id="desk-detail-tab-{{ forloop.counter }}" aria-controls="desk-detail-panel-{{ forloop.counter }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"{% if not forloop.first %} tabindex="-1"{% endif %} data-detail-tab>{{ fieldset.name }}</button>{% endfor %}
       </div>
       <div class="desk-dialog-body">
-        <div class="desk-dialog-status"><span id="desk-details-state" class="desk-state">{{ state_chips }}</span><span class="desk-dialog-help">Cerrar conserva los cambios pendientes.</span></div>
+        <div class="desk-dialog-status"><span id="desk-details-state" class="desk-state">{{ state_chips }}</span></div>
         {% for fieldset in adminform %}
           <section class="desk-detail-panel" id="desk-detail-panel-{{ forloop.counter }}" role="tabpanel" aria-labelledby="desk-detail-tab-{{ forloop.counter }}">
             <h3 class="desk-detail-fallback-heading">{{ fieldset.name }}</h3>
@@ -92,8 +92,8 @@
         {% endfor %}
       </div>
       <footer class="desk-dialog-footer">
-        <button class="button" type="button" data-close-details>Cerrar</button>
-        {% if has_change_permission or add and has_add_permission %}<button class="button default" type="submit" name="_save">Guardar cambios</button>{% endif %}
+        {# One control: Aplicar keeps the changes in the form and closes; Guardar in the bar saves. Read-only pages only close. #}
+        {% if has_change_permission or add and has_add_permission %}<button class="button default" type="button" data-close-details>Aplicar</button>{% else %}<button class="button" type="button" data-close-details>Cerrar</button>{% endif %}
       </footer>
     </dialog>
     <script id="django-admin-form-add-constants" src="{% static 'admin/js/change_form.js' %}"{% if add %} data-model-name="{{ opts.model_name }}"{% endif %} async></script>

@@ -53,19 +53,21 @@ class AdminFormatTests(TestCase):
         self.assertIn('<h1>Administración</h1>', page)
 
     def test_django_strings_follow_the_language_cookie_and_spanish_stays_the_default(self):
+        # Django's own string on the dashboard: the breadcrumb navigation name.
+        spanish, english = '<nav aria-label="Guía-rastro">', '<nav aria-label="Breadcrumbs">'
         page = self.client.get('/admin/').content.decode()
-        self.assertIn('Añadir', page)
+        self.assertIn(spanish, page)
         self.assertIn('data-lang="es"', page)
         self.client.cookies['django_language'] = 'en'
         page = self.client.get('/admin/').content.decode()
-        self.assertIn('>Add</a>', page)
-        self.assertNotIn('Añadir', page)
+        self.assertIn(english, page)
+        self.assertNotIn(spanish, page)
         self.assertIn('data-lang="en"', page)
         # The portal's own Spanish text stays for suite-i18n.js to translate in the browser.
         self.assertIn('Última actividad', page)
         del self.client.cookies['django_language']
-        self.assertIn('>Add</a>', self.client.get('/admin/', HTTP_ACCEPT_LANGUAGE='en-GB,en;q=0.8').content.decode())
-        self.assertIn('Añadir', self.client.get('/admin/', HTTP_ACCEPT_LANGUAGE='fr,pt;q=0.8').content.decode())
+        self.assertIn(english, self.client.get('/admin/', HTTP_ACCEPT_LANGUAGE='en-GB,en;q=0.8').content.decode())
+        self.assertIn(spanish, self.client.get('/admin/', HTTP_ACCEPT_LANGUAGE='fr,pt;q=0.8').content.decode())
 
     def test_reader_paths_keep_spanish_and_no_language_vary(self):
         self.client.logout()
@@ -137,6 +139,9 @@ class AdminEditorTests(TestCase):
         self.assertNotIn('id="changelist-filter"', page)
         # A select change does not reload the list (keyboard users keep their place); the Filtrar button applies the choices.
         self.assertRegex(page, r'(?s)<div class="list-filters">.*<input type="submit" value="Filtrar">\s*</div>')
+        # One submit for the search field and the filters; Enter in the search field submits the same form.
+        toolbar = page.split('<form id="changelist-search"', 1)[1].split('</form>', 1)[0]
+        self.assertEqual(toolbar.count('type="submit"'), 1)
         script = (settings.BASE_DIR / 'server/athena/static/athena/admin-list.js').read_text()
         self.assertNotIn('requestSubmit', script)
         self.assertNotIn('.list-filters', script)
@@ -202,7 +207,8 @@ class AdminEditorTests(TestCase):
         page = self.client.get('/admin/athena/article/').content.decode()
         self.assertIn('class="button default">Nuevo artículo</a>', page)
         self.assertNotIn('Añadir artículo', page)
-        page = self.client.get('/admin/').content.decode()
+        # The app page (/admin/athena/) still lists the models through the app_list.html copy.
+        page = self.client.get('/admin/athena/').content.decode()
         self.assertRegex(page, r'href="/admin/athena/downloadevent/" class="viewlink"[^>]*>Ver</a>')
         self.assertNotIn('>Vista</a>', page)
 
@@ -238,6 +244,17 @@ class AdminEditorTests(TestCase):
         self.assertEqual(changed, [(theirs_line.replace("{% translate 'View' %}", 'Ver'), theirs_line)
                                    for theirs_line in theirs if "{% translate 'View' %}" in theirs_line])
         self.assertEqual(len(changed), 1)
+
+    def test_dashboard_has_no_app_table_and_the_rail_reaches_every_model(self):
+        from django.contrib import admin
+        from django.urls import reverse
+        page = self.client.get('/admin/').content.decode()
+        self.assertNotIn('class="app-', page)  # Django's app table.
+        self.assertIn('id="recent-actions-module"', page)
+        rail = page.split('<aside id="rail"', 1)[1].split('</aside>', 1)[0]
+        for model in admin.site._registry:
+            with self.subTest(model=model.__name__):
+                self.assertIn(f'href="{reverse(f"admin:{model._meta.app_label}_{model._meta.model_name}_changelist")}"', rail)
 
     def test_directory_create_button_is_in_the_title_row(self):
         page = self.client.get('/admin/auth/user/').content.decode()
@@ -307,14 +324,13 @@ class AdminEditorTests(TestCase):
         self.assertIn('La clave actúa con los permisos de este usuario.', page)
         self.assertIn('Lectura: leer los artículos publicados, sus PDF y las descargas.<br>', page)
 
-    def test_every_save_button_shows_the_new_key_once(self):
-        # Django's extra save buttons stay: response_add shows the key page for each of them.
-        for button in ['_save', '_addanother', '_continue']:
-            with self.subTest(button=button):
-                response = self.client.post('/admin/athena/apikey/add/', {
-                    'name': button, 'user': self.root.pk, 'scope': 'read', 'expires_at': '2099-01-01T00:00', button: '1'})
-                self.assertEqual(response.status_code, 200)
-                self.assertContains(response, '<code class="secret" id="raw-key">athena_')
+    def test_the_one_save_button_shows_the_new_key_once(self):
+        page = self.client.get('/admin/athena/apikey/add/').content.decode()
+        self.assertEqual(re.findall(r'<input type="submit"[^>]*>', page), ['<input type="submit" value="Guardar" class="default" name="_save">'])
+        response = self.client.post('/admin/athena/apikey/add/', {
+            'name': 'agente', 'user': self.root.pk, 'scope': 'read', 'expires_at': '2099-01-01T00:00', '_save': '1'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<code class="secret" id="raw-key">athena_')
 
     def test_api_key_list_marks_expired_and_expiring_keys(self):
         from datetime import timedelta

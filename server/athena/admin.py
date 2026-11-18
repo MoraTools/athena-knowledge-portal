@@ -625,7 +625,9 @@ class ApiKeyAdmin(RowControlsAdmin):
         return super().changelist_view(request, {'title': 'Claves de API', 'subtitle': subtitle, **(extra_context or {})})
 
     def add_view(self, request, form_url='', extra_context=None):
+        # One Guardar: every save shows the one-time key page, so the other save buttons add nothing.
         return super().add_view(request, form_url, {'title': self.add_title,
+                                                    'show_save_and_add_another': False, 'show_save_and_continue': False,
                                                     'subtitle': 'La clave se muestra una sola vez, después de guardar.',
                                                     **(extra_context or {})})
 

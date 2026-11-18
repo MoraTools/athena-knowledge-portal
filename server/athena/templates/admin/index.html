@@ -1,6 +1,8 @@
 {% extends 'admin/index.html' %}{% load i18n athena_nav %}
 {% block nav-breadcrumbs %}<nav aria-label="{% translate 'Breadcrumbs' %}"><div class="breadcrumbs">Administración</div></nav>{% endblock %}
 {% block nav-sidebar %}{% portal_sidebar %}{% endblock %}
+{# No app table on the dashboard: the rail lists the same pages. The app page (/admin/athena/, from Django's app_index.html, which extends this file) keeps its list. #}
+{% block content %}{% if app_label %}{{ block.super }}{% endif %}{% endblock %}
 {% block sidebar %}
 <div id="content-related">
   {% if drafts %}<p class="drafts-line"><a href="{% url 'admin:athena_article_changelist' %}?published__exact=0"><span>Borradores</span> {{ drafts }}</a></p>{% endif %}

@@ -118,7 +118,7 @@
     'Vista previa': 'Preview', 'en vivo': 'live', 'La vista previa aparece al escribir Markdown.': 'The preview appears as you write Markdown.',
     'Pegue una imagen o use Insertar imagen. PNG, JPEG, WebP o GIF, hasta 10 MiB y 20 millones de píxeles, o un video MP4 de hasta 200 MiB. Se conserva el texto seleccionado.': 'Paste an image or use Insert image. PNG, JPEG, WebP or GIF, up to 10 MiB and 20 million pixels, or an MP4 video of up to 200 MiB. Selected text is kept.',
     'Detalles del artículo': 'Article details', 'Información': 'Information', 'Publicación': 'Publishing', 'Archivos': 'Files',
-    'Cerrar conserva los cambios pendientes.': 'Closing keeps pending changes.', 'Resumen': 'Summary', 'Etiquetas': 'Tags', 'Dirección': 'Address',
+    'Aplicar': 'Apply', 'Resumen': 'Summary', 'Etiquetas': 'Tags', 'Dirección': 'Address',
     'Separe las etiquetas con comas. Con la etiqueta primeros-pasos, el artículo aparece en Primeros pasos en el inicio.': 'Separate tags with commas. With the tag primeros-pasos, the article appears in Getting started on the home page.', 'Primeros pasos': 'Getting started', 'Se conserva después de crear el artículo para mantener sus enlaces.': 'Kept after the article is created, so its links keep working.',
     'Campos de herramienta': 'Tool fields', 'Estado de herramienta': 'Tool status', 'Acceso público': 'Public access',
     'Usuarios seleccionados': 'Selected users', 'Usuarios con acceso': 'Users with access', 'Restringido': 'Restricted', 'Artículo restringido': 'Restricted article',

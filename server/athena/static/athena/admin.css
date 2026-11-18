@@ -424,12 +424,9 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: v
 #changelist-filter #changelist-filter-extra-actions a.hidelink { padding: 0; }
 
 /* Dashboard and recent actions */
-.dashboard #content { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: var(--space-3); width: 100%; margin-right: 0; }
+.dashboard #content { display: grid; grid-template-columns: minmax(0, 48rem); gap: var(--space-3); width: 100%; margin-right: 0; }
 .dashboard #content > :is(h1, h2) { grid-column: 1 / -1; margin-bottom: 0; }
 .dashboard #content-main, .dashboard #content-related { float: none; width: auto; min-width: 0; margin: 0; }
-.dashboard #content-main .module { overflow-x: auto; }
-.dashboard .module table td, .dashboard .module table th { padding: var(--cell-pad-y) var(--cell-pad-x); }
-.dashboard .module table td a { white-space: nowrap; }
 #content-related { background: transparent; }
 #content-related .drafts-line { margin: 0 0 var(--space-2); padding: 0; font: var(--label); letter-spacing: .06em; text-transform: uppercase; }
 .drafts-line a:link, .drafts-line a:visited { color: var(--accent-text); text-decoration: underline; text-underline-offset: .2em; }
@@ -468,9 +465,6 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: v
 /* Popups have no header or sidebar. */
 .popup #content { padding: 24px 16px; }
 
-@container admin-page (max-width: 1000px) {
-  .dashboard #content { grid-template-columns: minmax(0, 1fr); }
-}
 @container admin-page (max-width: 900px) {
   .object-tools { float: none; margin: 0 0 var(--space-2); }
 }
