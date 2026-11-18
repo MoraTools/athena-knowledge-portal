@@ -600,7 +600,8 @@ for (const [text, expected] of [['', true], ['Texto de la guía', false]]) {
 }
 context.document.querySelector = () => null;
 context.document.querySelectorAll = () => [];
-// Phone article actions (round 4 #1): each icon has a short visible word that starts its accessible name; the full name stays.
+// Phone article actions (round 4 #1): each icon has a short visible word; round 5 #14: the word is hidden from the accessible
+// name, which is the full label alone (it already contains the word, WCAG 2.5.3).
 {
   const button = (tagName, classes, label, attributes = []) => {
     const nodes = [{ tagName: 'svg', textContent: '' }];
@@ -612,7 +613,7 @@ context.document.querySelectorAll = () => [];
   const actions = [['Copiar', button('BUTTON', ['copy-page'], 'Copiar página')], ['Enlace', button('BUTTON', ['copy-page', 'copy-link'], 'Copiar enlace')],
     ['PDF', button('A', ['copy-page'], 'Exportar PDF', ['download'])], ['Editar', button('A', ['copy-page'], 'Editar artículo')]];
   context.document.querySelectorAll = (selector) => selector === '.markdown-section .article-actions .copy-page' ? actions.map(([, item]) => item) : [];
-  context.document.createElement = (tag) => ({ tagName: tag.toUpperCase() });
+  context.document.createElement = (tag) => ({ tagName: tag.toUpperCase(), attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } });
   context.labelArticleActions?.();
   context.labelArticleActions?.();
   for (const [word, item] of actions) {
@@ -620,8 +621,9 @@ context.document.querySelectorAll = () => [];
     const shorts = item.nodes.filter((node) => node.className === 'copy-page__short');
     assert.equal(shorts.length, 1, full + ': one short visible word, also after a repeated sync.');
     assert.equal(shorts[0].textContent, word);
-    const name = item.nodes.map((node) => node.textContent).filter(Boolean).join(' ');
-    assert.ok(name.startsWith(word + ' ') && name.endsWith(full), full + ': the accessible name "' + name + '" starts with the visible word and keeps the full name.');
+    const name = item.nodes.filter((node) => node.attributes?.['aria-hidden'] !== 'true').map((node) => node.textContent).filter(Boolean).join(' ');
+    assert.equal(name, full, full + ': the accessible name is the full label, with no repeated word.');
+    assert.ok(full.toLowerCase().includes(word.toLowerCase()), full + ': the visible word is part of the name.');
   }
   const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
   assert.match(css, /^\.copy-page__short\{display:none\}/m, 'Wide readers show the full label only.');
@@ -676,7 +678,7 @@ interactive.tHead.rows[0].cells[0].append(new Element('a', 'Ayuda'));
 const layout = table(['Nombre'], [['Fila']]);
 layout.setAttribute('role', 'presentation');
 const ragged = table(['Nombre', 'Estado'], [['Fila']]);
-const footer = table(['Nombre'], [['2'], ['1']]);
+const footer = table(['Nombre'], [['2'], ['1'], ['4'], ['3']]);
 footer.tFoot = new Element('tfoot');
 const footerSummary = new Element('tr');
 footerSummary.append(new Element('td', 'Total: 2'));
@@ -690,7 +692,9 @@ const nestedChild = nested.querySelector('table');
 const noHeader = table(['Nombre'], [['Fila']]);
 noHeader.tHead = null;
 const skipped = [merged, multiheader, interactive, layout, ragged, optOut, nested, nestedChild, noHeader];
-const offsetDates = table(['Fecha'], [['01/01/2027'], ['01/01/2027']]);
+const offsetDates = table(['Fecha'], [['01/01/2027'], ['01/01/2027'], ['01/01/2028'], ['01/01/2029']]);
+offsetDates.tBodies[0].rows[2].cells[0].dataset.sortValue = '2028-01-01';
+offsetDates.tBodies[0].rows[3].cells[0].dataset.sortValue = '2029-01-01';
 offsetDates.tBodies[0].rows[0].cells[0].dataset.sortValue = '2027-01-01T01:00:00-05:00';
 const earlierTime = new Element('time', '01/01/2027');
 earlierTime.setAttribute('datetime', '2027-01-01T03:00:00+02:00');
@@ -703,7 +707,9 @@ recordsHeading.id = 'claves-de-api';
 records.parentElement.prepend(recordsHeading);
 Object.assign(records, { scrollWidth: 900, clientWidth: 600, scrollLeft: 0 });
 Object.assign(merged, { scrollWidth: 500, clientWidth: 300, scrollLeft: 0 });
-let tables = [records, emptyTable, footer, offsetDates, proseTable, ...skipped];
+// Round 5 #30: a table of three rows or fewer gets no sort buttons (its column floors and header scope stay).
+const shortTable = table(['Nombre', 'Descripción'], [['Clave', 'Una clave de lectura para el equipo de soporte'], ['Otra', 'b'], ['Más', 'c']]);
+let tables = [records, emptyTable, footer, offsetDates, proseTable, shortTable, ...skipped];
 context.document.querySelector = () => null;
 context.document.querySelectorAll = (selector) => selector === '.markdown-section table' ? tables : [];
 context.document.createElement = (tag) => new Element(tag);
@@ -721,6 +727,10 @@ buttons.forEach((button, index) => {
   assert.equal(columns[index].childNodes.length, 1, 'Repeated sync must not nest controls.');
 });
 assert.ok(skipped.every((item) => !item.dataset.sortReady), 'Structural and interactive tables stay intact.');
+assert.ok([shortTable, emptyTable, proseTable].every((item) => item.tHead.rows[0].cells.every((cell) => !cell.querySelector('button') && cell.getAttribute('aria-sort') === null)),
+  'Three rows or fewer: nothing to sort.');
+assert.deepEqual(shortTable.tHead.rows[0].cells.map((cell) => cell.getAttribute('scope')), ['col', 'col']);
+assert.equal(shortTable.tBodies[0].rows[0].cells[1].dataset.width, 'long', 'A short table keeps its column floors.');
 assert.equal(records.tabIndex, 0, 'A table that scrolls in its own box takes keyboard focus.');
 assert.equal(records.getAttribute('aria-labelledby'), 'claves-de-api', 'The scroll region is named by the heading before it.');
 assert.equal(records.getAttribute('aria-label'), null);
@@ -759,7 +769,7 @@ assert.match(readerCss, /\.markdown-section :is\(\.timeline-card,\.library-card\
   context.document.querySelector = () => null;
   assert.ok(!links(context.noResultsState('zzz', '')).some(([, href]) => href === '#/downloads'), 'Descargas only where the rail offers it.');
   Object.assign(context.document, { createElement, querySelector });
-  assert.match(readerCss, /\.markdown-section :is\(\.post-summary,\.library-card>p:not\(\[class\]\)\)\{max-width:70ch\}/);
+  assert.match(readerCss, /\.markdown-section :is\(\.post-summary,\.library-card>p:not\(\[class\]\)\)\{max-width:70ch[;}]/);
 }
 // Round 4 #38: a code copy button names its language ("Copiar código python"); the visible word stays first.
 {
@@ -821,24 +831,30 @@ assert.match(readerCss, /\.markdown-section :is\(\.timeline-card,\.library-card\
 assert.match(readerCss, /\.guide-library \.item-meta__kind\{display:none\}/);
 assert.doesNotMatch(readerCss, /(^|[},])\s*\.item-meta__kind\{display:none\}/);
 
-// Round 4 #29: short inline code stays on one line; a value over 40 characters may wrap anywhere.
+// Round 4 #29, round 5 #10 (contract 1): short inline code stays on one line; a value over 24 characters may wrap anywhere,
+// as in the PDF export, so it fits a 320 px reader. The inline box is tight, with no gap before punctuation.
 {
-  const codes = ['run-tests', 'x'.repeat(41), 'y'.repeat(40)].map((text) => ({ textContent: text, classes: new Set(),
+  const codes = ['run-tests', 'x'.repeat(25), 'y'.repeat(24)].map((text) => ({ textContent: text, classes: new Set(),
     classList: { toggle(name, on) { on ? codes.find((code) => code.classList === this).classes.add(name) : codes.find((code) => code.classList === this).classes.delete(name); } } }));
   const querySelectorAll = context.document.querySelectorAll;
   context.document.querySelectorAll = (selector) => (selector === '.markdown-section :not(pre) > code' ? codes : []);
   context.markLongCode?.();
-  assert.deepEqual(codes.map((code) => code.classes.has('long')), [false, true, false], 'Only inline code over 40 characters is long.');
+  assert.deepEqual(codes.map((code) => code.classes.has('long')), [false, true, false], 'Only inline code over 24 characters is long.');
   context.document.querySelectorAll = querySelectorAll;
   assert.match(readerCss, /\.markdown-section :not\(pre\)>code\{white-space:nowrap\}\.markdown-section :not\(pre\)>code\.long\{white-space:normal;overflow-wrap:anywhere\}/);
+  assert.match(readerCss, /\n\.markdown-section code\{margin:0;padding:1px 3px;/, 'A tight inline code box.');
 }
 // Round 4 #30: a Markdown figure is a button that opens the image viewer with its caption.
+// Round 5 #15: its name comes from parts (the interface words in the interface language, then the Spanish alt of the image);
+// #16: an image alone in its paragraph and the caption line under it become one figure with a figcaption.
 {
   const src = context.location.origin + '/article-images/0b0e5f3a-1111-4222-8333-944455556666/';
   const em = { tagName: 'EM', textContent: 'Figura 1. Flujo de un proceso.' };
-  const caption = { matches: (selector) => selector === 'p', children: [em], firstElementChild: em, textContent: ' Figura 1. Flujo de un proceso. ' };
-  const img = { alt: 'Flujo de cinco pasos', parentElement: { nextElementSibling: caption }, getAttribute: (name) => (name === 'src' ? src : null),
-    replaceWith(node) { this.replacedBy = node; } };
+  const caption = { matches: (selector) => selector === 'p', children: [em], firstElementChild: em, textContent: ' Figura 1. Flujo de un proceso. ',
+    remove() { this.removed = true; } };
+  const img = { alt: 'Flujo de cinco pasos', getAttribute: (name) => (name === 'src' ? src : null), replaceWith(node) { this.replacedBy = node; } };
+  const paragraph = { children: [img], textContent: '', nextElementSibling: caption, replaceWith(node) { this.replacedBy = node; } };
+  img.parentElement = paragraph;
   const created = [];
   const createElement = context.document.createElement;
   context.document.createElement = (tag) => {
@@ -854,22 +870,88 @@ assert.doesNotMatch(readerCss, /(^|[},])\s*\.item-meta__kind\{display:none\}/);
   context.openViewer = (...args) => opened.push(args);
   context.buildFigureZoom?.();
   const button = img.replacedBy;
-  assert.ok(button && button.tagName === 'BUTTON' && button.type === 'button' && button.className === 'figure-zoom' && button.children[0] === img,
+  assert.ok(button && button.tagName === 'BUTTON' && button.type === 'button' && button.className === 'figure-zoom' && button.children[1] === img,
     'The image sits in a button in its place.');
-  assert.equal(button.attributes['aria-label'], 'Ampliar imagen: Flujo de cinco pasos');
+  const [name] = button.children;
+  assert.deepEqual([button.attributes['aria-label'], name.className, name.lang, name.textContent], [undefined, 'visually-hidden', 'es', 'Ampliar imagen: '],
+    'No aria-label: the name is a hidden part in the interface language, then the image alt.');
+  const figure = paragraph.replacedBy;
+  assert.ok(figure?.tagName === 'FIGURE' && figure.children[0] === button && figure.children[1]?.tagName === 'FIGCAPTION', 'One figure holds the image and its caption.');
+  assert.ok(figure.children[1].children[0] === em && caption.removed, 'The caption line moves into the figcaption.');
   button.listeners.click();
   assert.equal(opened.length, 1);
   assert.deepEqual(JSON.parse(JSON.stringify(opened[0].slice(1))), [[{ src: '/article-images/0b0e5f3a-1111-4222-8333-944455556666/', caption: 'Figura 1. Flujo de un proceso.', alt: 'Flujo de cinco pasos' }], 0],
     'One item: the managed image path, the caption line and the alt text.');
   assert.equal(opened[0][0], button, 'Closing the viewer returns the focus to the figure button.');
+  context.document.documentElement.lang = 'en';
+  context.setZoomName(name, img.alt);
+  assert.deepEqual([name.lang, name.textContent], ['en', vm.runInContext("t('Ampliar imagen')", context) + ': '], 'A language change relabels the interface part only.');
+  delete context.document.documentElement.lang;
+  // An image with text beside it, or with no caption line, stays where it is.
+  const lone = { alt: '', getAttribute: (key) => (key === 'src' ? src : null), replaceWith(node) { this.replacedBy = node; } };
+  const plain = { children: [lone], textContent: '', nextElementSibling: null, replaceWith(node) { this.replacedBy = node; } };
+  lone.parentElement = plain;
+  context.document.querySelectorAll = (selector) => (selector === '.markdown-section p > img[src*="/article-images/"]' ? [lone] : []);
+  context.buildFigureZoom();
+  assert.ok(lone.replacedBy && !plain.replacedBy, 'No caption: no figure.');
+  assert.equal(lone.replacedBy.children[0].textContent, 'Ampliar imagen', 'No alt: no colon.');
   Object.assign(context, { openViewer });
   context.document.createElement = createElement;
   context.document.querySelectorAll = querySelectorAll;
+  assert.match(readerCss, /\.markdown-section figure\{margin:1\.2em 0\}/);
   assert.match(readerCss, /\.figure-zoom\{[^}]*cursor:zoom-in/);
 }
 // The active Guías topic has a shape cue, not only gold text (round 4 #23): the editor tabs' 2 px accent bottom rule.
 assert.match(readerCss, /\.guide-topic-jumps a\[aria-current\]\{box-shadow:inset 0 -2px 0 var\(--accent\)/);
 assert.doesNotMatch(readerCss, /mask-image/, 'No reader table is masked.');
+// Round 5 #12: the signed-in chip states a fact ("Sesión iniciada"), in the quiet label colour, not gold like a link.
+{
+  const indexHtml = readFileSync(new URL('../src/index.html', import.meta.url), 'utf8');
+  assert.match(indexHtml, /<span class="access-label">\{% if user\.is_authenticated %\}Sesión iniciada\{% else %\}Biblioteca pública\{% endif %\}<\/span>/);
+  assert.match(readerCss, /\.access-label\{[^}]*color:var\(--text-muted\)/);
+}
+// Round 5 #24: every list summary (Guías and home rows, Actualizaciones, Herramientas cards) uses one muted token;
+// the olive row colour, which read as a second gold in dark, is gone.
+assert.doesNotMatch(readerCss, /--guide-muted/);
+assert.match(readerCss, /\.markdown-section \.guide-summary\{[^}]*color:var\(--text-muted\)/);
+assert.match(readerCss, /\.markdown-section :is\(\.post-summary,\.library-card>p:not\(\[class\]\)\)\{max-width:70ch;color:var\(--text-muted\)\}/);
+// Round 5 #9: Herramientas and Actualizaciones count their items; "resultados" only while the filter has text.
+{
+  const querySelector = context.document.querySelector;
+  const card = (text) => ({ dataset: { search: text }, closest: () => null, hidden: false });
+  const input = { value: '' };
+  for (const [updates, single, plural] of [[false, 'herramienta', 'herramientas'], [true, 'actualización', 'actualizaciones']]) {
+    const count = { textContent: '' };
+    const empty = { hidden: true, querySelector: () => null };
+    const cards = [card('Cola de facturas'), card('Monitor de bots')];
+    const list = { matches: (selector) => updates && selector === '.timeline', nextElementSibling: empty,
+      querySelectorAll: (selector) => (selector === '.library-card' ? cards : []) };
+    context.document.querySelector = (selector) => ({ '.markdown-section .library-grid, .markdown-section .timeline': list, '#library-count': count, '#athena-search-input': input })[selector] || null;
+    vm.runInContext(`searchScope = '${updates ? 'update' : 'tool'}'`, context);
+    input.value = '';
+    context.filterLibrary();
+    assert.equal(count.textContent, '2 ' + plural);
+    cards.pop();
+    context.filterLibrary();
+    assert.equal(count.textContent, '1 ' + single);
+    input.value = 'facturas';
+    context.filterLibrary();
+    assert.equal(count.textContent, '1 resultado');
+  }
+  input.value = '';
+  vm.runInContext("searchScope = ''", context);
+  context.document.querySelector = querySelector;
+}
+// Round 5 #13: at 360 px and below the article h1 is 28/34; nothing else in the phone head changes.
+assert.match(readerCss, /@container reader \(max-width:360px\)\{body\.article-view \.markdown-section h1\{font-size:28px;line-height:34px\}\}/);
+// Round 5 #7 (regression of round 4 #22): the right-edge cue is the round 4 width (a 48 px cover, opaque over its right half,
+// so a table that does not scroll shows no cue, #30) with a stronger 24 px shadow; table headers are 12 px.
+{
+  const table = readerCss.match(/\.markdown-section table\{[^}]*\}/)[0];
+  assert.match(table, /linear-gradient\(to left,var\(--surface\) 50%,transparent\) right\/48px 100% no-repeat/, 'The cover hides the whole shadow at the end and on a table that fits.');
+  assert.match(table, /linear-gradient\(to left,color-mix\(in oklab,var\(--text\) 24%,transparent\),transparent\) right\/24px 100% no-repeat/, 'A visible 24 px shadow.');
+  assert.match(readerCss, /\.markdown-section th\{[^}]*font:600 12px\/1\.4 var\(--font-mono\)/, 'Table headers are 12 px.');
+}
 assert.match(readerCss, /\.markdown-section table\{[^}]*background-attachment:local,scroll/, 'The cue moves off at the end of the scroll.');
 records.clientWidth = 900;
 context.syncTableScroll(records);
@@ -914,8 +996,6 @@ assert.equal(order(), '0,3,1,2');
 assert.equal(originalRows[0].cells[1].querySelector('a'), recordLink);
 assert.equal(originalRows[3].cells[1].querySelector('form'), recordForm);
 assert.equal(recordLink.getAttribute('href'), '/api/docs/');
-emptyTable.tHead.rows[0].cells[0].querySelector('button').click();
-assert.equal(emptyTable.tBodies[0].rows.length, 0);
 footer.tHead.rows[0].cells[0].querySelector('button').click();
 assert.equal(footer.tBodies[0].rows[0].textContent, '1');
 assert.equal(footer.tFoot.rows[0], footerSummary, 'Sorting only moves tbody rows and keeps the footer fixed.');
@@ -923,8 +1003,8 @@ const dateButton = offsetDates.tHead.rows[0].cells[0].querySelector('button');
 dateButton.click();
 assert.equal(offsetDates.tBodies[0].rows[0], earlierRow, 'ISO machine dates compare their time values across offsets.');
 dateButton.click();
-assert.equal(offsetDates.tBodies[0].rows[1], earlierRow);
-tables = [table(['New render'], [['2'], ['1']])];
+assert.equal(offsetDates.tBodies[0].rows.at(-1), earlierRow);
+tables = [table(['New render'], [['2'], ['1'], ['4'], ['3']])];
 context.syncView();
 tables[0].tHead.rows[0].cells[0].querySelector('button').click();
 assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify render initializes independently.');
@@ -1090,7 +1170,8 @@ const entries = [
 guides = guidePage(entries);
 vm.runInContext("searchScope = 'guide'", context);
 context.syncView();
-assert.equal(guides.count.textContent, '4 resultados', 'Multi-tag guides count once.');
+// Round 5 #9: with no filter the count names the page's items; "resultados" only while a filter (text or topic) is on.
+assert.equal(guides.count.textContent, '4 guías', 'Multi-tag guides count once.');
 assert.equal(guides.source.hidden, true, 'Source records stay hidden while filters update them.');
 assert.equal(guides.topics.hidden, false, 'Topics are the only view, with no storage available.');
 assert.equal('view' in context.prepareGuideLibrary(guides.grid), false, 'The library no longer holds a view choice.');
@@ -1247,11 +1328,11 @@ context.syncView();
 assert.equal(filterJumps.children[0].hidden, true, 'All topics shows only while a topic filter is on.');
 assert.ok(seguridad.hidden, 'Without a filter each guide shows once, under its first topic.');
 assert.match(guides.topics.children[0].children[0].textContent, /^Temas \(\d+\)$/);
-assert.equal(guides.count.textContent, '4 resultados');
+assert.equal(guides.count.textContent, '4 guías');
 context.location.hash = '#/guides';
 guides = guidePage([entries[2]]);
 context.syncView();
-assert.equal(guides.count.textContent, '1 resultado');
+assert.equal(guides.count.textContent, '1 guía');
 assert.notEqual(guides.topics, oldTopics);
 assert.ok(!guides.topics.textContent.includes('Jeiser'), 'A new access-filtered page contains no previous private rows.');
 assert.equal(guides.topics.hidden, false, 'A saved index choice cannot restore the removed view.');
@@ -1263,10 +1344,10 @@ context.localStorage = { getItem() { throw new Error('disabled'); }, setItem() {
 guides = guidePage([entries[2]]);
 context.syncView();
 assert.equal(guides.topics.hidden, false, 'Disabled storage cannot prevent the topic view.');
-assert.equal(guides.count.textContent, '1 resultado');
+assert.equal(guides.count.textContent, '1 guía');
 guides = guidePage([], false);
 context.syncView();
-assert.equal(guides.count.textContent, '0 resultados');
+assert.equal(guides.count.textContent, '0 guías');
 assert.equal(guides.empty.hidden, false);
 assert.equal(guides.topics.children.length, 1, 'An empty library has no topic sections.');
 context.syncView();
@@ -1316,7 +1397,7 @@ function railViewport(width, preference, storedWidth = null) {
   const click = (selector) => events.click({ target: { closest: () => ({ matches: (candidate) => candidate === selector }) } });
   const key = (name, shiftKey = false) => handle.listeners.keydown({ key: name, shiftKey, preventDefault() {} });
   const resize = (next) => { context.innerWidth = next; windowEvents.resize(); };
-  return { root, media, writes, click, handle, key, resize, events, railElement, body: context.document.body, width: () => style.get('--rail-drag') };
+  return { root, media, writes, click, handle, key, resize, events, railElement, document: context.document, body: context.document.body, width: () => style.get('--rail-drag') };
 }
 for (const width of [320, 768, 1024]) {
   const drawer = railViewport(width, 'compact');
@@ -1329,6 +1410,19 @@ for (const width of [320, 768, 1024]) {
   drawer.media.matches = false;
   drawer.media.change();
   assert.equal(drawer.root.dataset.rail, 'compact', 'Returning to desktop restores the stored preference.');
+}
+// Round 5 #19: the drawer opens with the focus on the current page item (the first item when none is current).
+{
+  const drawer = railViewport(390, 'compact');
+  const focused = [];
+  const item = (name) => ({ focus: () => focused.push(name) });
+  let current = item('Guías');
+  drawer.document.querySelector = (selector) => ({ '.rail .rail-item[aria-current="page"]': current, '.rail .rail-item[href]': item('Inicio') })[selector] || null;
+  drawer.click('.rail-reveal');
+  drawer.click('.rail-toggle');
+  current = null;
+  drawer.click('.rail-reveal');
+  assert.deepEqual(focused, ['Guías', 'Inicio']);
 }
 // The open drawer makes the rest of the page inert (reader and admin), and only while it is open.
 const inertDrawer = railViewport(390, 'expanded');

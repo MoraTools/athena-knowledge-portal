@@ -164,7 +164,8 @@
       set(narrow.matches ? 'hidden' : root.dataset.rail === 'compact' ? 'expanded' : 'compact');
     } else if (control?.matches('.rail-reveal')) {
       set('expanded');
-      if (narrow.matches) document.querySelector('.rail .rail-item[href]')?.focus();
+      // The drawer opens on the current page item, so the focus ring and the current tint mark one item.
+      if (narrow.matches) (document.querySelector('.rail .rail-item[aria-current="page"]') || document.querySelector('.rail .rail-item[href]'))?.focus();
     } else if (narrow.matches && root.dataset.rail === 'expanded' && (event.target.closest('.rail a') || !event.target.closest('.rail'))) {
       set('hidden'); // A followed link or a tap outside closes the drawer.
     }

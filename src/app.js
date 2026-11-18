@@ -311,7 +311,8 @@ function filterGuides() {
   }
   const count = document.querySelector('#guide-count');
   const empty = document.querySelector('.library-empty');
-  if (count) count.textContent = countLabel(visible, 'resultado', 'resultados');
+  // "resultados" only while a filter is on; the whole list counts its guides.
+  if (count) count.textContent = query || topic ? countLabel(visible, 'resultado', 'resultados') : countLabel(visible, 'guía', 'guías');
   if (empty) {
     empty.hidden = visible !== 0;
     showFilterActions(empty);
@@ -398,7 +399,8 @@ function filterLibrary() {
     if (!item.hidden) visible += 1;
   });
   list.querySelectorAll('.timeline-month').forEach((month) => { month.hidden = !month.querySelector('.timeline-post:not([hidden])'); });
-  count.textContent = countLabel(visible, 'resultado', 'resultados');
+  count.textContent = query ? countLabel(visible, 'resultado', 'resultados')
+    : updates ? countLabel(visible, 'actualización', 'actualizaciones') : countLabel(visible, 'herramienta', 'herramientas');
   const empty = list.nextElementSibling;
   empty.hidden = visible !== 0;
   showFilterActions(empty);
@@ -453,6 +455,7 @@ function buildTableSorting() {
       const width = longest > 30 ? 'long' : longest > 12 ? 'text' : '';
       if (width) rows.forEach((row) => { row.cells[column].dataset.width = width; });
       header.setAttribute('scope', 'col');
+      if (rows.length <= 3) return; // Three rows or fewer can be read at a glance: no sort control.
       header.setAttribute('aria-sort', 'none');
       const button = document.createElement('button');
       button.type = 'button';
@@ -1469,39 +1472,62 @@ function placeArticleTools() {
   holder.remove();
 }
 
-// A phone reader shows a short word beside each action icon (styles.css). It comes first, so it starts the accessible name.
+// A phone reader shows a short word beside each action icon (styles.css). The full label, which contains the word, is the
+// accessible name alone, so the word is hidden from it.
 function labelArticleActions() {
   document.querySelectorAll('.markdown-section .article-actions .copy-page').forEach((button) => {
     if (button.querySelector('.copy-page__short')) return;
     const word = document.createElement('span');
     word.className = 'copy-page__short';
+    word.setAttribute('aria-hidden', 'true');
     word.textContent = t(button.classList.contains('copy-link') ? 'Enlace' : button.hasAttribute('download') ? 'PDF' : button.tagName === 'A' ? 'Editar' : 'Copiar');
     button.querySelector('span').before(word);
   });
 }
 
-// Short inline code stays on one line (styles.css); a value over 40 characters may wrap anywhere, as in the PDF export.
+// Short inline code stays on one line (styles.css); a value over 24 characters may wrap anywhere. The PDF export
+// (views.py article_html) uses the same 24, so a short value stays whole and a long one fits a 320 px reader.
 function markLongCode() {
-  document.querySelectorAll('.markdown-section :not(pre) > code').forEach((code) => code.classList.toggle('long', code.textContent.length > 40));
+  document.querySelectorAll('.markdown-section :not(pre) > code').forEach((code) => code.classList.toggle('long', code.textContent.length > 24));
 }
 
-// A Markdown figure opens the image viewer, as HTML article images do. Its caption is the italic line under it.
+// A Markdown figure opens the image viewer, as HTML article images do. Its caption is the italic line under it; an image
+// alone in its paragraph and that line become one figure with a figcaption.
 function buildFigureZoom() {
   document.querySelectorAll('.markdown-section p > img[src*="/article-images/"]').forEach((img) => {
-    const next = img.parentElement.nextElementSibling;
+    const paragraph = img.parentElement;
+    const next = paragraph.nextElementSibling;
     const em = next?.matches('p') && next.children.length === 1 && next.firstElementChild;
     const caption = em?.tagName === 'EM' && next.textContent.trim() === em.textContent.trim() ? em.textContent.trim() : '';
+    const alone = paragraph.children.length === 1 && !paragraph.textContent.trim();
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'figure-zoom';
-    button.setAttribute('aria-label', t('Ampliar imagen') + (img.alt ? ': ' + img.alt : ''));
+    const name = document.createElement('span');
+    name.className = 'visually-hidden';
+    setZoomName(name, img.alt);
     img.replaceWith(button);
-    button.append(img);
+    button.append(name, img);
+    if (caption && alone) {
+      const figure = document.createElement('figure');
+      const figcaption = document.createElement('figcaption');
+      figcaption.append(em);
+      paragraph.replaceWith(figure);
+      figure.append(button, figcaption);
+      next.remove();
+    }
     button.addEventListener('click', () => {
       const items = viewerItems([{ src: img.getAttribute('src'), caption, alt: img.alt }]);
       if (items) openViewer(button, items, 0);
     });
   });
+}
+
+// The zoom name is "Ampliar imagen: <alt>" from its parts: the interface words in the interface language, then the image
+// alt (article text, in Spanish), as the sort buttons.
+function setZoomName(span, alt) {
+  span.lang = currentLang();
+  span.textContent = t('Ampliar imagen') + (alt ? ': ' : '');
 }
 
 // The copy and check icons of 'Copiar página' (src/config.js); .copied shows the check.
@@ -1869,6 +1895,7 @@ document.addEventListener('suite:lang', () => {
   sendHtmlFrame('athena:lang', currentLang());
   syncView();
   document.querySelectorAll('.table-sort').forEach((button) => setSortName(button, button.closest('th').getAttribute('aria-sort') === 'ascending'));
+  document.querySelectorAll('.figure-zoom').forEach((button) => setZoomName(button.firstElementChild, button.querySelector('img').alt));
   // The translator leaves article bodies alone, so the code buttons relabel themselves.
   document.querySelectorAll('.code-copy:not(.copied)').forEach((button) => {
     button.setAttribute('aria-label', codeCopyName(button));

@@ -14,7 +14,7 @@ body small{display:block;margin:.4rem 0 .75rem;color:var(--muted);line-height:1.
 .brand{display:flex;flex-direction:column;color:var(--text);text-decoration:none;line-height:.8;text-align:center;letter-spacing:.12em}
 .brand span{font:600 28px/1 var(--font-display);text-transform:uppercase}
 .brand small{margin:.55rem 0 0;color:var(--accent-text);font:600 11px/1 var(--font-mono);letter-spacing:.22em}
-.access-label{padding:.4rem .65rem;color:var(--accent-text);font:600 11px/1 var(--font-mono);letter-spacing:.1em;display:none}
+.access-label{padding:.4rem .65rem;color:var(--text-muted);font:600 11px/1 var(--font-mono);letter-spacing:.1em;display:none}
 body.home-view .access-label{display:block}
 /* The portal rail (assets/rail.css) is fixed; the page starts after its current width. Docsify's article is also #main, hence div#main. */
 div#main{min-height:100vh;width:auto;padding-left:var(--rail-current);container:reader / inline-size;transition:padding-left var(--rail-dur) var(--rail-ease)}
@@ -95,7 +95,9 @@ body .markdown-section h2{font:600 30px/36px var(--font-display);text-wrap:balan
 .markdown-section .article-access{margin:calc(-1 * var(--space-1)) 0 var(--space-3);color:var(--muted);font:400 14px/1.5 var(--font-ui)}
 body .markdown-section h3{font:650 18px/24px var(--font-ui);color:var(--text)}
 .markdown-section code,.markdown-section pre{font-family:var(--font-mono)}
-.markdown-section code{background:var(--surface-2);color:var(--code)}
+/* A tight inline box (no side margin) leaves no gap before the punctuation after it; code blocks, headings and file
+   names keep their own padding. */
+.markdown-section code{margin:0;padding:1px 3px;background:var(--surface-2);color:var(--code)}
 body .markdown-section :is(h1,h2,h3) code{padding:1px 5px;border-radius:3px;font-size:.8em;font-weight:500}
 .markdown-section pre{background:var(--surface-strong);border:1px solid var(--border);border-radius:var(--radius)}
 .markdown-section video{display:block;width:100%;height:auto;margin:var(--space-2) 0;border-radius:var(--radius)}
@@ -113,19 +115,21 @@ body .markdown-section p.tip,body .markdown-section p.tip em,body .markdown-sect
 body .markdown-section p.tip:before{color:var(--on-accent)}
 /* Docsify keeps wide tables in their own scroll area; all reader tables use the dark reading surface. */
 /* A table that scrolls shows a right-edge shadow until the reader reaches its end: the local cover moves over the fixed
-   shadow at the end of the scroll. A background, not a mask, so the focus ring and the last column stay whole. */
-.markdown-section table{display:block;width:100%;max-width:100%;margin:var(--space-3) 0;overflow:auto;scrollbar-color:var(--line-strong) var(--surface);background:linear-gradient(to left,var(--surface),transparent) right/24px 100% no-repeat,linear-gradient(to left,color-mix(in oklab,var(--text) 12%,transparent),transparent) right/12px 100% no-repeat var(--surface);background-attachment:local,scroll}
+   shadow at the end of the scroll. Its opaque half is as wide as the shadow, so a table that does not scroll shows no cue.
+   A background, not a mask, so the focus ring and the last column stay whole. */
+.markdown-section table{display:block;width:100%;max-width:100%;margin:var(--space-3) 0;overflow:auto;scrollbar-color:var(--line-strong) var(--surface);background:linear-gradient(to left,var(--surface) 50%,transparent) right/48px 100% no-repeat,linear-gradient(to left,color-mix(in oklab,var(--text) 24%,transparent),transparent) right/24px 100% no-repeat var(--surface);background-attachment:local,scroll}
 .markdown-section tr,.markdown-section tr:nth-child(2n){background:transparent;border-color:var(--line)}
 /* break-word, not the section's anywhere: a column keeps at least its longest word, so a wide table scrolls instead. */
 .markdown-section td,.markdown-section th{padding:8px 12px;border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}
 /* A see-through header tint (close to --surface-raised) keeps the scroll shadow visible in the header row. */
-.markdown-section th{background:color-mix(in oklab,var(--text) 3%,transparent);color:var(--text-muted);font:600 11px/1.4 var(--font-mono);text-transform:uppercase;letter-spacing:.06em}
+.markdown-section th{background:color-mix(in oklab,var(--text) 3%,transparent);color:var(--text-muted);font:600 12px/1.4 var(--font-mono);text-transform:uppercase;letter-spacing:.06em}
 .markdown-section td{color:var(--text)}
 .markdown-section table code{overflow-wrap:normal;white-space:nowrap}
-/* Short inline code does not break at its hyphen; app.js marks values over 40 characters .long, which may wrap anywhere. */
+/* Short inline code does not break at its hyphen; app.js marks values over 24 characters .long, which may wrap anywhere. */
 .markdown-section :not(pre)>code{white-space:nowrap}.markdown-section :not(pre)>code.long{white-space:normal;overflow-wrap:anywhere}
-/* A Markdown figure is a button that opens the image viewer. */
+/* A Markdown figure is a button that opens the image viewer; with its caption line it is a figure, spaced as a paragraph. */
 .figure-zoom{display:block;max-width:100%;margin:0;padding:0;border:0;background:none;cursor:zoom-in}
+.markdown-section figure{margin:1.2em 0}.markdown-section figcaption{margin-top:var(--space-1)}
 .markdown-section td[data-width=long]{min-width:30ch}.markdown-section td[data-width=text]{min-width:14ch}
 @container reader (max-width:600px){.markdown-section td[data-width=text]{min-width:0}}
 .markdown-section th:has(.table-sort){padding-top:0;padding-bottom:0}
@@ -233,13 +237,13 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 .guide-controls input,.guide-controls select{margin-top:calc(var(--space-1) / 2);border:1px solid var(--line-strong);border-radius:4px;background:var(--surface-2);color:var(--text)}
 .guide-controls input::placeholder{color:var(--muted);opacity:1}
 .guide-controls .result-count{grid-column:1;align-self:center;font-size:16px}
-.guide-library,.recent-list{--guide-row-highlight:color-mix(in srgb,var(--accent) 12%,var(--surface));--guide-muted:color-mix(in srgb,var(--muted) 90%,var(--accent))}
+.guide-library,.recent-list{--guide-row-highlight:color-mix(in srgb,var(--accent) 12%,var(--surface))}
 .guide-topic h2:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .markdown-section .guide-links a{font:700 .875rem/1.4 var(--font-ui)}
 .markdown-section .guide-title{display:block;padding-block:2px;font:700 1.125rem/1.3 var(--font-ui);color:var(--text);text-decoration:none;overflow-wrap:anywhere}
 .markdown-section .guide-title:hover,.markdown-section .guide-title:focus-visible{color:var(--accent-text);text-decoration:underline}
 .markdown-section .guide-detail p{margin:calc(var(--space-1) / 2) 0 0}
-.markdown-section .guide-summary{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;color:var(--guide-muted);font:400 1rem/1.4 var(--font-ui)}
+.markdown-section .guide-summary{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;color:var(--text-muted);font:400 1rem/1.4 var(--font-ui)}
 .guide-footer{display:flex;flex-wrap:wrap;align-items:center;column-gap:var(--space-2)}
 .guide-links{display:flex;flex-wrap:wrap;gap:0 var(--space-2)}
 .guide-links a{display:inline-flex;align-items:center;min-height:32px}
@@ -317,7 +321,7 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 /* Update titles use the h3 voice and are the link to the post (DESIGN.md: Cormorant is for page titles). */
 .markdown-section .timeline-card :is(h2,h3){margin:0;font:650 18px/var(--title-lh) var(--font-ui)}
 .timeline-card .post-summary{margin:var(--space-1) 0 0;font-size:16px;line-height:1.5}
-.markdown-section :is(.post-summary,.library-card>p:not([class])){max-width:70ch}
+.markdown-section :is(.post-summary,.library-card>p:not([class])){max-width:70ch;color:var(--text-muted)}
 .markdown-section :is(.timeline-card,.library-card) :is(h2,h3) a{color:var(--text);text-decoration:none}
 .markdown-section :is(.timeline-card,.library-card) :is(h2,h3) a:is(:hover,:focus-visible){color:var(--accent-text);text-decoration:underline}
 .post-actions{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:var(--space-2) 0 0}
@@ -353,8 +357,9 @@ body.article-view .markdown-section{max-width:calc(70ch + 48px);font-size:17px;l
 body.article-view.has-page-tree .markdown-section{max-width:70ch}
 .markdown-section .page-tree{margin:0 0 var(--space-2)}
 @container reader (max-width:600px){body.article-view .markdown-section h1{font-size:32px;line-height:38px}}
+@container reader (max-width:360px){body.article-view .markdown-section h1{font-size:28px;line-height:34px}}
 /* A narrow reader shows the article actions as one row of 44 px buttons: icon and a short word ("PDF", "Copiar", "Enlace").
-   The full label is hidden but stays in the accessible name after the short word (WCAG 2.5.3). */
+   The full label is visually hidden and is the accessible name; it contains the short word (WCAG 2.5.3), which is aria-hidden. */
 .copy-page__short{display:none}
 @container reader (max-width:600px){
   .markdown-section .article-actions{flex-wrap:wrap}
