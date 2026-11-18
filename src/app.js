@@ -228,7 +228,8 @@ function buildGuideTopics(library, state) {
       article.className = 'guide-topic-row';
       const detail = entry.row.querySelector('.guide-detail').cloneNode(true);
       // The section heading names the topic, so its chip is left out; placement tags are no chips.
-      detail.querySelectorAll('.tag-list span').forEach((tag) => { if (!isTopicTag(tag.textContent) || normalize(tag.textContent) === key) tag.remove(); });
+      // A chip is <a class="tag-chip"><span> (contract 4): the link goes with its text.
+      detail.querySelectorAll('.tag-list span').forEach((tag) => { if (!isTopicTag(tag.textContent) || normalize(tag.textContent) === key) (tag.closest('a') || tag).remove(); });
       // The server meta line (kind · author · Actualizado <date>), as on the home rows and Herramientas cards.
       article.append(detail, entry.row.querySelector('.item-meta').cloneNode(true));
       section.append(article);
@@ -239,6 +240,7 @@ function buildGuideTopics(library, state) {
   });
   state.all = all;
   // Phones get the topics in a closed native box; wider readers see the open row (updateGuideTopicsLayout).
+  // The Descargas sections use the same box (downloads.md).
   const picker = document.createElement('details');
   picker.className = 'guide-topic-picker';
   const summary = document.createElement('summary');
@@ -340,6 +342,7 @@ function showFilterActions(empty) {
 
 function filterDownloads() {
   if (!document.querySelector('#download-count')) return;
+  updateGuideTopicsLayout(); // The section row is the Guías phone box (downloads.md).
   const query = normalize(searchScope === 'download' ? document.querySelector('#athena-search-input')?.value || '' : '');
   let visible = 0;
   document.querySelectorAll('.download-section').forEach((block) => {
@@ -394,7 +397,7 @@ function filterLibrary() {
   let visible = 0;
   cards.forEach((card) => {
     const item = card.closest('.timeline-post') || card;
-    const text = card.dataset.search || [...card.querySelectorAll('h2, h3, .post-summary, .post-meta, .tag-list')].map((node) => node.textContent).join(' ');
+    const text = card.dataset.search || [...card.querySelectorAll('h2, h3, .post-summary, .item-meta, .tag-list')].map((node) => node.textContent).join(' ');
     item.hidden = Boolean(query && !normalize(text).includes(query));
     if (!item.hidden) visible += 1;
   });
@@ -783,7 +786,7 @@ function createSearchResult(entry, terms) {
   const meta = document.createElement('p');
   meta.className = 'search-result__meta';
   const items = metaItems(entry);
-  items[0].className = 'card-kicker';
+  items[0].className = 'item-meta__kind';
   meta.append(...items);
   const tail = document.createElement('p');
   tail.className = 'search-result__tail';
@@ -814,8 +817,9 @@ function createSearchResult(entry, terms) {
   title.lang = 'es';
   const summary = document.createElement('p');
   summary.className = 'search-result__summary';
-  summary.lang = 'es';
-  appendHighlighted(summary, entry.summary, terms);
+  // A download summary is one fixed interface sentence (contract 6), so it follows the interface language.
+  summary.lang = entry.kind === 'download' ? currentLang() : 'es';
+  appendHighlighted(summary, entry.kind === 'download' ? t(entry.summary) : entry.summary, terms);
   body.append(title, summary);
 
   const snippet = findSnippet(entry, terms);
@@ -849,11 +853,12 @@ function createSearchResult(entry, terms) {
     pdf.textContent = t('Abrir PDF original');
     actions.append(pdf);
   }
-  if (actions.childElementCount) tail.append(actions);
+  if (actions.children.length) tail.append(actions);
 
-  // Title and excerpt come first for screen readers; CSS shows the meta line above the title.
-  article.append(body, meta);
-  if (tail.childElementCount) article.append(tail);
+  // One order in every list row: title and summary, chips, then the meta line.
+  article.append(body);
+  if (tail.children.length) article.append(tail);
+  article.append(meta);
   return article;
 }
 
@@ -1010,6 +1015,11 @@ function metaItems(entry) {
     author.lang = 'es';
     author.textContent = entry.author;
     items.push(author);
+  }
+  if (Number.isFinite(entry.size)) {
+    const size = document.createElement('span');
+    size.textContent = fileSize(entry.size);
+    items.push(size);
   }
   if (entry.date) {
     const updated = document.createElement('span');
@@ -1554,12 +1564,14 @@ const codeCopyName = (button) => t('Copiar código') + (button.dataset.lang ? ' 
 // The server writes file sizes as <data class="file-size" value="<bytes>"> (downloads.md); they follow the interface
 // number format, like the dates. Units as Django's filesizeformat: 1024 per step.
 function formatFileSizes() {
-  document.querySelectorAll('.markdown-section data.file-size').forEach((node) => {
-    const bytes = Number(node.value);
-    const power = bytes < 1024 ? 0 : Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 4);
-    const value = new Intl.NumberFormat(currentLang(), { maximumFractionDigits: 1 }).format(power ? Math.round(bytes / 1024 ** power * 10) / 10 : bytes);
-    node.textContent = value + ' ' + (power ? ['KB', 'MB', 'GB', 'TB'][power - 1] : t(bytes === 1 ? 'byte' : 'bytes'));
-  });
+  document.querySelectorAll('.markdown-section data.file-size').forEach((node) => { node.textContent = fileSize(Number(node.value)); });
+}
+
+// A file size in the interface number format: "426 bytes", "8,8 KB" (es) or "8.8 KB" (en).
+function fileSize(bytes) {
+  const power = bytes < 1024 ? 0 : Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 4);
+  const value = new Intl.NumberFormat(currentLang(), { maximumFractionDigits: 1 }).format(power ? Math.round(bytes / 1024 ** power * 10) / 10 : bytes);
+  return value + ' ' + (power ? ['KB', 'MB', 'GB', 'TB'][power - 1] : t(bytes === 1 ? 'byte' : 'bytes'));
 }
 
 // Each code block gets a head row with its language and a 'Copiar' button; the block keeps its own scroll.

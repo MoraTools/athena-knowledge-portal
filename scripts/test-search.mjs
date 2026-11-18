@@ -736,9 +736,9 @@ assert.equal(records.getAttribute('aria-labelledby'), 'claves-de-api', 'The scro
 assert.equal(records.getAttribute('aria-label'), null);
 // The right-edge cue is a scroll-shadow background, so no mask clips the focus ring or fades the last column.
 const readerCss = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
-// Phone tag targets (round 4 #7): at least 24 px tall (WCAG 2.5.8) and no overlap with the chip row above.
+// Phone tag targets (round 4 #7; round 5: also the .tag-list chip links): at least 24 px tall (WCAG 2.5.8) and no overlap with the chip row above.
 {
-  const rule = readerCss.match(/@media\(pointer:coarse\)\{\.article-meta>\.article-meta__tags\{row-gap:var\(--space-1\)\}\.article-meta__tags a\{min-height:0;padding-block:(\d+)px;margin-block:-(\d+)px\}\}/);
+  const rule = readerCss.match(/@media\(pointer:coarse\)\{\.article-meta>\.article-meta__tags,\.tag-list:has\(>a\)\{row-gap:var\(--space-1\)\}:is\(\.article-meta__tags,\.tag-list\) a\{min-height:0;padding-block:(\d+)px;margin-block:-(\d+)px\}\}/);
   assert.ok(rule, 'Touch tag links pad their target with an equal negative margin, in rows 8 px (--space-1) apart.');
   const [padding, margin] = [Number(rule[1]), Number(rule[2])];
   const chip = 10 * 1.3 + 2 * 2 + 2; // --chip-size 10px at line-height 1.3, 2 px padding, 1 px border
@@ -938,9 +938,39 @@ assert.match(readerCss, /\.markdown-section :is\(\.post-summary,\.library-card>p
     context.filterLibrary();
     assert.equal(count.textContent, '1 resultado');
   }
+  // A timeline card has no data-search: its text includes the shared meta line (author), as on other lists.
+  {
+    const count = { textContent: '' };
+    const meta = { textContent: 'Anuncio Marta Ríos' };
+    const card = { dataset: {}, closest: () => null, hidden: false, querySelectorAll: (selector) => (selector.split(', ').includes('.item-meta') ? [meta] : []) };
+    const list = { matches: (selector) => selector === '.timeline', nextElementSibling: { hidden: true, querySelector: () => null, append() {} },
+      querySelectorAll: (selector) => (selector === '.library-card' ? [card] : []) };
+    context.document.querySelector = (selector) => ({ '.markdown-section .library-grid, .markdown-section .timeline': list, '#library-count': count, '#athena-search-input': input })[selector] || null;
+    vm.runInContext("searchScope = 'update'", context);
+    input.value = 'marta';
+    context.filterLibrary();
+    assert.equal(card.hidden, false, 'The author in the meta line matches.');
+  }
   input.value = '';
   vm.runInContext("searchScope = ''", context);
   context.document.querySelector = querySelector;
+}
+// Round 5 A2: C1 removed .post-meta; tag chips are links (contract 4): no underline, a focus ring, and on a phone a target
+// of 24 px or more with no overlap (round 4 #7).
+assert.doesNotMatch(readerCss, /post-meta/);
+assert.match(readerCss, /\n:is\(\.article-meta__tags,\.tag-list\) a\{display:inline-flex;align-items:center;text-decoration:none\}/);
+assert.match(readerCss, /:is\(\.article-meta__tags,\.tag-list\) a:focus-visible\{outline:2px solid var\(--focus\);outline-offset:2px\}/);
+// Round 5 #1: a search result is title, summary, chips, then the meta line, in the list meta voice (no kicker, no reordering).
+assert.doesNotMatch(readerCss, /\.search-result>\.search-result__meta\{order:-1\}/);
+// Round 5 #5: one Descargas row layout: title, size · date, file name, note, each on its own line at one left edge.
+assert.match(readerCss, /\.catalog-item>div\{display:flex;flex-direction:column;align-items:flex-start;gap:2px\}/);
+assert.doesNotMatch(readerCss, /\.catalog-item>div::before|\.catalog-item>div>code\{order/);
+// Round 5 #6: the section focus ring stays inside the column, clear of the heading text.
+assert.match(readerCss, /\.download-section>h2\{padding:var\(--s-1\) var\(--space-1\)\}\.download-section>h2:focus-visible\{outline-offset:-2px\}/);
+{
+  const downloadsMd = readFileSync(new URL('../server/athena/templates/downloads.md', import.meta.url), 'utf8');
+  // Round 5 #23: the Descargas sections use the Guías phone box (one native box, open as a row on wider readers).
+  assert.match(downloadsMd, /<details class="guide-topic-picker"><summary><span>Secciones<\/span> <span>\(\{\{ sections\|length \}\}\)<\/span><\/summary><nav class="download-jumps"/);
 }
 // Round 5 #13: at 360 px and below the article h1 is 28/34; nothing else in the phone head changes.
 assert.match(readerCss, /@container reader \(max-width:360px\)\{body\.article-view \.markdown-section h1\{font-size:28px;line-height:34px\}\}/);
@@ -1050,9 +1080,31 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
   // Search results use the same meta order as the article head.
   context.document.createTextNode = (text) => ({ textContent: text });
   const result = context.createSearchResult(context.prepareSearchEntry({ route: '#/content/guide', kind: 'guide', title: 'Guide', summary: 'S',
-    author: 'Ana Pérez', date: '2026-11-15', tags: [], text: '', prose: '', headings: [] }), ['guide']);
+    author: 'Ana Pérez', date: '2026-11-15', tags: ['RPA', 'primeros-pasos', 'Colas'], text: '', prose: '', headings: [] }), ['guide']);
   const resultMeta = result.children.find((node) => node.className === 'search-result__meta');
   assert.deepEqual(resultMeta.children.map((node) => node.textContent), ['Guía', 'Ana Pérez', 'Actualizado ' + vm.runInContext("formatDate('2026-11-15')", context)]);
+  // Round 5 #1: one order in every list row (title, summary, chips, meta line); the kind is a meta item, not a gold kicker.
+  assert.deepEqual(result.children.map((node) => node.className), ['search-result__body', 'search-result__tail', 'search-result__meta'],
+    'Title and summary, then chips, then the meta line.');
+  assert.equal(resultMeta.children[0].className, 'item-meta__kind');
+  // Round 5 #18, contract 6: a download result shows its size in the interface number format; its fixed summary is
+  // interface text (suite-i18n translates it), and its section and type chips are no topic links.
+  const download = { route: '/downloads/plantilla', kind: 'download', title: 'Plantilla base 3.2.0', summary: 'Archivo aprobado en Framework.', size: 9011,
+    author: '', date: '', tags: ['Framework', 'ZIP'], text: '', prose: '', headings: [] };
+  const downloadResult = (lang) => {
+    context.document.documentElement.lang = lang;
+    const built = context.createSearchResult(context.prepareSearchEntry(download), ['plantilla']);
+    delete context.document.documentElement.lang;
+    return built;
+  };
+  for (const [lang, size] of [['es', '8,8 KB'], ['en', '8.8 KB']]) {
+    const built = downloadResult(lang);
+    const meta = built.children.find((node) => node.className === 'search-result__meta');
+    assert.deepEqual(meta.children.map((node) => node.textContent), ['Descarga', size]);
+    const summary = built.children[0].children[1];
+    assert.deepEqual([summary.lang, summary.textContent], [lang, 'Archivo aprobado en Framework.']);
+    assert.deepEqual(built.children[1].children[0].children.map((chip) => chip.tagName), ['SPAN', 'SPAN']);
+  }
   context.location.hash = '#/content/draft';
   section.childNodes = [title];
   await context.buildArticleMeta();
@@ -1116,7 +1168,8 @@ function guidePage(entries, legacy = false) {
     const summary = new Element('p', entry.summary);
     const tags = entry.tags.map((value) => new Element('span', value));
     const tagList = new Element('p');
-    tagList.append(...tags);
+    // Contract 4 (round 5): each chip is <a class="tag-chip"><span>tag</span></a>.
+    tagList.append(...tags.map((tag) => { const chip = new Element('a'); chip.className = 'tag-chip'; chip.append(tag); return chip; }));
     const pdf = new Element('a', 'Abrir PDF original');
     pdf.setAttribute('href', '/pdf/guide-' + i + '.pdf');
     const site = new Element('a', 'Sitio oficial');
@@ -1210,6 +1263,8 @@ assert.deepEqual(groupFor('café').children.filter((node) => node.className === 
   .map((row) => row.children[0].querySelectorAll('.tag-list span').map((tag) => tag.textContent)), [['RPA', 'A|B <tema> "x"', 'Helios', 'Seguridad'], ['RPA avanzado']],
   'Under café no row repeats the café chip, in any spelling.');
 assert.equal(guides.rows[0].querySelectorAll('.tag-list span').length, 7, 'The hidden source record keeps every tag.');
+assert.deepEqual(copiedDetail.querySelectorAll('a').filter((link) => link.className === 'tag-chip').map((link) => link.textContent), copiedTags,
+  'A chip that is left out takes its link with it: no empty chip link.');
 assert.deepEqual(copiedDetail.children.filter((child) => child.tagName === 'A').map((link) => link.getAttribute('href')),
   ['#/content/guide-0', '/pdf/guide-0.pdf', 'https://example.test/guide-0', '#/downloads'], 'Topic copies keep every rendered conditional action.');
 assert.match(copiedDetail.textContent, /Estable/);

@@ -2,7 +2,7 @@
 
 Archivos aprobados. Solo para usuarios de Athena.
 {% if sections %}
-<div class="download-controls"><p id="download-count" class="result-count" role="status" aria-live="polite" aria-atomic="true"></p><nav class="download-jumps" aria-label="Secciones de Descargas">{% for key, label, items in sections %}<a href="#/downloads?id=download-{{ key }}" data-download-jump="{{ key }}"><span>{{ label }}</span> <span class="topic-count">{{ items|length }}</span></a>{% endfor %}</nav></div>
+<div class="download-controls"><p id="download-count" class="result-count" role="status" aria-live="polite" aria-atomic="true"></p><details class="guide-topic-picker"><summary><span>Secciones</span> <span>({{ sections|length }})</span></summary><nav class="download-jumps" aria-label="Secciones de Descargas">{% for key, label, items in sections %}<a href="#/downloads?id=download-{{ key }}" data-download-jump="{{ key }}"><span>{{ label }}</span> <span class="topic-count">{{ items|length }}</span></a>{% endfor %}</nav></details></div>
 {% endif %}{% for key, label, items in sections %}
 <section class="download-section" id="download-{{ key }}" data-section="{{ key }}">
 
