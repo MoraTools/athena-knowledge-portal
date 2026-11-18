@@ -16,7 +16,7 @@ const managed = '/article-images/00000000-0000-4000-8000-000000000001/';
 const html = render(`# Guide\n\n**Strong** and [reference](other.md).\n\n![Image](${managed})\n\n![Relative](images/diagram.png)`, {
   title: 'Guide', published: true, slug: 'guide'
 });
-assert.match(html, /<h1>Guide<\/h1>/);
+assert.match(html, /<h1 aria-level="2">Guide<\/h1>/);
 assert.match(html, /<strong>Strong<\/strong>/);
 assert.match(render('- [x] Done\n- [ ] Pending', { published: true }), /\[x\] Done/);
 assert.match(render('- [x] Done\n- [ ] Pending', { published: true }), /\[ \] Pending/);

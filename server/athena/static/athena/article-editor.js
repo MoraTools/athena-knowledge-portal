@@ -33,6 +33,11 @@
     renderer.link = function (token) {
       return marked.Renderer.prototype.link.call(this, { ...token, href: readerHref(token.href, slug) });
     };
+    // The editor page has its own h1; the preview title keeps the reader's look as a level 2 heading.
+    renderer.heading = function (token) {
+      const html = marked.Renderer.prototype.heading.call(this, token);
+      return token.depth === 1 ? html.replace('<h1', '<h1 aria-level="2"') : html;
+    };
     return DOMPurify.sanitize(marked.parse(body, { renderer, gfm: true, breaks: false }), {
       FORBID_TAGS: ['style', 'iframe', 'script', 'object', 'embed', 'form', 'input', 'select', 'option', 'textarea', 'button', 'fieldset', 'label', 'dialog', 'svg', 'math'],
       FORBID_ATTR: ['style', 'id', 'name', 'form', 'class', 'autofocus', 'contenteditable', 'tabindex', 'autoplay'],
@@ -211,6 +216,7 @@
       const fresh = !htmlFrame.isConnected;
       // The reader shows the title and the meta line above an HTML article's frame.
       const heading = document.createElement('h1');
+      heading.setAttribute('aria-level', '2');  // As the Markdown preview: the editor page has its own h1.
       heading.textContent = title.value;
       htmlHead.replaceChildren(heading, metaLine());
       if (fresh) {

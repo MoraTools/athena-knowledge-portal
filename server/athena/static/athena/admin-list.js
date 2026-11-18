@@ -15,11 +15,17 @@ if (action && boxes.length && [...action.options].some((option) => option.value 
   form.querySelector('.results').after(bar);
   const count = bar.querySelector('.bulk-count');
 
+  // The bar sticks to the viewport bottom: focus and keyboard scrolling stop above it while it is shown.
+  const reserve = () => {
+    document.documentElement.style.scrollPaddingBottom = bar.hidden ? '' : `${bar.offsetHeight + 16}px`;
+  };
   const update = () => {
     const selected = boxes.filter((box) => box.checked).length;
     bar.hidden = selected === 0;
     count.textContent = selected === 1 ? '1 seleccionado' : `${selected} seleccionados`;
+    reserve();
   };
+  new ResizeObserver(reserve).observe(bar);  // The phone bar wraps to two rows.
 
   bar.addEventListener('click', (event) => {
     const button = event.target.closest('[data-bulk]');

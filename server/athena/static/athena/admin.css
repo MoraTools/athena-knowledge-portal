@@ -84,7 +84,7 @@ div.breadcrumbs {
   box-sizing: border-box; min-height: 52px; padding: 18px var(--space-3); background: var(--bg); color: var(--text-muted);
   border-bottom: 1px solid var(--border); line-height: 15px;
 }
-div.breadcrumbs a:link, div.breadcrumbs a:visited { color: var(--accent-text); }
+div.breadcrumbs a:link, div.breadcrumbs a:visited { color: var(--accent-text); text-decoration: underline; text-underline-offset: .2em; }
 div.breadcrumbs a:hover, div.breadcrumbs a:focus { color: var(--text); }
 
 /* Page: fills the width beside the rail up to --content-max; ultra-wide screens centre it; side padding as the reader's. */
@@ -280,6 +280,10 @@ a.delete-related { --icon: url('/static/admin/img/icon-deletelink.svg'); }
 .object-tools { float: right; display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; margin: calc(-32px - var(--space-3)) 0 0; padding: 0; font-size: 13px; }
 .object-tools li { float: none; height: auto; margin: 0; padding: 0; list-style: none; }
 
+/* Page head: the h1 and the list's create button in one row (admin/change_list.html, the user directory). */
+.page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); margin: 0 0 var(--space-3); }
+#content .page-head h1 { margin: 0; }
+
 /* Pills: the kit's chip, shared by changelist booleans and the directory. */
 .pill {
   --tone: var(--text-muted); display: inline-flex; align-items: center; min-height: 22px; box-sizing: border-box; padding: 4px 6px;
@@ -301,14 +305,18 @@ thead th { padding: var(--cell-pad-y) var(--cell-pad-x); }
 thead th a:link, thead th a:visited { color: var(--text-muted); }
 thead th a:hover, thead th a:focus { color: var(--accent-text); }
 thead th.sorted { background: color-mix(in oklab, var(--accent) 8%, var(--surface-strong)); }
-thead th.sorted .text a, thead th.sorted .text span { color: var(--text); }
+thead th.sorted .text a, thead th.sorted .text span { color: var(--accent-text); }
 table thead th .text span, table thead th .text a { box-sizing: border-box; min-height: 36px; padding: var(--cell-pad-y) var(--cell-pad-x); }
 table thead th .text a { display: flex; align-items: center; }
 table thead th .text a:hover, table thead th .text a:focus { background: transparent; }
 table thead th.sorted .sortoptions { padding: 11px 12px 0 0; }
-table thead th.sorted .sortoptions a { background: var(--accent-text); mask: url('/static/admin/img/sorting-icons.svg') 0 0 / 14px auto no-repeat; }
-table thead th.sorted .sortoptions a.ascending { mask-position: 0 -28px; }
-table thead th.sorted .sortoptions a.descending { mask-position: 0 -56px; }
+/* Sort cue: the drawn chevrons of the user directory and the reader tables (.table-sort-direction), as masks (only their shape is used).
+   A pair on a sortable column; one chevron, gold, on the sorted column's direction toggle; Django's priority number stays. */
+#changelist thead th.sortable:not(.sorted) .text a::after { content: ''; flex: 0 0 12px; height: 18px; margin-left: 6px; background: var(--text-subtle);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 18' fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M3 7.5 6 4.5 9 7.5 M3 10.5 6 13.5 9 10.5'/%3E%3C/svg%3E") center / 12px 18px no-repeat; }
+table thead th.sorted .sortoptions a { background: var(--accent-text); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 18' fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M3 7.5 6 4.5 9 7.5'/%3E%3C/svg%3E") center / 12px 18px no-repeat; }
+table thead th.sorted .sortoptions a.descending { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 18' fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M3 10.5 6 13.5 9 10.5'/%3E%3C/svg%3E"); }
+table thead th.sorted .sortoptions .sortpriority { font: 600 10px/14px var(--font-mono); color: var(--text-subtle); }
 table thead th.sorted .sortoptions a.sortremove { background: none; mask: none; }
 table thead th.sorted .sortoptions a.sortremove:after { color: var(--text-subtle); }
 .table-sort-direction { position: relative; display: inline-block; flex: 0 0 12px; width: 12px; height: 18px; color: var(--text-subtle); }
@@ -335,6 +343,9 @@ tr:nth-child(odd), tr:nth-child(even), tr:nth-child(even) .errorlist, tr.alt { b
 #changelist td.field-article_date, #changelist td.field-last_updated, #changelist td.field-expires, #changelist td.field-created, #changelist td.field-last_login { white-space: nowrap; color: var(--text-muted); }
 /* Titles and names wrap (download titles are often long file names) but keep a readable column. */
 #changelist th.field-title, #changelist th.field-name { min-width: 16ch; overflow-wrap: anywhere; }
+/* Dates keep one line at their own width and a draft's access note wraps, so the title column takes the free width. */
+#changelist td:has(> time) { width: 1%; white-space: nowrap; }
+#changelist td.field-access .state-next { white-space: normal; }
 
 /* Changelist toolbar, bulk bar, row controls and pagination */
 #changelist.module { background: transparent; border: 0; }
@@ -421,8 +432,7 @@ a.icon-button.danger:hover, a.icon-button.danger:focus-visible { border-color: v
 .dashboard .module table td a { white-space: nowrap; }
 #content-related { background: transparent; }
 #content-related .drafts-line { margin: 0 0 var(--space-2); padding: 0; font: var(--label); letter-spacing: .06em; text-transform: uppercase; }
-.drafts-line a:link, .drafts-line a:visited { color: var(--text-muted); }
-.drafts-line a:hover { color: var(--accent-text); }
+.drafts-line a:link, .drafts-line a:visited { color: var(--accent-text); text-decoration: underline; text-underline-offset: .2em; }
 /* A draft's access level, shown after its chips: "al publicar: Con cuenta". */
 .state-next { color: var(--text-subtle); font: var(--label); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
 #changelist td.field-access .state-next { display: block; margin-top: 4px; }

@@ -7,7 +7,9 @@
 {% block content %}
 <div class="directory">
   <section class="directory-list" aria-labelledby="directory-title">
-    <h1 id="directory-title">Usuarios</h1>
+    <div class="page-head"><h1 id="directory-title">Usuarios</h1>
+      <a class="button ghost directory-add" href="?new=1{% if roster_query %}&amp;{{ roster_query }}{% endif %}#user-inspector"{% if not selected %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v16M4 12h16"/></svg>Nuevo usuario</a>
+    </div>
     <div class="directory-toolbar">
       <form class="directory-search" method="get" action="{{ request.path }}" role="search">
         {% if selected %}<input type="hidden" name="user" value="{{ selected.pk }}">{% else %}<input type="hidden" name="new" value="1">{% endif %}
@@ -17,7 +19,6 @@
         <button type="submit" aria-label="Buscar usuario"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
         <span class="visually-hidden" id="directory-search-help">Buscar por nombre de usuario, nombre o correo electrónico.</span>
       </form>
-      <a class="button ghost directory-add" href="?new=1{% if roster_query %}&amp;{{ roster_query }}{% endif %}#user-inspector"{% if not selected %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v16M4 12h16"/></svg>Nuevo usuario</a>
     </div>
     <p class="directory-scroll-hint"><span>Desplace la tabla para ver Estado y Sesión.</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h16m-4-4 4 4-4 4"/></svg></p>
     <div class="directory-results" tabindex="0" role="region" aria-label="Directorio de usuarios">

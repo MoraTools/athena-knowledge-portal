@@ -1,4 +1,7 @@
 import re
+import shutil
+import subprocess
+import unittest
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -197,7 +200,7 @@ class AdminEditorTests(TestCase):
 
     def test_one_create_verb_and_ver_for_the_read_only_log(self):
         page = self.client.get('/admin/athena/article/').content.decode()
-        self.assertIn('class="addlink">Nuevo artículo</a>', page)
+        self.assertIn('class="button default">Nuevo artículo</a>', page)
         self.assertNotIn('Añadir artículo', page)
         page = self.client.get('/admin/').content.decode()
         self.assertRegex(page, r'href="/admin/athena/downloadevent/" class="viewlink"[^>]*>Ver</a>')
@@ -216,7 +219,10 @@ class AdminEditorTests(TestCase):
                 page = self.client.get(reverse(base + '_changelist') + '?o=1').content.decode()
                 add = self.client.get(reverse(base + '_add')).content.decode()
                 title = re.search(r'<title>(.+?) · Athena</title>', add)[1]
-                self.assertIn(f'<li><a href="{reverse(base + "_add")}?_changelist_filters=o%3D1" class="addlink">{title}</a></li>', page)
+                # One slot: the button in the title row, no Django object tools.
+                self.assertRegex(page, rf'<div class="page-head"><h1>[^<]+</h1>\s*<a href="{reverse(base + "_add")}'
+                                       rf'\?_changelist_filters=o%3D1" class="button default">{title}</a></div>')
+                self.assertNotIn('class="object-tools"', page)
                 checked.append(title)
         self.assertEqual(sorted(checked), ['Nueva clave de API', 'Nueva descarga', 'Nuevo artículo'])
 
@@ -232,6 +238,15 @@ class AdminEditorTests(TestCase):
         self.assertEqual(changed, [(theirs_line.replace("{% translate 'View' %}", 'Ver'), theirs_line)
                                    for theirs_line in theirs if "{% translate 'View' %}" in theirs_line])
         self.assertEqual(len(changed), 1)
+
+    def test_directory_create_button_is_in_the_title_row(self):
+        page = self.client.get('/admin/auth/user/').content.decode()
+        self.assertRegex(page, r'<div class="page-head"><h1 id="directory-title">Usuarios</h1>\s*<a class="button ghost directory-add"')
+
+    def test_new_article_fields_have_placeholders(self):
+        page = self.client.get('/admin/athena/article/add/').content.decode()
+        self.assertRegex(page, r'<textarea name="title"[^>]*placeholder="Título del artículo"')
+        self.assertRegex(page, r'<textarea name="body"[^>]*placeholder="Escriba el artículo aquí. Tipo, resumen y acceso están en Detalles."')
 
     def test_tags_help_counts_the_published_first_steps_articles(self):
         Article.objects.create(title='Inicio', slug='inicio', body='Texto', published=True, tags=['Primeros-Pasos'])
@@ -351,3 +366,53 @@ class TagTests(TestCase):
         form = self.form(self.own, tags='DEMOS')
         form.is_valid()
         self.assertEqual(form.cleaned_data['tags'], ['DEMOS'])
+
+
+def run_node(script):
+    """Runs a check script with node from the repository root (where node_modules is); returns its stdout."""
+    result = subprocess.run(['node', '--input-type=module', '-e', script], cwd=settings.BASE_DIR, capture_output=True,
+                            text=True, timeout=60)
+    if result.returncode:
+        raise AssertionError(result.stderr)
+    return result.stdout
+
+
+@unittest.skipUnless(shutil.which('node'), 'node is not installed')
+class AdminScriptTests(TestCase):
+    """admin-list.js and the editor preview, run in node with a minimal DOM."""
+
+    def test_selection_bar_reserves_its_height_for_focus_scrolling(self):
+        out = run_node(r"""
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+const handlers = {}, html = { style: {} }, observed = [];
+const el = (extra = {}) => ({ setAttribute() {}, addEventListener(type, fn) { handlers[type] = fn; }, ...extra });
+const bar = el({ hidden: false, offsetHeight: 46, querySelector: () => el({ textContent: '' }) });
+const boxes = [el({ checked: false, dispatchEvent() {} }), el({ checked: false, dispatchEvent() {} })];
+const form = el({
+  querySelector: (s) => s.startsWith('.bulk-source select') ? { options: [{ value: 'delete_selected' }], value: '' } : el({ after() {}, before() {} }),
+  querySelectorAll: () => boxes });
+vm.runInNewContext(readFileSync('server/athena/static/athena/admin-list.js', 'utf8'), {
+  document: { getElementById: () => form, createElement: () => bar, documentElement: html },
+  window: { addEventListener() {} }, Event: class {},
+  ResizeObserver: class { constructor(fn) { this.fn = fn; } observe(node) { observed.push(node); } } });
+const states = [html.style.scrollPaddingBottom || ''];
+boxes[0].checked = true; handlers.change(); states.push(html.style.scrollPaddingBottom);
+boxes[0].checked = false; handlers.change(); states.push(html.style.scrollPaddingBottom || '');
+console.log(JSON.stringify({ states, observed: observed.includes(bar) }));
+""")
+        self.assertEqual(out.strip(), '{"states":["","62px",""],"observed":true}')
+
+    def test_preview_title_is_a_level_two_heading(self):
+        out = run_node(r"""
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import * as marked from 'marked';
+const window = {};
+vm.runInNewContext(readFileSync('server/athena/static/athena/article-editor.js', 'utf8'), {
+  window, document: { addEventListener() {} }, marked, URL, location: { origin: 'https://athena.test' },
+  DOMPurify: { sanitize: (html) => html } });
+console.log(window.athenaRenderMarkdown('Texto\n\n## Parte', { title: 'Guía', published: true }));
+""")
+        self.assertIn('<h1 aria-level="2">Guía</h1>', out)
+        self.assertIn('<h2>Parte</h2>', out)
