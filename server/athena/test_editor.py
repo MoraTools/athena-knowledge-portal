@@ -56,6 +56,17 @@ class ArticleEditorTests(TestCase):
             self.assertContains(response, 'name="loaded_revision"', count=1)
         self.assertContains(self.client.get(self.path), '<span class="pill">Publicado</span><span class="pill">Con cuenta</span>')
 
+    def test_bar_state_chips_open_publication_details(self):
+        # #42: the bar chips are one button that opens Detalles on Publicación with focus on Publicado; Guardar stays
+        # the one primary of the bar.
+        page = self.client.get(self.path).content.decode()
+        bar = re.search(r'<header class="desk-header">.*?</header>', page, re.S)[0]
+        self.assertIn('<button type="button" class="desk-state-button" data-open-details data-detail-focus="id_published">'
+                      '<span class="visually-hidden">Estado y acceso: </span><span id="desk-state" class="desk-state">'
+                      '<span class="pill">Publicado</span><span class="pill">Con cuenta</span></span></button>', bar)
+        self.assertEqual(bar.count('button default'), 1)
+        self.assertIn('class="button default desk-save"', bar)
+
     def test_release_details_name_the_file_the_reader_links(self):
         # #41: one match rule, the reader's (views.release_rows): published files only, the newest of one title,
         # titles equal after trim and case fold (models.release_key).

@@ -11,7 +11,9 @@
 .desk-back:link, .desk-back:visited { color: var(--text-muted); }
 .desk-back:hover { color: var(--text); }
 .desk-header svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
-.desk-state { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-right: var(--space-1); }
+.desk-state { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.desk-state-button { display: inline-flex; align-items: center; min-height: var(--control-h-sm); margin-right: var(--space-1); padding: 0 var(--space-1); border: 0; border-radius: var(--radius); background: none; cursor: pointer; }
+.desk-state-button:hover { background: var(--surface-raised); }
 .desk-save-state { color: var(--text-subtle); font-size: 12px; white-space: nowrap; }
 .desk-save-state:empty { display: none; }
 @container admin-page (min-width: 901px) { .desk-save-state, .desk-save-state:empty { display: inline-block; min-width: 17ch; } }
@@ -165,7 +167,7 @@
 @container admin-page (max-width: 900px) {
   .desk-header { flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) var(--space-2); }
   .desk-back { flex: 1; }
-  .desk-state { order: 5; width: 100%; }
+  .desk-state-button { order: 5; width: 100%; justify-content: flex-start; }
   .desk-header .desk-save { min-width: 72px; }
   .desk-header .button { padding: 0 12px; }
   .desk-header .desk-overflow > summary { padding: 0; }

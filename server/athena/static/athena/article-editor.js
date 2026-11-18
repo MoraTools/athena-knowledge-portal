@@ -114,7 +114,7 @@
       const panel = target?.closest('.desk-detail-panel');
       if (panel) showDetailTab(detailTabs.find(tab => tab.getAttribute('aria-controls') === panel.id));
       if (target && toolFields.contains(target)) toolFields.open = true;
-      opener = button && overflow.contains(button) ? overflow.querySelector('summary') : button || document.querySelector('[data-open-details]');
+      opener = button && overflow.contains(button) ? overflow.querySelector('summary') : button || document.querySelector('.desk-details');
       overflow.open = false;
       if (!dialog.open) {
         snapshot = { dirty, saveText: saveState?.textContent, controls: [...dialog.querySelectorAll('input, select, textarea')].map(control => [control, readControl(control)]) };

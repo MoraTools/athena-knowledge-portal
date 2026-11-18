@@ -18,7 +18,8 @@
     <header class="desk-header">
       {% url opts|admin_urlname:'changelist' as list_url %}
       <a class="desk-back" href="{% add_preserved_filters list_url %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg>Artículos</a>
-      <span id="desk-state" class="desk-state">{{ state_chips }}</span>
+      {# The state chips open Detalles on Publicación, where state and access are set. #}
+      <button type="button" class="desk-state-button" data-open-details data-detail-focus="id_published"><span class="visually-hidden">Estado y acceso: </span><span id="desk-state" class="desk-state">{{ state_chips }}</span></button>
       <button type="button" class="button desk-details" data-open-details>Detalles</button>
       <details class="desk-overflow">
         <summary class="button" aria-label="Más opciones"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></summary>

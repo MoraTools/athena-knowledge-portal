@@ -151,6 +151,8 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
   preview.getBoundingClientRect = () => ({ top: 100, bottom: 700 });
   form.querySelector = () => ({ value: 'csrf-token' });
   const overflow = element('overflow'), mainOpener = element('opener'), importOpener = element('import', overflow);
+  const chipsOpener = element('chips');
+  chipsOpener.dataset.detailFocus = 'id_published';
   importOpener.dataset.detailFocus = 'id_markdown_file';
   const close = element('close', dialog), dismiss = element('dismiss', dialog), cancel = element('cancel', dialog);
   const workspace = element('workspace');
@@ -168,7 +170,7 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
     : selector === 'input, select, textarea' ? [...nodes.values()].filter(node => node.name && node !== dialog && dialog.contains(node))
     : panels;
   dialog.querySelector = () => serverError && fields[serverError];
-  const queries = { '.desk-overflow': overflow, '[data-open-details]': mainOpener,
+  const queries = { '.desk-overflow': overflow, '.desk-details': mainOpener,
     '[data-close-details]': close, '.desk-workspace': workspace };
   vm.runInNewContext(readFileSync(new URL('../server/athena/static/athena/article-editor.js', import.meta.url), 'utf8'), {
     window: { addEventListener(type, callback) { handlers[type] = callback; } },
@@ -186,7 +188,7 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
       },
       getElementById: id => nodes.get(id) ?? null,
       querySelector: selector => queries[selector] ?? null,
-      querySelectorAll: selector => selector === '[data-pane]' ? paneTabs : [mainOpener, importOpener],
+      querySelectorAll: selector => selector === '[data-pane]' ? paneTabs : [chipsOpener, mainOpener, importOpener],
       addEventListener(type, callback) { handlers[type] = callback; } },
     matchMedia: () => ({ matches: false, addEventListener() {} }),
     setTimeout() {}, clearTimeout() {}, TextDecoder, Event, URLSearchParams, innerHeight: 800,
@@ -195,7 +197,7 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
     addEventListener(type, callback) { handlers['global:' + type] = callback; }
   });
   handlers.DOMContentLoaded();
-  return { form, dialog, panels, detailTabs, fields, tool, close, dismiss, cancel, element, mainOpener, importOpener, handlers, preview, posts, nodes,
+  return { form, dialog, panels, detailTabs, fields, tool, close, dismiss, cancel, element, mainOpener, chipsOpener, importOpener, handlers, preview, posts, nodes,
     focused: () => focused, invalidate(field) { firstInvalid = fields[field]; },
     flushClose() { for (const callback of closeEvents.splice(0)) callback(); } };
 }
@@ -334,6 +336,28 @@ for (const how of ['escape', 'dismiss', 'cancel', 'apply']) {
   // The edit outside the dialog keeps the page unsaved.
   state.handlers.beforeunload({ preventDefault() { unloadBlocked = true; } });
   assert.equal(unloadBlocked, true);
+}
+// #42 with the #5 snapshot: the bar chips open Publicación with focus on Publicado; Cancelar puts Publicado back and
+// the bar chips stay as they were.
+{
+  const state = editor();
+  const published = state.fields.published = Object.assign(state.element('id_published', state.panels[1]),
+    { name: 'published', type: 'checkbox', checked: true });
+  state.fields.access = Object.assign(state.element('id_access', state.panels[1]), { name: 'access', value: 'public' });
+  await state.form.fire('change', { target: published });
+  const chips = state.nodes.get('desk-state').innerHTML;
+  assert.equal(chips, '<span class="pill">Publicado</span><span class="pill">Público</span>');
+  await state.chipsOpener.fire('click');
+  assert.equal(state.detailTabs[1].getAttribute('aria-selected'), 'true');
+  assert.equal(state.focused(), published);
+  published.checked = false;
+  await state.form.fire('change', { target: published });
+  assert.match(state.nodes.get('desk-state').innerHTML, /Borrador/);
+  await state.cancel.fire('click');
+  assert.equal(published.checked, true);
+  assert.equal(state.nodes.get('desk-state').innerHTML, chips);
+  state.flushClose();
+  assert.equal(state.focused(), state.chipsOpener);
 }
 // #41: the Descargas file line shows only while Tipo is Versión.
 {

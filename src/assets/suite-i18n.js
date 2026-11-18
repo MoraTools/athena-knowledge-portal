@@ -26,7 +26,7 @@
     'Todavía no hay artículos públicos. Puede ingresar si tiene una cuenta.': 'There are no public articles yet. You can sign in if you have an account.',
     '¿Documentó una solución que el equipo puede volver a usar?': 'Did you document a fix the team can use again?', 'Cómo contribuir': 'How to contribute',
     'Nuevo artículo': 'New article', 'Buscar guías': 'Search guides', 'Título, autor, resumen o etiqueta': 'Title, author, summary or tag',
-    'Etiqueta': 'Tag', 'Secciones': 'Sections', 'Más en': 'More in', 'Archivo en Descargas': 'File in Downloads', 'Ningún archivo de Descargas tiene este título': 'No Downloads file has this title', ', tema de Guías': ', Guides topic', ', buscar en Athena': ', search Athena', 'Enter para buscar': 'Enter to search', 'Notas de la versión': 'Release notes', 'Todas': 'All', 'Todo': 'All', 'Temas de las guías': 'Guide topics', 'Todos los temas': 'All topics', 'Sin etiqueta': 'Untagged',
+    'Etiqueta': 'Tag', 'Secciones': 'Sections', 'Más en': 'More in', 'Estado y acceso': 'State and access', 'Archivo en Descargas': 'File in Downloads', 'Ningún archivo de Descargas tiene este título': 'No Downloads file has this title', ', tema de Guías': ', Guides topic', ', buscar en Athena': ', search Athena', 'Enter para buscar': 'Enter to search', 'Notas de la versión': 'Release notes', 'Todas': 'All', 'Todo': 'All', 'Temas de las guías': 'Guide topics', 'Todos los temas': 'All topics', 'Sin etiqueta': 'Untagged',
     'No hay guías que coincidan con estos filtros.': 'No guides match these filters.',
     'No hay herramientas que coincidan con este filtro.': 'No tools match this filter.',
     'No hay actualizaciones que coincidan con este filtro.': 'No updates match this filter.',
