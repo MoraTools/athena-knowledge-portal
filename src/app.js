@@ -1085,6 +1085,62 @@ async function buildArticleMeta() {
     actions.prepend(link);
     labelArticleActions();
   }
+  buildGuideMore(entry, index);
+}
+
+// Contract 5: after a guide body, up to 3 other guides of its first topic tag (index order, the Guías row style), then the
+// link to all of them. Nothing when no other guide has the tag. The search index is already loaded (no new request).
+function buildGuideMore(entry, index) {
+  const article = document.querySelector('.markdown-section');
+  if (!article) return;
+  article.querySelectorAll('.guide-more').forEach((old) => old.remove());
+  const tag = entry.kind === 'guide' && !article.querySelector('.html-article, .html-article-frame') && entry.tags.find(isTopicTag);
+  if (!tag) return;
+  const key = normalize(tag);
+  const guides = index.filter((item) => item.kind === 'guide' && (item.tags || []).some((value) => isTopicTag(value) && normalize(value) === key));
+  const others = guides.filter((item) => item.route !== entry.route).slice(0, 3);
+  if (!others.length) return;
+  const section = document.createElement('section');
+  section.className = 'guide-more';
+  const heading = document.createElement('h2');
+  const words = document.createElement('span');
+  words.lang = currentLang();
+  words.textContent = t('Más en') + ' ';
+  const topic = document.createElement('span');
+  topic.lang = 'es';
+  topic.textContent = tag;
+  heading.append(words, topic);
+  const list = document.createElement('div');
+  list.className = 'recent-list';
+  others.forEach((other) => {
+    const row = document.createElement('article');
+    row.className = 'guide-topic-row';
+    const detail = document.createElement('div');
+    detail.className = 'guide-detail';
+    const title = document.createElement('a');
+    title.className = 'guide-title';
+    title.href = other.route;
+    title.lang = 'es';
+    title.textContent = other.title;
+    const summary = document.createElement('p');
+    summary.className = 'guide-summary';
+    summary.lang = 'es';
+    summary.textContent = other.summary || '';
+    detail.append(title, summary);
+    const meta = document.createElement('p');
+    meta.className = 'item-meta';
+    meta.append(...metaItems(other).slice(1)); // The kind (Guía) repeats the block, as on Guías.
+    row.append(detail, meta);
+    list.append(row);
+  });
+  const all = document.createElement('p');
+  all.className = 'guide-topic-more';
+  const link = document.createElement('a');
+  link.href = '#/guides?id=' + guideTopicId(key);
+  link.textContent = t('Ver las ' + new Intl.NumberFormat(currentLang()).format(guides.length) + ' guías de ' + tag);
+  all.append(link);
+  section.append(heading, list, all);
+  article.append(section);
 }
 
 // The interface may be English; articles, their titles, excerpts and tags are Spanish. A file row's size · date line, with
@@ -1102,7 +1158,7 @@ function markSpanishContent() {
   let content = false;
   [...article.children].forEach((node) => {
     content ||= node.tagName === 'H1';
-    if (content && !node.matches('.article-meta,.article-access,.pdf-viewer,.page-tree,.article-actions,.code-block')) node.lang = 'es';
+    if (content && !node.matches('.article-meta,.article-access,.pdf-viewer,.page-tree,.article-actions,.code-block,.guide-more')) node.lang = 'es';
   });
 }
 

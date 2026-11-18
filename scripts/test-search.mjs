@@ -1087,7 +1087,13 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
     { route: '#/content/other', kind: 'tool', title: 'Other', author: 'X', date: '2026-01-01', tags: [] },
     { route: '#/content/guide', kind: 'guide', title: 'Guide', author: 'Ana Pérez', date: '2026-11-15', tags: ['primeros-pasos', 'RPA', 'Colas'] },
     { route: '#/content/tool', kind: 'tool', title: 'Tool', author: 'X', date: '2026-01-01', tags: ['Colas'] },
-    { route: '#/content/release', kind: 'release', title: 'Plantilla base 3.2.0', author: 'X', date: '2026-01-01', tags: [], download: 'download-file-plantilla-base-3-2-0' }
+    { route: '#/content/release', kind: 'release', title: 'Plantilla base 3.2.0', author: 'X', date: '2026-01-01', tags: [], download: 'download-file-plantilla-base-3-2-0' },
+    { route: '#/content/rpa-1', kind: 'guide', title: 'RPA uno', summary: 'Resumen uno', author: 'Bea', date: '2026-02-01', tags: ['RPA'] },
+    { route: '#/content/rpa-tool', kind: 'tool', title: 'Herramienta RPA', summary: 'No es guía', author: 'X', date: '2026-02-01', tags: ['RPA'] },
+    { route: '#/content/rpa-2', kind: 'guide', title: 'RPA dos', summary: 'Resumen dos', author: 'Bea', date: '2026-02-02', tags: ['rpa'] },
+    { route: '#/content/rpa-3', kind: 'guide', title: 'RPA tres', summary: 'Resumen tres', author: '', date: '2026-02-03', tags: ['Colas', 'RPA'] },
+    { route: '#/content/rpa-4', kind: 'guide', title: 'RPA cuatro', summary: 'Resumen cuatro', author: 'Bea', date: '2026-02-04', tags: ['RPA'] },
+    { route: '#/content/solo', kind: 'guide', title: 'Solo', summary: 'S', author: 'Bea', date: '2026-02-05', tags: ['Única'] }
   ] });
   vm.runInContext('searchIndexPromise = undefined', context);
   await context.buildArticleMeta();
@@ -1173,6 +1179,38 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
     assert.equal(actionLinks().length, 0, 'Only a Versión entry with a download gets the link.');
     Object.assign(context.document, { querySelector, querySelectorAll });
     context.labelArticleActions = labelArticleActions;
+  }
+  // Round 5 #39, contract 5: after a guide body, "Más en <first topic tag>" lists up to 3 other guides with that tag (index
+  // order, row style), then "Ver las n guías de <tema>"; nothing when no other guide has the tag, and nothing on other kinds.
+  {
+    const querySelector = context.document.querySelector;
+    const querySelectorAll = section.querySelectorAll;
+    context.document.querySelector = (selector) => ({ '.markdown-section h1': title, '.markdown-section': section })[selector] || null;
+    section.querySelectorAll = (selector) => section.children.filter((node) => node.className === selector.slice(1));
+    section.querySelector = () => null;
+    const more = () => section.children.filter((node) => node.className === 'guide-more');
+    context.location.hash = '#/content/guide';
+    section.childNodes = [title];
+    await context.buildArticleMeta();
+    await context.buildArticleMeta();
+    assert.equal(more().length, 1, 'One block, also after a repeated sync.');
+    const [heading, list, all] = more()[0].children;
+    assert.deepEqual([heading.tagName, heading.textContent, heading.children[1].lang, Boolean(heading.id)], ['H2', 'Más en RPA', 'es', false],
+      'An h2 with no id, so the page tree leaves it out.');
+    assert.equal(list.className, 'recent-list');
+    assert.deepEqual(list.children.map((row) => [row.className, row.children[0].children[0].href, row.children[0].children[0].textContent, row.children[0].children[1].textContent]),
+      [['guide-topic-row', '#/content/rpa-1', 'RPA uno', 'Resumen uno'], ['guide-topic-row', '#/content/rpa-2', 'RPA dos', 'Resumen dos'], ['guide-topic-row', '#/content/rpa-3', 'RPA tres', 'Resumen tres']]);
+    assert.deepEqual(list.children[0].children[1].children.map((node) => node.textContent), ['Bea', 'Actualizado ' + vm.runInContext("formatDate('2026-02-01')", context)],
+      'The meta line of a Guías row: no kind.');
+    assert.deepEqual([all.className, all.children[0].href, all.children[0].textContent], ['guide-topic-more', '#/guides?id=guide-topic-rpa', 'Ver las 5 guías de RPA']);
+    for (const route of ['#/content/solo', '#/content/tool']) {
+      context.location.hash = route;
+      section.childNodes = [title];
+      await context.buildArticleMeta();
+      assert.equal(more().length, 0, route + ': nothing to add.');
+    }
+    context.document.querySelector = querySelector;
+    section.querySelectorAll = querySelectorAll;
   }
   context.location.hash = '#/content/draft';
   section.childNodes = [title];
