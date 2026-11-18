@@ -9,7 +9,6 @@ let searchRenderVersion = 0;
 let searchScope = '';
 let searchPageNode;
 let searchPath;
-let searchTyping;
 
 const normalize = (value) => String(value || '')
   .normalize('NFD')
@@ -961,6 +960,7 @@ function syncSearch() {
   // Same value: no write, so the caret stays where the reader is typing.
   if (path === '/search' && input.value !== (params.get('q') || '')) input.value = params.get('q') || '';
   scope.hidden = !searchScope;
+  updateSearchHint();
   const [chip, placeholder] = SCOPE_LABELS[searchScope] || ['', 'Buscar en Athena'];
   scope.querySelector('span').textContent = t(chip);
   input.placeholder = t(placeholder);
@@ -1925,23 +1925,20 @@ document.addEventListener('input', (event) => {
   filterGuides();
   filterDownloads();
   filterLibrary();
+  updateSearchHint();
   if (getRouteState().path === '/search') {
     const type = document.querySelector('#athena-search-type')?.value || '';
     replaceSearchUrl(event.target.value, type);
     renderSearchPage();
-    return;
   }
-  // A pause in typing opens search (one history entry; later typing replaces it). A page-scope chip filters the page.
-  // On an article only Enter opens search, so typing never leaves the article the reader is in.
-  clearTimeout(searchTyping);
-  const input = event.target;
-  searchTyping = setTimeout(() => {
-    const { path } = getRouteState();
-    if (!searchScope && input.value.trim() && document.activeElement === input && path !== '/search' && !path.startsWith('/content/')) {
-      location.hash = buildSearchHash(input.value, '');
-    }
-  }, 250);
 });
+
+// Outside /search typing never leaves the page: Enter opens search, and the field says so while it has text. A page-scope
+// chip filters the page as the reader types, so it needs no hint.
+function updateSearchHint() {
+  const hint = document.querySelector('#search-hint');
+  if (hint) hint.hidden = Boolean(searchScope) || getRouteState().path === '/search' || !document.querySelector('#athena-search-input')?.value.trim();
+}
 
 document.addEventListener('change', (event) => {
   if (event.target.matches('#athena-search-type')) {

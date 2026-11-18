@@ -418,6 +418,9 @@ ol.command-crumbs>li+li::before{content:"›";content:"›" / "";color:var(--tex
 .search-scope[hidden]{display:none}
 .search-scope:hover{background:var(--surface-raised)}
 .search-scope svg{width:12px;height:12px}
+/* Outside /search Enter runs the search; the hint takes the chip place and the shortcut steps aside while it shows. */
+.search-hint{flex:none;color:var(--text-muted);font:500 11px/1.2 var(--font-mono);white-space:nowrap}.search-hint[hidden]{display:none}
+.input-wrap:has(.search-hint:not([hidden])) kbd{display:none}
 .crumb-collapse,.crumb-more-sep{display:none}
 .is-collapsed .crumb-collapse{display:block;position:relative}
 .is-collapsed .crumb-more-sep{display:inline}

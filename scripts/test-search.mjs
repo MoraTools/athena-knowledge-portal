@@ -393,28 +393,35 @@ input.value = 'submitted';
 handlers.submit({ preventDefault() {}, target: { matches: () => true, querySelector: () => input } });
 assert.equal(returnTarget(), '/#/search?q=submitted&type=guide');
 
-// A pause in typing on another page opens search with the typed words, while the field keeps focus.
+// Round 5 #42: outside /search typing never changes the route; with text and no page-scope chip the field shows the plain
+// hint "Enter para buscar", and Enter opens search. A scope chip filters the page live (the Guías test below).
 const typingTimers = [];
 context.setTimeout = (callback, delay) => typingTimers.push([callback, delay]);
-context.location.hash = '#/guides';
-input.value = 'typed words';
-handlers.input({ target: input });
-context.document.activeElement = null;
-typingTimers[0][0]();
-assert.equal(context.location.hash, '#/guides', 'Typing that lost focus does not change the page.');
+const hint = { hidden: true };
+context.document.querySelector = (selector) => ({ '#athena-search-input': input, '#athena-search-type': filter, '#search-hint': hint })[selector] || null;
 context.document.activeElement = input;
-handlers.input({ target: input });
-assert.equal(typingTimers[1][1], 250);
-typingTimers[1][0]();
-assert.equal(context.location.hash, '#/search?q=typed+words');
-// On an article a pause in typing keeps the reader on it; Enter opens search.
-vm.runInContext("searchScope = ''", context);
-context.location.hash = '#/content/example';
-handlers.input({ target: input });
-typingTimers.at(-1)[0]();
-assert.equal(context.location.hash, '#/content/example', 'Typing on an article does not change the route.');
+for (const route of ['#/', '#/content/example']) {
+  vm.runInContext("searchScope = ''", context);
+  context.location.hash = route;
+  input.value = 'typed words';
+  handlers.input({ target: input });
+  typingTimers.forEach(([callback]) => callback());
+  assert.equal(context.location.hash, route, 'Typing does not change the route.');
+  assert.equal(hint.hidden, false, 'The hint says Enter searches.');
+  input.value = '  ';
+  handlers.input({ target: input });
+  assert.equal(hint.hidden, true, 'No text, no hint.');
+}
+input.value = 'typed words';
 handlers.submit({ preventDefault() {}, target: { matches: () => true, querySelector: () => input } });
-assert.equal(context.location.hash, '#/search?q=typed+words', 'Enter on an article opens search.');
+assert.equal(context.location.hash, '#/search?q=typed+words', 'Enter opens search.');
+handlers.input({ target: input });
+assert.equal(hint.hidden, true, 'On /search the results update while typing: no hint.');
+context.location.hash = '#/guides';
+vm.runInContext("searchScope = 'guide'", context);
+handlers.input({ target: input });
+assert.equal(hint.hidden, true, 'A page-scope chip filters in place: no hint.');
+vm.runInContext("searchScope = ''", context);
 context.setTimeout = () => {};
 context.document.activeElement = undefined;
 
