@@ -14,8 +14,9 @@ body small{display:block;margin:.4rem 0 .75rem;color:var(--muted);line-height:1.
 .brand{display:flex;flex-direction:column;color:var(--text);text-decoration:none;line-height:.8;text-align:center;letter-spacing:.12em}
 .brand span{font:600 28px/1 var(--font-display);text-transform:uppercase}
 .brand small{margin:.55rem 0 0;color:var(--accent-text);font:600 11px/1 var(--font-mono);letter-spacing:.22em}
-.access-label{padding:.4rem .65rem;color:var(--text-muted);font:600 11px/1 var(--font-mono);letter-spacing:.1em;display:none}
-body.home-view .access-label{display:block}
+.access-label{padding:.4rem .65rem;color:var(--text-muted);font:600 11px/1 var(--font-mono);letter-spacing:.1em;display:block;visibility:hidden}
+/* The label shows on the home only, but keeps its slot on every page, so the search field keeps one x position. */
+body.home-view .access-label{visibility:visible}
 /* The portal rail (assets/rail.css) is fixed; the page starts after its current width. Docsify's article is also #main, hence div#main. */
 div#main{min-height:100vh;width:auto;padding-left:var(--rail-current);container:reader / inline-size;transition:padding-left var(--rail-dur) var(--rail-ease)}
 .athena-search[hidden]{display:none!important}
@@ -33,7 +34,11 @@ div#main{min-height:100vh;width:auto;padding-left:var(--rail-current);container:
 div#app.boot-shell{margin:0;font-size:inherit;font-weight:inherit;text-align:left}
 .markdown-section .boot-status{color:var(--muted)}
 .search-result-count{width:fit-content;min-height:1.55em;margin:var(--space-2) 0 var(--space-4)!important;color:var(--muted)}
-.search-results{display:grid;gap:var(--space-2)}
+.search-results{--guide-row-highlight:color-mix(in srgb,var(--accent) 12%,var(--surface));display:grid;gap:0;border-top:1px solid var(--line)}
+/* Search results are list rows: the Guías row surface, padding and divider. */
+.search-result{padding:var(--space-1) var(--space-2);border-bottom:1px solid var(--line);background:var(--surface)}
+.search-result:has(:focus-visible){background:var(--guide-row-highlight)}
+@media(hover:hover) and (pointer:fine){.search-result:hover{background:var(--guide-row-highlight)}}
 .markdown-section .search-result__meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-1);margin:var(--space-1) 0 0;color:var(--text-muted);font:13px/20px var(--font-mono)}
 .search-result__meta .tag-list{margin:0}
 .markdown-section .search-result__tail{display:flex;flex-wrap:wrap;align-items:center;gap:4px var(--space-2);margin:var(--space-1) 0 0}
@@ -66,6 +71,8 @@ body .content,body.close .content{position:static;inset:auto;max-width:none;padd
 .page-tree li{margin:.4rem 0;line-height:1.25}
 .page-tree__level-3{padding-left:.8rem}
 .page-tree a{display:block;padding-left:var(--space-1);border-left:2px solid transparent;color:var(--muted);text-decoration:none}
+/* Sections read as the outline's first level; their subsections stay muted under the indent. */
+.page-tree .page-tree__level-2>a{color:var(--text);font-weight:500}
 .page-tree a:hover,.page-tree a[aria-current="location"]{color:var(--accent-text)}
 .page-tree a[aria-current="location"]{border-left-color:var(--accent)}
 .copy-page svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -89,7 +96,7 @@ body .markdown-section h2{font:600 30px/36px var(--font-display);text-wrap:balan
 /* A tag chip is a link (the article head, and <a class="tag-chip"> in .tag-list): the chip inside keeps the chip look. */
 :is(.article-meta__tags,.tag-list) a{display:inline-flex;align-items:center;text-decoration:none}
 :is(.article-meta__tags,.tag-list) a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-@media(pointer:coarse){:is(.article-meta__tags,.search-result__actions,.contribute-note,.boot-status,.guide-topic-more) a{display:inline-flex;align-items:center;min-height:44px}}
+@media(pointer:coarse){:is(.article-meta__tags,.search-result__actions,.contribute-note,.boot-status,.guide-topic-more,.card-links) a{display:inline-flex;align-items:center;min-height:44px}}
 /* Touch: a tag link pads its target to about 27 px with an equal negative margin (WCAG 2.5.8: 24 px); half the 8 px row gap, so rows do not overlap. */
 @media(pointer:coarse){.article-meta>.article-meta__tags,.tag-list:has(>a){row-gap:var(--space-1)}:is(.article-meta__tags,.tag-list) a{min-height:0;padding-block:4px;margin-block:-4px}}
 .markdown-section .article-access{margin:calc(-1 * var(--space-1)) 0 var(--space-3);color:var(--muted);font:400 14px/1.5 var(--font-ui)}
@@ -197,6 +204,8 @@ html:has(.image-viewer[open]){overflow:hidden}
   .image-viewer__caption{flex:1;min-width:0;padding:0;border:0;font-size:13px;line-height:1.4}
 }
 .pdf-viewer{margin:var(--space-3) 0}
+/* After a guide's text: "PDF original" and its file line (name · size) in the meta voice, above the frame. */
+.markdown-section .pdf-viewer>h2{margin-top:0}.pdf-viewer__meta{margin:0 0 var(--space-1)!important;color:var(--text-muted);font:13px/1.5 var(--font-mono);overflow-wrap:anywhere}
 .pdf-viewer iframe{display:block;width:100%;height:max(480px,calc(100vh - 160px));border:1px solid var(--line);background:var(--field-bg)}
 /* A PDF or a table uses the full reader column (the browser viewer then opens at page width); the prose around it keeps 70ch. */
 /* The measure is computed in the section's own font (a registered length), so headings wrap where the prose does. */
@@ -239,10 +248,13 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 .guide-library,.recent-list{--guide-row-highlight:color-mix(in srgb,var(--accent) 12%,var(--surface))}
 .guide-topic h2:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .markdown-section .guide-links a{font:700 .875rem/1.4 var(--font-ui)}
-.markdown-section .guide-title{display:block;padding-block:2px;font:700 1.125rem/1.3 var(--font-ui);color:var(--text);text-decoration:none;overflow-wrap:anywhere}
+/* Contract 1 (round 6): a card's place links (Sitio oficial, Ver en Descargas, Abrir PDF original) are one wrapping row of gold text links. */
+.markdown-section .card-links{display:flex;flex-wrap:wrap;gap:0 var(--space-3);margin:var(--space-1) 0 0}
+.markdown-section .card-links a{display:inline-flex;align-items:center;min-height:32px;color:var(--accent-text);font:700 .875rem/1.4 var(--font-ui)}
+.markdown-section .guide-title{display:block;max-inline-size:75ch;padding-block:2px;font:700 1.125rem/1.3 var(--font-ui);color:var(--text);text-decoration:none;overflow-wrap:anywhere}
 .markdown-section .guide-title:hover,.markdown-section .guide-title:focus-visible{color:var(--accent-text);text-decoration:underline}
 .markdown-section .guide-detail p{margin:calc(var(--space-1) / 2) 0 0}
-.markdown-section .guide-summary{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;color:var(--text-muted);font:400 1rem/1.4 var(--font-ui)}
+.markdown-section .guide-summary{max-inline-size:75ch;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;color:var(--text-muted);font:400 1rem/1.4 var(--font-ui)}
 .guide-footer{display:flex;flex-wrap:wrap;align-items:center;column-gap:var(--space-2)}
 .guide-links{display:flex;flex-wrap:wrap;gap:0 var(--space-2)}
 .guide-links a{display:inline-flex;align-items:center;min-height:32px}
@@ -265,11 +277,13 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 .guide-topic-row{display:grid;grid-template-columns:minmax(0,1fr);gap:0;padding:var(--space-1) var(--space-2);border-bottom:1px solid var(--line);background:var(--surface)}
 .guide-topic-row:has(:focus-visible){background:var(--guide-row-highlight)}
 @media(hover:hover) and (pointer:fine){.guide-topic-row:hover{background:var(--guide-row-highlight)}}
+/* Wider readers: a row's chips and its meta line share one row (the meta's first "·" then shows after the chips); phones keep two rows. */
+@container reader (min-width:601px){.guide-topic-row:has(.tag-list>*){grid-template-columns:auto minmax(0,1fr);column-gap:0;align-items:baseline}.guide-topic-row:has(.tag-list>*)>.guide-detail{display:contents}.guide-topic-row:has(.tag-list>*) .guide-detail>:not(.guide-footer){grid-column:1/-1}.markdown-section .guide-topic-row:has(.tag-list>*)>.item-meta{margin-left:0;clip-path:none}}
 .guide-library [hidden],:is(.guide-topic-jumps,.download-jumps) [hidden]{display:none!important}
 @container reader (max-width:600px){.guide-controls{grid-template-columns:1fr;gap:var(--space-2);padding:var(--space-2)}:is(.guide-topic-jumps,.download-jumps){column-gap:var(--space-2)}}
 /* One chip for tags and status in guide rows, tool cards, the feed, search results and the article meta line. */
 .tag-list{display:flex;flex-wrap:wrap;gap:4px}
-.tag-list span,.markdown-section .status,.article-meta__tags a>span{display:inline-flex;align-items:center;width:auto;margin:0;padding:2px 6px;border:1px solid var(--border);border-radius:var(--radius-chip);background:var(--surface-strong);color:var(--text-muted);font:var(--chip-weight) var(--chip-size)/1.3 var(--chip-font);letter-spacing:var(--chip-tracking);text-transform:var(--chip-transform);text-decoration:none;overflow-wrap:anywhere}
+.tag-list span:not(.visually-hidden),.markdown-section .status,.article-meta__tags a>span:not(.visually-hidden){display:inline-flex;align-items:center;width:auto;margin:0;padding:2px 6px;border:1px solid var(--border);border-radius:var(--radius-chip);background:var(--surface-strong);color:var(--text-muted);font:var(--chip-weight) var(--chip-size)/1.3 var(--chip-font);letter-spacing:var(--chip-tracking);text-transform:var(--chip-transform);text-decoration:none;overflow-wrap:anywhere}
 :is(.article-meta__tags,.tag-list) a:hover>span{border-color:var(--accent-edge);color:var(--accent-text)}
 .updates-feed{display:grid;gap:var(--space-2)}.update-item h2{font-size:2rem}.update-item h2 a{color:var(--field-bg)}
 .download-permalink{margin:0 0 var(--space-2);color:var(--muted);font-size:.9rem;overflow-wrap:anywhere}
@@ -282,23 +296,23 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 /* Phone: the row text uses the full width; the Versión actual chip and Descargar sit on one line under it, and the URL is its own block. */
 @container reader (max-width:600px){.catalog-item{grid-template-columns:minmax(0,1fr);justify-items:start}.download-permalink{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-1)}}
 .catalog-item>div>p{margin:0;color:var(--muted);font-size:.9rem}
-/* The section focus ring stays inside the column and clear of the heading text (a jump link focuses the h2). */
-.download-section>h2{padding:var(--s-1) 0}.download-section>h2:focus-visible{outline-offset:-2px}
+/* A jump link focuses the h2: inline padding with an equal negative margin keeps the text at the page edge and the ring clear of it. */
+.download-section>h2{padding:var(--s-1) var(--space-1);margin-inline:calc(-1 * var(--space-1))}.download-section>h2:focus-visible{outline-offset:-2px}
 .download-controls{margin:0 0 var(--space-2)}.download-jumps a{max-width:none}.download-controls .result-count{margin:0 0 var(--space-1)}
 /* The archive summary says what a click does: show the files, or hide them again. */
 .download-archive[open] .archive-closed,.download-archive:not([open]) .archive-open{display:none}
 .catalog-item code{display:block;background:transparent;color:var(--code);padding:0;font-size:.72rem;overflow-wrap:anywhere}
 .catalog-item strong{overflow-wrap:anywhere}
-.catalog-item small{margin:0;font:13px/1.4 var(--font-mono);font-variant-numeric:tabular-nums}.catalog-item small a{white-space:nowrap}
+.catalog-item small{margin:0;font:13px/1.4 var(--font-mono);font-variant-numeric:tabular-nums}.catalog-item small .release-notes{white-space:nowrap}
 .folder-files{list-style:none;margin:.85rem 0 0;padding:0}.folder-files li{display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0}.folder-files li small{flex:none;margin:0}
 @container reader (min-width:900px){body.has-page-tree .content{display:grid;grid-template-columns:minmax(0,1fr) 216px;align-items:start;gap:var(--space-3);max-width:var(--content-max);padding:var(--space-3) var(--space-3) var(--space-5)}body.has-page-tree .markdown-section{grid-column:1;grid-row:1;max-width:none;padding:0}body.has-page-tree .markdown-section>table{max-width:calc(100% - var(--space-3))}.page-tree{grid-column:2;grid-row:1;position:sticky;top:calc(52px + var(--space-3));max-height:calc(100vh - 100px);margin:0;overflow:auto;background:transparent}}
 @media (min-width:1600px){body.has-page-tree .content{margin:0 auto}}
 .account-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:var(--space-2);align-items:start}
 .account-grid.no-keys{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
 @container reader (max-width:900px){.hero{grid-template-columns:1fr;min-height:0}.hero-copy{padding:var(--space-3)}.hero img{height:160px;grid-row:1}.account-grid,.account-grid.no-keys{grid-template-columns:1fr}}
-@container reader (max-width:600px){.hero img{height:120px}.hero p{font-size:1rem}.portal-grid,.library-controls{grid-template-columns:1fr}.contribute-note{align-items:flex-start;flex-direction:column}.search .input-wrap{grid-template-columns:1fr}.search-toolbar{align-items:stretch;flex-direction:column}.search-toolbar select{width:100%}}
+@container reader (max-width:600px){.hero img{height:120px}.hero p{font-size:1rem}.portal-grid,.library-controls{grid-template-columns:1fr}.contribute-note{align-items:flex-start;flex-direction:column}.search .input-wrap{grid-template-columns:1fr}.search-toolbar select{flex:1;min-width:0}.markdown-section:has(>.search-page)>h1{font-size:28px;line-height:34px}}
 @media (max-width:768px){.brand span{font-size:27px}.access-label{font-size:9px}.markdown-section{padding:var(--space-3) var(--space-2) var(--space-4)}.page-tree{margin-left:var(--space-2);margin-right:var(--space-2)}}
-@media (max-width:1024px){div#main{padding-bottom:var(--space-5)}body.home-view .access-label{display:block}}
+@media (max-width:1024px){div#main{padding-bottom:var(--space-5)}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
 
 /* Actualizaciones: one post per row on a dated rail */
@@ -319,29 +333,29 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 /* Update titles use the h3 voice and are the link to the post (DESIGN.md: Cormorant is for page titles). */
 .markdown-section .timeline-card :is(h2,h3){margin:0;font:650 18px/var(--title-lh) var(--font-ui)}
 .timeline-card .post-summary{margin:var(--space-1) 0 0;font-size:16px;line-height:1.5}
-.markdown-section :is(.post-summary,.library-card>p:not([class])){max-width:70ch;color:var(--text-muted)}
+.markdown-section :is(.post-summary,.library-card>p:not([class])){max-width:75ch;color:var(--text-muted)}
+.markdown-section .library-card h2{max-inline-size:75ch}
 .markdown-section :is(.timeline-card,.library-card) :is(h2,h3) a{color:var(--text);text-decoration:none}
 .markdown-section :is(.timeline-card,.library-card) :is(h2,h3) a:is(:hover,:focus-visible){color:var(--accent-text);text-decoration:underline}
 .post-actions{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:var(--space-2) 0 0}
 @container reader (max-width:600px){.markdown-section .timeline-month>h2{padding-left:0}.timeline-post{grid-template-columns:1fr;gap:var(--space-1)}.timeline-post::before{display:none}.timeline-post>time{width:auto;height:auto;margin:0;flex-direction:row;justify-content:flex-start;gap:var(--space-1)}.timeline-post>time .mon{margin:0}}
 
 /* Mi cuenta (/#/account): controls follow the admin system (44px, 4px radius, var(--border-strong) border). */
-.markdown-section .account-meta{margin:0 0 var(--space-4);color:var(--muted);font:13px/1.5 var(--font-mono);letter-spacing:.06em;text-transform:uppercase}
+.markdown-section .account-grid{margin-top:var(--space-4)}
 .account-panel{padding:var(--space-3);background:var(--surface)}
-.markdown-section .account-panel h2,.markdown-section .account-admin h2{margin:0 0 var(--space-2);font-size:1.6rem}
-.markdown-section .account-admin h2{margin-top:var(--space-4)}
+.markdown-section .account-panel h2{margin:0 0 var(--space-2);font-size:1.6rem}
 .account-panel p{color:var(--muted)}
 .account-panel table{margin:0 0 var(--space-3)}
 .account-actions{display:flex;flex-wrap:wrap;gap:12px;margin:0}
 .account-actions form{margin:0}
 /* DESIGN.md button ranks: one secondary rule for every reader button; gold only for the view's one primary
    (the current Descargar, Descargar PDF original, Nuevo artículo). */
-.copy-page,.account-button,.post-link,.pdf-link,.state-actions a,.download-link{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:32px;margin:0;padding:6px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--surface);color:var(--text)!important;font:600 13px/18px var(--font-ui);letter-spacing:normal;text-align:center;text-transform:none;text-decoration:none;cursor:pointer}
-:is(.copy-page,.account-button,.post-link,.pdf-link,.state-actions a):hover{background:var(--surface-raised)}
+.copy-page,.account-button,.post-link,.state-actions a,.download-link{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:32px;margin:0;padding:6px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--surface);color:var(--text)!important;font:600 13px/18px var(--font-ui);letter-spacing:normal;text-align:center;text-transform:none;text-decoration:none;cursor:pointer}
+:is(.copy-page,.account-button,.post-link,.state-actions a):hover{background:var(--surface-raised)}
 .download-link,.guide-heading .copy-page{min-width:96px;border-color:var(--accent-edge);background:var(--accent);color:var(--on-accent)!important}
 :is(.download-link,.guide-heading .copy-page):hover{background:var(--accent-hover)}
 .account-button.danger{border-color:var(--crit);background:color-mix(in oklab,var(--crit) 10%,var(--surface));color:var(--crit-text)!important}
-@media(pointer:coarse){:is(.copy-page,.account-button,.post-link,.pdf-link,.state-actions a,.download-link){min-height:44px}}
+@media(pointer:coarse){:is(.copy-page,.account-button,.post-link,.state-actions a,.download-link){min-height:44px}}
 
 /* The home note is a text and a button in a row; the library note is one sentence with an inline link. */
 .visitor-note{margin:var(--space-3) 0;color:var(--muted)}div.visitor-note{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2)}
@@ -354,7 +368,8 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 body.article-view .markdown-section{max-width:calc(70ch + 48px);font-size:17px;line-height:1.65}
 body.article-view.has-page-tree .markdown-section{max-width:70ch}
 .markdown-section .page-tree{margin:0 0 var(--space-2)}
-@container reader (max-width:600px){body.article-view .markdown-section h1{font-size:32px;line-height:38px}}
+/* Phone: the title lines fill the column (pretty, not balanced) and sit 8 px over the meta line, so the first screen reaches the text. */
+@container reader (max-width:600px){body.article-view .markdown-section h1{font-size:32px;line-height:38px;text-wrap:pretty;margin-bottom:var(--space-1)}}
 @container reader (max-width:360px){body.article-view .markdown-section h1{font-size:28px;line-height:34px}}
 /* A narrow reader shows the article actions as one row of 44 px buttons: icon and a short word ("PDF", "Copiar", "Enlace").
    The full label is visually hidden and is the accessible name; it contains the short word (WCAG 2.5.3), which is aria-hidden. */
@@ -365,7 +380,7 @@ body.article-view.has-page-tree .markdown-section{max-width:70ch}
   .markdown-section .article-actions .copy-page__short{display:inline}
   .markdown-section .article-actions .copy-page>span:not(.copy-page__short){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   /* The head controls sit 8 px apart, like the chip rows, so the first screen reaches the text. */
-  .markdown-section .article-meta{margin-bottom:var(--space-2)}
+  .markdown-section .article-meta{margin-bottom:var(--space-1)}
   .markdown-section .page-tree{margin-bottom:var(--space-1)}
   .markdown-section .article-actions+p{margin-top:var(--space-2)}
 }
@@ -444,7 +459,8 @@ html{scroll-padding-top:68px}
   .reader-command .search input{font-size:16px}
   .reader-command kbd{display:none}
   .reader-command .suite-icon{width:44px;height:44px}
-  .search-scope{min-width:44px;min-height:44px}
+  /* The chip keeps its desktop size inside the field; an invisible layer grows its touch target to 44 px. */
+  .search-scope{position:relative}.search-scope::after{content:'';position:absolute;inset:-11px -4px}
   html{scroll-padding-top:129px}
   .skip-link{min-height:44px}
 }

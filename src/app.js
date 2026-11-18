@@ -90,7 +90,7 @@ function buildPageTree() {
       top: () => htmlFrame.getBoundingClientRect().top + htmlOutline[index].top
     }));
   } else {
-    entries = [...article.querySelectorAll('h2[id],h3[id]')].map((heading) => ({
+    entries = [...article.querySelectorAll('h2[id]:not(.guide-more h2),h3[id]')].map((heading) => ({
       level: Number(heading.tagName.slice(1)), text: heading.textContent.trim(),
       href: '#' + route + '?id=' + encodeURIComponent(heading.id), top: () => heading.getBoundingClientRect().top
     }));
@@ -158,7 +158,8 @@ function prepareGuideLibrary(library) {
     rows: [...library.querySelectorAll('.guide-row,.library-card')].map((row) => ({
       row,
       search: normalize(row.dataset.search),
-      tags: new Map([...row.querySelectorAll('.tag-list span')].filter((tag) => isTopicTag(tag.textContent))
+      // A chip's hidden destination words (", tema de Guías") and the status chip are no tags.
+      tags: new Map([...row.querySelectorAll('.tag-list span')].filter((tag) => !/\b(status|visually-hidden)\b/.test(tag.className) && isTopicTag(tag.textContent))
         .map((tag) => [normalize(tag.textContent), tag.textContent.trim()]))
     })),
     groups: null
@@ -224,7 +225,10 @@ function buildGuideTopics(library, state) {
       const detail = entry.row.querySelector('.guide-detail').cloneNode(true);
       // The section heading names the topic, so its chip is left out; placement tags are no chips.
       // A chip is <a class="tag-chip"><span> (contract 4): the link goes with its text.
-      detail.querySelectorAll('.tag-list span').forEach((tag) => { if (!isTopicTag(tag.textContent) || normalize(tag.textContent) === key) (tag.closest('a') || tag).remove(); });
+      detail.querySelectorAll('.tag-list span').forEach((tag) => {
+        if (/\b(status|visually-hidden)\b/.test(tag.className)) return;
+        if (!isTopicTag(tag.textContent) || normalize(tag.textContent) === key) (tag.closest('a') || tag).remove();
+      });
       // The server meta line (kind · author · Actualizado <date>), as on the home rows and Herramientas cards.
       article.append(detail, entry.row.querySelector('.item-meta').cloneNode(true));
       section.append(article);
@@ -392,7 +396,7 @@ function filterLibrary() {
   let visible = 0;
   cards.forEach((card) => {
     const item = card.closest('.timeline-post') || card;
-    const text = card.dataset.search || [...card.querySelectorAll('h2, h3, .post-summary, .item-meta, .tag-list')].map((node) => node.textContent).join(' ');
+    const text = card.dataset.search || [...card.querySelectorAll('h2, h3, .post-summary, .item-meta, .tag-list span:not(.visually-hidden)')].map((node) => node.textContent).join(' ');
     item.hidden = Boolean(query && !normalize(text).includes(query));
     if (!item.hidden) visible += 1;
   });
@@ -785,6 +789,14 @@ function chipHref(tag, index) {
   return guideTopicKeys.get(index).has(key) ? '#/guides?id=' + guideTopicId(key) : buildSearchHash(tag, '');
 }
 
+// Contract 2 (round 6): after the tag, hidden words say where the chip goes, for screen readers.
+function chipDestination(href) {
+  const words = document.createElement('span');
+  words.className = 'visually-hidden';
+  words.textContent = t(href.startsWith('#/guides') ? ', tema de Guías' : ', buscar en Athena');
+  return words;
+}
+
 function createSearchResult(entry, terms, index) {
   const article = document.createElement('article');
   article.className = 'search-result';
@@ -800,16 +812,16 @@ function createSearchResult(entry, terms, index) {
   if (chips.length) {
     const tags = document.createElement('span');
     tags.className = 'tag-list';
-    tags.lang = 'es';
     chips.forEach((value) => {
       const tag = document.createElement('span');
+      tag.lang = 'es';
       tag.textContent = value;
       // Contracts 4 and 7: a chip is a link to its topic or a search; a download's section and file type are no topics.
       if (entry.kind === 'download') return tags.append(tag);
       const link = document.createElement('a');
       link.className = 'tag-chip';
       link.href = chipHref(value, index);
-      link.append(tag);
+      link.append(tag, chipDestination(link.href));
       tags.append(link);
     });
     tail.append(tags);
@@ -880,8 +892,33 @@ function noResultsState(query, type) {
   const sections = [['Guías', '#/guides'], ['Actualizaciones', '#/updates'], ['Herramientas', '#/tools'], ['Descargas', '#/downloads']]
     .filter(([, href]) => href !== '#/downloads' || document.querySelector('.rail-nav a[href="#/downloads"]'));
   if (type) sections.unshift(['Buscar en todo Athena', buildSearchHash(query, '')]);
-  return createSearchState('Sin resultados', 'Pruebe menos palabras, cambie el tipo de contenido o revise la escritura.',
+  const state = createSearchState('Sin resultados', 'Pruebe menos palabras, cambie el tipo de contenido o revise la escritura.',
     ...sections.map(([label, href]) => stateLink(label, href)));
+  // A missing guide is a reason to contribute: one line to the existing Contribuir page, where the rail offers it.
+  if (document.querySelector('.rail-nav a[href="#/content/contributing"]')) {
+    const contribute = document.createElement('p');
+    contribute.className = 'search-contribute';
+    contribute.append(t('¿Falta una guía?') + ' ', stateLink('Cómo contribuir', '#/content/contributing'));
+    state.append(contribute);
+  }
+  return state;
+}
+
+// The type select's own labels (search.md); each option counts the results of the words, none without words.
+const SEARCH_TYPE_LABELS = { '': 'Todo', guide: 'Guías', tool: 'Herramientas', update: 'Actualizaciones', download: 'Descargas', pdf: 'PDF' };
+function labelSearchTypes(select, found) {
+  [...select.options].forEach((option) => {
+    const label = t(SEARCH_TYPE_LABELS[option.value] ?? option.textContent);
+    option.textContent = found ? label + ' (' + new Intl.NumberFormat(currentLang()).format(found.filter((entry) => matchesSearchType(entry, option.value)).length) + ')' : label;
+  });
+}
+
+// The count line: the total, then each kind when the results hold more than one kind (no type chosen).
+function searchCountText(found, type) {
+  const kinds = type ? [] : [['guide', 'guía', 'guías'], ['download', 'descarga', 'descargas'], ['tool', 'herramienta', 'herramientas'], ['update', 'actualización', 'actualizaciones']]
+    .map(([kind, one, many]) => [found.filter((entry) => matchesSearchType(entry, kind)).length, one, many]).filter(([count]) => count);
+  return [countLabel(found.filter((entry) => matchesSearchType(entry, type)).length, 'resultado', 'resultados'),
+    ...(kinds.length > 1 ? kinds.map((kind) => countLabel(...kind)) : [])].join(' · ');
 }
 
 async function renderSearchPage() {
@@ -899,7 +936,9 @@ async function renderSearchPage() {
   const terms = searchTerms(query);
   typeSelect.value = type;
 
+  count.classList.remove('visually-hidden');
   if (!terms.length) {
+    labelSearchTypes(typeSelect, null);
     count.textContent = '';
     results.replaceChildren(createSearchState('¿Qué necesita encontrar?', 'Busque una guía, herramienta, actualización, descarga o PDF.'));
     return;
@@ -910,15 +949,20 @@ async function renderSearchPage() {
   try {
     const index = await loadSearchIndex();
     if (version !== searchRenderVersion || !results.isConnected) return;
-    const matches = index
-      .filter((entry) => matchesSearchType(entry, type))
+    const scored = index
       .map((entry) => ({ entry, score: scoreSearchEntry(entry, terms, query) }))
-      .filter((match) => match.score >= 0)
+      .filter((match) => match.score >= 0);
+    const found = scored.map((match) => match.entry);
+    const matches = scored
+      .filter((match) => matchesSearchType(match.entry, type))
       .sort((left, right) => right.score - left.score
         || String(right.entry.date).localeCompare(String(left.entry.date))
         || left.entry.title.localeCompare(right.entry.title, 'es'));
 
-    count.textContent = countLabel(matches.length, 'resultado', 'resultados');
+    labelSearchTypes(typeSelect, found);
+    count.textContent = searchCountText(found, type);
+    // "Sin resultados" says it on screen; the status still announces the zero.
+    count.classList.toggle('visually-hidden', !matches.length);
     if (!matches.length) {
       results.replaceChildren(noResultsState(query, type));
       return;
@@ -928,6 +972,7 @@ async function renderSearchPage() {
     results.replaceChildren(fragment);
   } catch {
     if (version !== searchRenderVersion || !results.isConnected) return;
+    labelSearchTypes(typeSelect, null);
     count.textContent = '';
     const retry = document.createElement('button');
     retry.type = 'button';
@@ -1004,16 +1049,31 @@ function buildPdfViewer() {
   const frame = document.createElement('iframe');
   // Page width without the thumbnail pane: Chromium and Edge read view/navpanes, Firefox reads zoom/pagemode.
   frame.src = src + '#zoom=page-width&pagemode=none&view=FitH&navpanes=0';
-  frame.title = t('Documento PDF');
+  // The server marker may name the file and its size (data-name, data-size).
+  const { name, size } = link.dataset;
+  frame.title = name || t('Documento PDF');
   frame.loading = 'lazy';
-  viewer.append(frame);
-  (link.closest('.article-pdf') || link).replaceWith(viewer);
-  // A PDF-only guide has no text of its own, so it has no page to copy.
+  const marker = link.closest('.article-pdf') || link;
   const article = document.querySelector('.markdown-section');
   const head = ':is(h1,.article-meta,.article-access,.article-actions,.page-tree,.pdf-viewer,.article-tools,.article-context)';
-  if (article && ![...article.children].some((node) => !node.matches(head) && node.textContent.trim())) {
-    article.querySelector('.article-actions button.copy-page:not(.copy-link)')?.remove();
+  const text = article && [...article.children].some((node) => node !== marker && !node.matches(head) && node.textContent.trim());
+  // After the guide's own text the attachment is a section of the page: a heading (a page tree entry) and its file line.
+  if (text) {
+    const heading = document.createElement('h2');
+    heading.id = 'pdf-original';
+    heading.textContent = t('PDF original');
+    viewer.append(heading);
+    if (name) {
+      const meta = document.createElement('p');
+      meta.className = 'pdf-viewer__meta';
+      meta.textContent = name + (size ? ' · ' + fileSize(Number(size)) : '');
+      viewer.append(meta);
+    }
   }
+  viewer.append(frame);
+  marker.replaceWith(viewer);
+  // A PDF-only guide has no text of its own, so it has no page to copy.
+  if (article && !text) article.querySelector('.article-actions button.copy-page:not(.copy-link)')?.remove();
 }
 
 // One meta line under the article title, from the reader's search index (drafts are not in it, so they get none).
@@ -1067,14 +1127,14 @@ async function buildArticleMeta() {
     // Contract 7: the tag's Guías topic when a guide has the tag, else a search of Athena.
     const tags = document.createElement('span');
     tags.className = 'article-meta__tags';
-    tags.lang = 'es';
     topicTags.forEach((tag) => {
       const link = document.createElement('a');
       link.href = chipHref(tag, index);
       // The link is the touch target; the chip inside it keeps the chip size.
       const chip = document.createElement('span');
+      chip.lang = 'es';
       chip.textContent = tag;
-      link.append(chip);
+      link.append(chip, chipDestination(link.href));
       tags.append(link);
     });
     meta.append(tags);
@@ -1088,7 +1148,8 @@ async function buildArticleMeta() {
     const link = document.createElement('a');
     link.className = 'copy-page copy-page--ghost';
     link.href = '#/downloads?id=' + entry.download;
-    link.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11m-5-4 5 5 5-5"/><path d="M4 20h16"/></svg>';
+    // A place to go, not a file: the arrow-right navigation icon (the download icon stays on real downloads).
+    link.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>';
     const label = document.createElement('span');
     label.textContent = t('Ver en Descargas');
     link.append(label);
@@ -1110,9 +1171,12 @@ function buildGuideMore(entry, index) {
   const guides = index.filter((item) => item.kind === 'guide' && (item.tags || []).some((value) => isTopicTag(value) && normalize(value) === key));
   const others = guides.filter((item) => item.route !== entry.route).slice(0, 3);
   if (!others.length) return;
-  const section = document.createElement('section');
+  // A complementary region after the body, named by its h2; the server builds Copiar página and the PDF, so it is in neither.
+  const section = document.createElement('aside');
   section.className = 'guide-more';
+  section.setAttribute('aria-labelledby', 'guide-more-title');
   const heading = document.createElement('h2');
+  heading.id = 'guide-more-title';
   const words = document.createElement('span');
   words.lang = currentLang();
   words.textContent = t('Más en') + ' ';
@@ -1156,7 +1220,7 @@ function buildGuideMore(entry, index) {
 // The interface may be English; articles, their titles, excerpts and tags are Spanish. A file row's size · date line, with
 // its "Notas de la versión" link, is interface text.
 const SPANISH_CONTENT = '.guide-title,.guide-summary,.item-meta__author,.guide-topic h2,'
-  + '.guide-topic-jumps a,.tag-list,.library-card>:is(h2,h3),.library-card>p:not([class]),.post-summary,.catalog-item>div>:is(strong,code,p),.download-archive h3';
+  + '.guide-topic-jumps a,.tag-list span:not(.status,.visually-hidden),.library-card>:is(h2,h3),.library-card>p:not([class]),.post-summary,.catalog-item>div>:is(strong,code,p),.download-archive h3';
 
 function markSpanishContent() {
   document.querySelectorAll(SPANISH_CONTENT).forEach((node) => { node.lang = 'es'; });
@@ -1650,11 +1714,11 @@ function formatFileSizes() {
   document.querySelectorAll('.markdown-section data.file-size').forEach((node) => { node.textContent = fileSize(Number(node.value)); });
 }
 
-// A file size in the interface number format: "426 bytes", "8,8 KB" (es) or "8.8 KB" (en).
+// A file size in the interface number format, one unit style: "426 B", "8,8 KB" (es) or "8.8 KB" (en).
 function fileSize(bytes) {
   const power = bytes < 1024 ? 0 : Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 4);
   const value = new Intl.NumberFormat(currentLang(), { maximumFractionDigits: 1 }).format(power ? Math.round(bytes / 1024 ** power * 10) / 10 : bytes);
-  return value + ' ' + (power ? ['KB', 'MB', 'GB', 'TB'][power - 1] : t(bytes === 1 ? 'byte' : 'bytes'));
+  return value + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][power];
 }
 
 // Each code block gets a head row with its language and a 'Copiar' button; the block keeps its own scroll.
@@ -1697,8 +1761,9 @@ function syncView() {
   filterGuides();
   filterDownloads();
   filterLibrary();
-  buildPageTree();
+  // The viewer's "PDF original" heading is a page tree entry.
   buildPdfViewer();
+  buildPageTree();
   buildHtmlArticle();
   // The viewer belongs to the article frame that opened it.
   if (viewer?.dialog.open && !viewer.frame?.isConnected) viewer.dialog.close();
@@ -1726,8 +1791,9 @@ function commandLevels(path, name, kind, unavailable = false) {
   if (path.startsWith('/content/') && !unavailable) {
     const sections = { guide: ['Guías', '#/guides'], tool: ['Herramientas', '#/tools'], announcement: ['Actualizaciones', '#/updates'], release: ['Actualizaciones', '#/updates'] };
     const section = sections[kind];
-    // The crumbs end at the parent section; the h1 and the tab title carry the article title.
-    return [home, library, ...(section ? [{ label: section[0], href: section[1] }] : [])];
+    // The crumbs end at the parent section, or at the Athena link for a page with none; the h1 and the tab title carry
+    // the article title.
+    return section ? [home, library, { label: section[0], href: section[1] }] : [home];
   }
   return [home, ...( ['/guides', '/tools', '/updates', '/downloads'].includes(path) ? [library] : []), { label: name }];
 }
@@ -1754,7 +1820,9 @@ function updateCommand(path) {
     node.setAttribute('aria-hidden', 'true');
     return node;
   };
-  box.replaceChildren(link(levels[0]), separator());
+  // A Página article has one level: the Athena link alone.
+  box.replaceChildren(link(levels[0]));
+  if (levels.length > 1) box.append(separator());
   const middle = levels.slice(1, -1);
   if (middle.length) {
     const details = document.createElement('details');
@@ -1781,7 +1849,7 @@ function updateCommand(path) {
     current.setAttribute('aria-current', 'page');
     current.textContent = label(levels.at(-1));
   }
-  box.append(current);
+  if (levels.length > 1) box.append(current);
   // The phone back link goes to the nearest level that is a page.
   const parent = (article ? levels : levels.slice(0, -1)).findLast((level) => level.href), back = document.querySelector('.command-parent');
   // The home has no parent page: no back link on the phone.
@@ -1948,7 +2016,12 @@ document.addEventListener('input', (event) => {
 // chip filters the page as the reader types, so it needs no hint.
 function updateSearchHint() {
   const hint = document.querySelector('#search-hint');
-  if (hint) hint.hidden = Boolean(searchScope) || getRouteState().path === '/search' || !document.querySelector('#athena-search-input')?.value.trim();
+  const input = document.querySelector('#athena-search-input');
+  if (!hint || !input) return;
+  hint.hidden = Boolean(searchScope) || getRouteState().path === '/search' || !input.value.trim();
+  // Screen readers hear the hint with the field only while it shows.
+  if (hint.hidden) input.removeAttribute('aria-describedby');
+  else input.setAttribute('aria-describedby', 'search-hint');
 }
 
 document.addEventListener('change', (event) => {

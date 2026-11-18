@@ -106,11 +106,11 @@ for authenticated in (False, True):
                       })})
 pages.append({'name': 'downloads.md', 'markdown': render_to_string('downloads.md', {
     'sections': [('framework', 'Framework', [SimpleNamespace(title='File', filename='file.zip', size=100, section='framework',
-                                                          slug='file', note='Download note', family='File', family_key='file', notes_slug='file-notes')]),
+                                                          slug='file', note='Download note', family='File', family_key='file', family_sort='00-file', notes_slug='file-notes')]),
                  ('previous', 'Versiones anteriores', [
-                     SimpleNamespace(title='Paquete 2.0', filename='p2.zip', size=10, section='previous', slug='p2', note='', family='Paquete', family_key='paquete', notes_slug=''),
-                     SimpleNamespace(title='Old', filename='old.zip', size=10, section='previous', slug='old', note='', family='Old', family_key='old', notes_slug=''),
-                     SimpleNamespace(title='Paquete 1.0', filename='p1.zip', size=10, section='previous', slug='p1', note='', family='Paquete', family_key='paquete', notes_slug='')])],
+                     SimpleNamespace(title='Paquete 2.0', filename='p2.zip', size=10, section='previous', slug='p2', note='', family='Paquete', family_key='paquete', family_sort='01-paquete', notes_slug=''),
+                     SimpleNamespace(title='Old', filename='old.zip', size=10, section='previous', slug='old', note='', family='Old', family_key='old', family_sort='01-old', notes_slug=''),
+                     SimpleNamespace(title='Paquete 1.0', filename='p1.zip', size=10, section='previous', slug='p1', note='', family='Paquete', family_key='paquete', family_sort='01-paquete', notes_slug='')])],
     'latest_url': 'https://athena.test/downloads/framework/latest'
 })})
 print(json.dumps({'entries': entries, 'pages': pages}))
@@ -185,7 +185,8 @@ for (const page of readerEntries.pages) {
     assert.ok(html.includes('<summary><span class="archive-closed">Mostrar 3 archivos</span><span class="archive-open">Ocultar archivos</span></summary>'), html);
     // Contract 2 (round 5 #35): a file row ends its meta line with its release notes; Versiones anteriores has one h3 per
     // package family, each keeping the newest-first order of its files.
-    assert.ok(html.includes(' · <a href="#/content/file-notes">Notas de la versión</a></small>'), html);
+    // Round 6 #14: the separator and the link are one nowrap part, so a wrapped line never ends on a lone "·".
+    assert.ok(html.includes('<span class="release-notes"> · <a href="#/content/file-notes">Notas de la versión</a></span></small>'), html);
     assert.deepEqual([...html.matchAll(/<h3[^>]*>([^<]+)<\/h3>|id="download-file-(p\d|old)"/g)].map((match) => match[1] || match[2]), ['Old', 'old', 'Paquete', 'p2', 'p1'], html);
     assert.equal((html.match(/<h3/g) || []).length, 2, 'Only Versiones anteriores is grouped.');
     assert.ok(!html.includes('download-section"><option'), 'The section select is gone.');
@@ -326,7 +327,7 @@ assert.equal(context.findSnippet(htmlEntry, context.searchTerms('pagina')).headi
 
 // Crumb parents come from the article kind, not from the current section. Round 5 #36: an article's crumbs end at its
 // parent section (the h1 and document.title carry the title), so the title is not repeated in the bar.
-for (const [kind, parent] of [['guide', '#/guides'], ['tool', '#/tools'], ['announcement', '#/updates'], ['release', '#/updates'], ['page', undefined]]) {
+for (const [kind, parent] of [['guide', '#/guides'], ['tool', '#/tools'], ['announcement', '#/updates'], ['release', '#/updates']]) {
   const levels = context.commandLevels('/content/example', '<Exact title>', kind);
   assert.equal(levels.at(-1).href, parent);
   assert.ok(levels.every((level) => level.label !== '<Exact title>'), 'No crumb repeats the article title.');
@@ -334,6 +335,8 @@ for (const [kind, parent] of [['guide', '#/guides'], ['tool', '#/tools'], ['anno
   assert.ok(levels.every((level) => Boolean(level.href) === (level.label !== 'Biblioteca')));
   assert.equal(levels[1].label, 'Biblioteca');
 }
+// Round 6 #2: a Página article has no section, so its crumbs end at the Athena link (as the phone back link does).
+assert.deepEqual(JSON.parse(JSON.stringify(context.commandLevels('/content/example', '<Exact title>', 'page'))), [{ label: 'Athena', href: '#/' }]);
 assert.equal(context.commandLevels('/content/private', 'Artículo no disponible', 'guide', true).length, 2, 'Unavailable content must disclose no section.');
 // The phone back link goes to the nearest page; the home has none (round 4 #13).
 {
@@ -361,6 +364,11 @@ assert.equal(context.commandLevels('/content/private', 'Artículo no disponible'
   assert.ok(crumbs.every((node) => !node.attributes['aria-current']), 'The section is a link to a page the reader is not on.');
   assert.deepEqual([back.hidden, back.href, back.label.textContent], [false, '#/guides', 'Guías']);
   assert.equal(context.document.title, 'Guía de colas · Athena');
+  // Round 6 #2: a Página article shows one crumb, the Athena link; the phone back link goes to the home.
+  kindMarker.dataset.articleKind = 'page';
+  context.updateCommand('/content/contributing');
+  assert.deepEqual(crumbs.map((node) => [node.tagName, node.textContent, node.href]), [['A', 'Athena', '#/']]);
+  assert.deepEqual([back.hidden, back.href, back.label.textContent], [false, '#/', 'Athena']);
   Object.assign(context.document, { querySelector, createElement });
 }
 // A Descargas section link: when Docsify focuses the section, the focus moves to its heading (round 4 #6).
@@ -398,6 +406,10 @@ assert.equal(returnTarget(), '/#/search?q=submitted&type=guide');
 const typingTimers = [];
 context.setTimeout = (callback, delay) => typingTimers.push([callback, delay]);
 const hint = { hidden: true };
+// Round 6 #10: the field names the hint for screen readers only while the hint shows.
+input.attributes = {};
+input.setAttribute = (name, value) => { input.attributes[name] = value; };
+input.removeAttribute = (name) => { delete input.attributes[name]; };
 context.document.querySelector = (selector) => ({ '#athena-search-input': input, '#athena-search-type': filter, '#search-hint': hint })[selector] || null;
 context.document.activeElement = input;
 for (const route of ['#/', '#/content/example']) {
@@ -408,9 +420,11 @@ for (const route of ['#/', '#/content/example']) {
   typingTimers.forEach(([callback]) => callback());
   assert.equal(context.location.hash, route, 'Typing does not change the route.');
   assert.equal(hint.hidden, false, 'The hint says Enter searches.');
+  assert.equal(input.attributes['aria-describedby'], 'search-hint', 'The shown hint describes the field.');
   input.value = '  ';
   handlers.input({ target: input });
   assert.equal(hint.hidden, true, 'No text, no hint.');
+  assert.equal(input.attributes['aria-describedby'], undefined, 'A hidden hint describes nothing.');
 }
 input.value = 'typed words';
 handlers.submit({ preventDefault() {}, target: { matches: () => true, querySelector: () => input } });
@@ -512,11 +526,17 @@ outlineHeading.getBoundingClientRect = () => ({ top: 0 });
 const outlineSection = new Element('h2', 'Steps');
 outlineSection.id = 'steps';
 outlineSection.getBoundingClientRect = () => ({ top: 400 });
+// Round 6 #25: the "Más en" aside is named by its h2 (an id), which is no section of the guide.
+const moreHeading = new Element('h2', 'Más en RPA');
+moreHeading.id = 'guide-more-title';
+moreHeading.inMore = true;
+moreHeading.getBoundingClientRect = () => ({ top: 900 });
 let outlineHeadings = [outlineHeading];
 const outlineArticle = {
   parentElement: { clientWidth: 1000 },
   querySelector: () => null,
-  querySelectorAll: (selector) => outlineHeadings.filter((heading) => selector.split(',').includes(heading.tagName.toLowerCase() + '[id]')),
+  querySelectorAll: (selector) => outlineHeadings.filter((heading) => selector.split(',').some((part) => part.startsWith(heading.tagName.toLowerCase() + '[id]')
+    && !(heading.inMore && part.includes(':not(.guide-more h2)')))),
   before(nav) { nav.parentElement = this.parentElement; nav.remove = () => { pageTree = null; }; pageTree = nav; }
 };
 context.document.createElement = (tag) => new Element(tag);
@@ -525,7 +545,7 @@ context.getComputedStyle = () => ({ position: outlineArticle.parentElement.clien
 context.location.hash = '#/content/guide';
 context.buildPageTree();
 assert.equal(pageTree, undefined, 'A page with only its title gets no outline.');
-outlineHeadings = [outlineHeading, outlineSection];
+outlineHeadings = [outlineHeading, outlineSection, moreHeading];
 for (const width of [700, 899, 900, 1320]) {
   outlineArticle.parentElement.clientWidth = width;
   context.buildPageTree();
@@ -596,7 +616,7 @@ const pdfLink = (href, replaceWith) => ({
 });
 const externalPdf = pdfLink('https://example.test/reference.pdf', () => { citationsReplaced += 1; });
 const crossArticlePdf = pdfLink('/pdf/other.pdf', () => { citationsReplaced += 1; });
-const ownPdf = pdfLink('/pdf/guide.pdf', (value) => { viewer = value; });
+const ownPdf = Object.assign(pdfLink('/pdf/guide.pdf', (value) => { viewer = value; }), { dataset: {} });
 // Round 5 #41: with the original PDF embedded, Exportar PDF (the export of the same guide) leaves the actions.
 let exportRemoved = 0;
 const exportLink = { remove() { exportRemoved += 1; } };
@@ -636,9 +656,21 @@ for (const [text, expected] of [['', true], ['Texto de la guía', false]]) {
     querySelector: (selector) => selector === '.article-actions button.copy-page:not(.copy-link)' ? { remove() { copyRemoved = true; } } : null };
   viewer = null;
   context.document.querySelectorAll = (selector) => (selector.includes('.article-pdf') ? [ownPdf] : []);
-  context.document.querySelector = (selector) => ({ '.markdown-section .pdf-viewer': viewer, '.markdown-section': article })[selector] || null;
+  context.document.querySelector = (selector) => ({ '.markdown-section .pdf-viewer': viewer, '.markdown-section': article, '.markdown-section .article-actions': { prepend() {} } })[selector] || null;
   context.buildPdfViewer();
   assert.equal(copyRemoved, expected, text ? 'A guide with text keeps Copiar página.' : 'A PDF-only guide has no Copiar página.');
+  // Round 6 #22: after a guide's own text the attachment is a section: an h2 "PDF original" (a page tree entry) and its
+  // "file name · size" line; the frame is titled with the file name. A PDF-only guide shows the frame alone.
+  assert.deepEqual(viewer.children.map((node) => node.tagName), text ? ['H2', 'IFRAME'] : ['IFRAME']);
+  if (text) {
+    assert.deepEqual([viewer.children[0].id, viewer.children[0].textContent, viewer.children[1].title], ['pdf-original', 'PDF original', 'Documento PDF']);
+    ownPdf.dataset = { name: 'guia-colas.pdf', size: '9011' };
+    viewer = null;
+    context.buildPdfViewer();
+    assert.deepEqual(viewer.children.map((node) => [node.tagName, node.className || '', node.textContent || node.title]),
+      [['H2', '', 'PDF original'], ['P', 'pdf-viewer__meta', 'guia-colas.pdf · 8,8 KB'], ['IFRAME', '', 'guia-colas.pdf']]);
+    ownPdf.dataset = {};
+  }
 }
 context.document.querySelector = () => null;
 context.document.querySelectorAll = () => [];
@@ -806,13 +838,29 @@ assert.match(readerCss, /\.markdown-section :is\(\.timeline-card,\.library-card\
   const querySelector = context.document.querySelector;
   context.document.createElement = (tag) => new Element(tag);
   context.document.querySelector = (selector) => (selector === '.rail-nav a[href="#/downloads"]' ? {} : null);
-  const links = (state) => state.children.at(-1).children.map((link) => [link.textContent, link.href]);
+  const links = (state) => state.children.find((node) => node.className === 'state-actions').children.map((link) => [link.textContent, link.href]);
   assert.deepEqual(links(context.noResultsState('zzz', '')), [['Guías', '#/guides'], ['Actualizaciones', '#/updates'], ['Herramientas', '#/tools'], ['Descargas', '#/downloads']]);
   assert.deepEqual(links(context.noResultsState('zzz', 'pdf'))[0], ['Buscar en todo Athena', '#/search?q=zzz'], 'A type filter can be cleared in one step.');
   context.document.querySelector = () => null;
   assert.ok(!links(context.noResultsState('zzz', '')).some(([, href]) => href === '#/downloads'), 'Descargas only where the rail offers it.');
+  // Round 6 #33: one line under the section buttons links the existing Contribuir page, where the rail offers it.
+  assert.equal(context.noResultsState('zzz', '').children.at(-1).className, 'state-actions', 'No Contribuir page, no line.');
+  context.document.querySelector = (selector) => (selector === '.rail-nav a[href="#/content/contributing"]' ? {} : null);
+  const contribute = context.noResultsState('zzz', '').children.at(-1);
+  assert.deepEqual([contribute.tagName, contribute.className, contribute.textContent, contribute.children.at(-1).href],
+    ['P', 'search-contribute', '¿Falta una guía? Cómo contribuir', '#/content/contributing']);
   Object.assign(context.document, { createElement, querySelector });
-  assert.match(readerCss, /\.markdown-section :is\(\.post-summary,\.library-card>p:not\(\[class\]\)\)\{max-width:70ch[;}]/);
+  // Round 6 #15: the type options and the count line count the results per kind; no new control.
+  const found = [{ kind: 'guide' }, { kind: 'guide', pdf: '/pdf/a.pdf' }, { kind: 'download' }, { kind: 'tool' }];
+  assert.equal(context.searchCountText(found, ''), '4 resultados · 2 guías · 1 descarga · 1 herramienta');
+  assert.equal(context.searchCountText(found, 'guide'), '2 resultados', 'Under a type the line is its total.');
+  assert.equal(context.searchCountText(found.slice(0, 2), ''), '2 resultados', 'One kind needs no breakdown.');
+  const options = ['', 'guide', 'tool', 'update', 'download', 'pdf'].map((value) => ({ value, textContent: '' }));
+  context.labelSearchTypes({ options }, found);
+  assert.deepEqual(options.map((option) => option.textContent), ['Todo (4)', 'Guías (2)', 'Herramientas (1)', 'Actualizaciones (0)', 'Descargas (1)', 'PDF (1)']);
+  context.labelSearchTypes({ options }, null);
+  assert.deepEqual(options.map((option) => option.textContent), ['Todo', 'Guías', 'Herramientas', 'Actualizaciones', 'Descargas', 'PDF'], 'No words, no counts.');
+  assert.match(readerCss, /\.markdown-section :is\(\.post-summary,\.library-card>p:not\(\[class\]\)\)\{max-width:75ch[;}]/);
 }
 // Round 4 #38: a code copy button names its language ("Copiar código python"); the visible word stays first.
 {
@@ -837,10 +885,11 @@ assert.match(readerCss, /\.markdown-section :is\(\.timeline-card,\.library-card\
   context.document.querySelectorAll = (selector) => (selector === '.markdown-section data.file-size' ? sizes : []);
   context.document.documentElement.lang = 'en';
   context.formatFileSizes();
-  assert.deepEqual(sizes.map((size) => size.textContent), ['426 bytes', '8.8 KB', '1.1 MB']);
+  // Round 6 #14: one unit style, "426 B" beside "8.8 KB".
+  assert.deepEqual(sizes.map((size) => size.textContent), ['426 B', '8.8 KB', '1.1 MB']);
   context.document.documentElement.lang = 'es';
   context.formatFileSizes();
-  assert.deepEqual(sizes.map((size) => size.textContent), ['426 bytes', '8,8 KB', '1,1 MB']);
+  assert.deepEqual(sizes.map((size) => size.textContent), ['426 B', '8,8 KB', '1,1 MB']);
   delete context.document.documentElement.lang;
   context.document.querySelectorAll = querySelectorAll;
 }
@@ -960,7 +1009,36 @@ assert.doesNotMatch(readerCss, /mask-image/, 'No reader table is masked.');
 // the olive row colour, which read as a second gold in dark, is gone.
 assert.doesNotMatch(readerCss, /--guide-muted/);
 assert.match(readerCss, /\.markdown-section \.guide-summary\{[^}]*color:var\(--text-muted\)/);
-assert.match(readerCss, /\.markdown-section :is\(\.post-summary,\.library-card>p:not\(\[class\]\)\)\{max-width:70ch;color:var\(--text-muted\)\}/);
+assert.match(readerCss, /\.markdown-section :is\(\.post-summary,\.library-card>p:not\(\[class\]\)\)\{max-width:75ch;color:var\(--text-muted\)\}/);
+// Round 6 #8: the phone article head is tighter and its title fills the column; the action row keeps its place.
+assert.match(readerCss, /@container reader \(max-width:600px\)\{body\.article-view \.markdown-section h1\{font-size:32px;line-height:38px;text-wrap:pretty;margin-bottom:var\(--space-1\)\}\}/);
+// Round 6 #26: page tree sections in text colour, weight 500; subsections stay muted under the indent.
+assert.match(readerCss, /\.page-tree \.page-tree__level-2>a\{color:var\(--text\);font-weight:500\}/);
+// Round 6 #9: search results are list rows (the Guías row surface, padding and divider).
+assert.match(readerCss, /\.search-result\{padding:var\(--space-1\) var\(--space-2\);border-bottom:1px solid var\(--line\);background:var\(--surface\)\}/);
+// Round 6 #12: the session label keeps its slot on every page, so the search field keeps one x position.
+assert.match(readerCss, /\.access-label\{[^}]*display:block;visibility:hidden\}/);
+assert.match(readerCss, /body\.home-view \.access-label\{visibility:visible\}/);
+// Round 6 #13: the phone search head keeps the type label and select on one row, under a 28/34 title.
+assert.match(readerCss, /\.search-toolbar select\{flex:1;min-width:0\}\.markdown-section:has\(>\.search-page\)>h1\{font-size:28px;line-height:34px\}/);
+assert.doesNotMatch(readerCss, /\.search-toolbar\{align-items:stretch;flex-direction:column\}/);
+// Round 6 #16: the phone scope chip keeps its desktop box; only its touch target grows.
+assert.match(readerCss, /\.search-scope\{position:relative\}\.search-scope::after\{content:'';position:absolute;inset:-11px -4px\}/);
+assert.doesNotMatch(readerCss, /\.search-scope\{min-width:44px;min-height:44px\}/);
+// Round 6 #19: on wider readers a row's chips and meta line share one row.
+assert.match(readerCss, /@container reader \(min-width:601px\)\{\.guide-topic-row:has\(\.tag-list>\*\)\{grid-template-columns:auto minmax\(0,1fr\)/);
+// Round 6 contract 1: card place links are one wrapping row of gold text links; no rule styles the removed .pdf-link.
+assert.match(readerCss, /\.markdown-section \.card-links\{display:flex;flex-wrap:wrap;gap:0 var\(--space-3\);margin:var\(--space-1\) 0 0\}/);
+assert.match(readerCss, /\.markdown-section \.card-links a\{[^}]*color:var\(--accent-text\)/);
+assert.doesNotMatch(readerCss, /\.pdf-link|\.account-meta|\.account-admin/);
+// Round 6 contract 2: the hidden destination words after a tag are never drawn as a chip.
+assert.match(readerCss, /\.tag-list span:not\(\.visually-hidden\),\.markdown-section \.status,\.article-meta__tags a>span:not\(\.visually-hidden\)\{/);
+// Mi cuenta keeps the old space under its meta line.
+assert.match(readerCss, /\.markdown-section \.account-grid\{margin-top:var\(--space-4\)\}/);
+// Round 6 #21: list row titles and summaries keep a 75ch measure (home, Guías, Herramientas).
+assert.match(readerCss, /\.markdown-section \.guide-title\{display:block;max-inline-size:75ch;/);
+assert.match(readerCss, /\.markdown-section \.guide-summary\{max-inline-size:75ch;/);
+assert.match(readerCss, /\.markdown-section \.library-card h2\{max-inline-size:75ch\}/);
 // Round 5 #9: Herramientas and Actualizaciones count their items; "resultados" only while the filter has text.
 {
   const querySelector = context.document.querySelector;
@@ -1014,16 +1092,18 @@ assert.doesNotMatch(readerCss, /\.catalog-item>div::before|\.catalog-item>div>co
 // Round 5 #6: the section focus ring stays inside the column, clear of the heading text.
 // Round 5 A4: the section title starts at the page text edge (no inline padding); the inset ring stays in the column, and the
 // block padding keeps it clear of the text.
-assert.match(readerCss, /\.download-section>h2\{padding:var\(--s-1\) 0\}\.download-section>h2:focus-visible\{outline-offset:-2px\}/);
-// The release notes link wraps as one part, never inside its words.
-assert.match(readerCss, /\.catalog-item small a\{white-space:nowrap\}/);
+// Round 6 #3: inline padding with an equal negative margin keeps the text at the page edge and gives the ring space.
+assert.match(readerCss, /\.download-section>h2\{padding:var\(--s-1\) var\(--space-1\);margin-inline:calc\(-1 \* var\(--space-1\)\)\}\.download-section>h2:focus-visible\{outline-offset:-2px\}/);
+// The release notes link and its separator wrap as one part (round 6 #14), never inside its words.
+assert.match(readerCss, /\.catalog-item small \.release-notes\{white-space:nowrap\}/);
 {
   const downloadsMd = readFileSync(new URL('../server/athena/templates/downloads.md', import.meta.url), 'utf8');
   // Round 5 #23: the Descargas sections use the Guías phone box (one native box, open as a row on wider readers).
   assert.match(downloadsMd, /<details class="guide-topic-picker"><summary><span>Secciones<\/span> <span>\(\{\{ sections\|length \}\}\)<\/span><\/summary><nav class="download-jumps"/);
   // Round 5 #35, contract 2: a file row links its release notes; Versiones anteriores is grouped by package family.
-  assert.match(downloadsMd, /\{% if item\.notes_slug %\} · <a href="#\/content\/\{\{ item\.notes_slug \}\}">Notas de la versión<\/a>\{% endif %\}<\/small>/);
-  assert.match(downloadsMd, /\{% regroup items\|dictsort:'family_key' by family as groups %\}/);
+  assert.match(downloadsMd, /\{% if item\.notes_slug %\}<span class="release-notes"> · <a href="#\/content\/\{\{ item\.notes_slug \}\}">Notas de la versión<\/a><\/span>\{% endif %\}<\/small>/);
+  // Round 6 contract 3: families in the section order of their newest file, then by name.
+  assert.match(downloadsMd, /\{% regroup items\|dictsort:'family_sort' by family as groups %\}/);
   assert.match(downloadsMd, /\{% if key == 'previous' %\}<h3>\{\{ group\.grouper \}\}<\/h3>\{% endif %\}/);
 }
 // Round 5 #13: at 360 px and below the article h1 is 28/34; nothing else in the phone head changes.
@@ -1154,12 +1234,17 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
   assert.equal(resultMeta.children[0].className, 'item-meta__kind');
   // Round 5 #38, contract 4: a result's topic chips open their Guías topic, as on every other reader surface.
   const resultChips = result.children[1].children[0];
-  assert.deepEqual(resultChips.children.map((chip) => [chip.tagName, chip.className, chip.href, chip.children[0].tagName, chip.textContent]),
-    [['A', 'tag-chip', '#/guides?id=guide-topic-rpa', 'SPAN', 'RPA'], ['A', 'tag-chip', '#/guides?id=guide-topic-colas', 'SPAN', 'Colas']]);
+  // Round 6 contract 2: the tag span alone is Spanish; hidden words after it name the destination.
+  assert.deepEqual(resultChips.children.map((chip) => [chip.tagName, chip.className, chip.href, chip.children[0].tagName, chip.children[0].lang, chip.children[0].textContent,
+    chip.children[1].className, chip.children[1].textContent]),
+    [['A', 'tag-chip', '#/guides?id=guide-topic-rpa', 'SPAN', 'es', 'RPA', 'visually-hidden', ', tema de Guías'],
+      ['A', 'tag-chip', '#/guides?id=guide-topic-colas', 'SPAN', 'es', 'Colas', 'visually-hidden', ', tema de Guías']]);
+  assert.equal(resultChips.lang, undefined, 'The chip row is not marked Spanish: its hidden words are interface text.');
   const toolResult = context.createSearchResult(context.prepareSearchEntry({ route: '#/content/tool', kind: 'tool', title: 'Tool', summary: 'S',
     author: 'X', date: '2026-01-01', tags: ['colas', 'Macros'], text: '', prose: '', headings: [] }), ['tool'], loadedIndex);
   assert.deepEqual(toolResult.children[1].children[0].children.map((chip) => chip.href), ['#/guides?id=guide-topic-colas', '#/search?q=Macros'],
     'Contract 7 in results: the topic only when a guide has the tag.');
+  assert.deepEqual(toolResult.children[1].children[0].children.map((chip) => chip.children[1].textContent), [', tema de Guías', ', buscar en Athena']);
   // Round 5 #18, contract 6: a download result shows its size in the interface number format; its fixed summary is
   // interface text (suite-i18n translates it), and its section and type chips are no topic links.
   const download = { route: '/downloads/plantilla', kind: 'download', title: 'Plantilla base 3.2.0', summary: 'Archivo aprobado en Framework.', size: 9011,
@@ -1201,6 +1286,8 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
     assert.deepEqual(actionLinks().map((link) => [link.className, link.href, link.textContent]),
       [['copy-page copy-page--ghost', '#/downloads?id=download-file-plantilla-base-3-2-0', 'Ver en Descargas']]);
     assert.equal(labelled, 1, 'The new action gets its phone word.');
+    // Round 6 #30: a place to go gets the arrow-right navigation icon, not the download icon.
+    assert.ok(actionLinks()[0].innerHTML.includes('<path d="M5 12h14m-6-6 6 6-6 6"/>'));
     context.location.hash = '#/content/tool';
     actions.childNodes = [copy];
     section.childNodes = [title];
@@ -1224,8 +1311,9 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
     await context.buildArticleMeta();
     assert.equal(more().length, 1, 'One block, also after a repeated sync.');
     const [heading, list, all] = more()[0].children;
-    assert.deepEqual([heading.tagName, heading.textContent, heading.children[1].lang, Boolean(heading.id)], ['H2', 'Más en RPA', 'es', false],
-      'An h2 with no id, so the page tree leaves it out.');
+    // Round 6 #25: a complementary region after the body, named by its h2 (the page tree leaves that h2 out).
+    assert.deepEqual([more()[0].tagName, more()[0].attributes.get('aria-labelledby')], ['ASIDE', 'guide-more-title']);
+    assert.deepEqual([heading.tagName, heading.textContent, heading.children[1].lang, heading.id], ['H2', 'Más en RPA', 'es', 'guide-more-title']);
     assert.equal(list.className, 'recent-list');
     assert.deepEqual(list.children.map((row) => [row.className, row.children[0].children[0].href, row.children[0].children[0].textContent, row.children[0].children[1].textContent]),
       [['guide-topic-row', '#/content/rpa-1', 'RPA uno', 'Resumen uno'], ['guide-topic-row', '#/content/rpa-2', 'RPA dos', 'Resumen dos'], ['guide-topic-row', '#/content/rpa-3', 'RPA tres', 'Resumen tres']]);
@@ -1304,8 +1392,10 @@ function guidePage(entries, legacy = false) {
     const summary = new Element('p', entry.summary);
     const tags = entry.tags.map((value) => new Element('span', value));
     const tagList = new Element('p');
-    // Contract 4 (round 5): each chip is <a class="tag-chip"><span>tag</span></a>.
-    tagList.append(...tags.map((tag) => { const chip = new Element('a'); chip.className = 'tag-chip'; chip.append(tag); return chip; }));
+    // Contract 4 (round 5): each chip is <a class="tag-chip"><span>tag</span></a>; round 6 contract 2 adds the hidden
+    // destination words after the tag, which are no tag.
+    const hidden = tags.map(() => Object.assign(new Element('span', ', tema de Guías'), { className: 'visually-hidden' }));
+    tagList.append(...tags.map((tag, n) => { const chip = new Element('a'); chip.className = 'tag-chip'; chip.append(tag, hidden[n]); return chip; }));
     const pdf = new Element('a', 'Abrir PDF original');
     pdf.setAttribute('href', '/pdf/guide-' + i + '.pdf');
     const site = new Element('a', 'Sitio oficial');
@@ -1330,7 +1420,7 @@ function guidePage(entries, legacy = false) {
     row.append(detail, meta);
     const queryRow = row.querySelector.bind(row);
     row.querySelector = (selector) => ({ '.guide-detail': detail, '.item-meta': meta })[selector] || queryRow(selector);
-    row.querySelectorAll = (selector) => selector === '.tag-list span' ? tags : [];
+    row.querySelectorAll = (selector) => selector === '.tag-list span' ? tags.flatMap((tag, n) => [tag, hidden[n]]) : [];
     return row;
   });
   if (legacy) grid.append(...rows);
@@ -1392,14 +1482,17 @@ const checkTopicCounts = (why) => shownSections().forEach((section) => {
 checkTopicCounts('Unfiltered');
 assert.ok(groupFor('café').children.at(-1).children[0].textContent === 'Ver las 2 guías de café', 'café lists 1 of its 2 guides.');
 const copiedDetail = groupFor('RPA').children[1].children[0];
-const copiedTags = copiedDetail.querySelectorAll('.tag-list span').map((tag) => tag.textContent);
+const shownTags = (node) => node.querySelectorAll('.tag-list span').filter((tag) => tag.className !== 'visually-hidden').map((tag) => tag.textContent);
+// Round 6 contract 2: the hidden ", tema de Guías" never becomes a topic or a section name.
+assert.ok(topicSections.every((section) => !section.children[0].textContent.includes('tema de Guías')), 'No topic is named by the hidden words.');
+const copiedTags = shownTags(copiedDetail);
 assert.deepEqual(copiedTags, ['Café', 'CAFE', 'A|B <tema> "x"', 'Helios', 'Seguridad'],
   'Other tags stay chips as literal text; the placement tag and the chip that repeats the section topic (round 4 #3) are no chips.');
 assert.deepEqual(groupFor('café').children.filter((node) => node.className === 'guide-topic-row')
-  .map((row) => row.children[0].querySelectorAll('.tag-list span').map((tag) => tag.textContent)), [['RPA', 'A|B <tema> "x"', 'Helios', 'Seguridad'], ['RPA avanzado']],
+  .map((row) => shownTags(row.children[0])), [['RPA', 'A|B <tema> "x"', 'Helios', 'Seguridad'], ['RPA avanzado']],
   'Under café no row repeats the café chip, in any spelling.');
-assert.equal(guides.rows[0].querySelectorAll('.tag-list span').length, 7, 'The hidden source record keeps every tag.');
-assert.deepEqual(copiedDetail.querySelectorAll('a').filter((link) => link.className === 'tag-chip').map((link) => link.textContent), copiedTags,
+assert.equal(shownTags(guides.rows[0]).length, 7, 'The hidden source record keeps every tag.');
+assert.deepEqual(copiedDetail.querySelectorAll('a').filter((link) => link.className === 'tag-chip').map((link) => link.children[0].textContent), copiedTags,
   'A chip that is left out takes its link with it: no empty chip link.');
 assert.deepEqual(copiedDetail.children.filter((child) => child.tagName === 'A').map((link) => link.getAttribute('href')),
   ['#/content/guide-0', '/pdf/guide-0.pdf', 'https://example.test/guide-0', '#/downloads'], 'Topic copies keep every rendered conditional action.');
