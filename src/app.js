@@ -81,26 +81,22 @@ function buildPageTree() {
   const article = document.querySelector('.markdown-section');
   if (!(route.startsWith('/content/') || route === '/api') || !article || article.querySelector('.unavailable-page')) return;
 
-  // Markdown headings are in the page. An HTML article's headings are inside its sandboxed frame: its bridge reports
-  // them (athena:outline), and the reader adds its own title as Markdown does. No outline, no tree.
-  const rect = (heading) => () => heading.getBoundingClientRect().top;
+  // The tree starts at h2: the article title is the h1 above it. Markdown headings are in the page. An HTML article's
+  // headings are inside its sandboxed frame: its bridge reports them (athena:outline). No section, no tree.
   let entries;
   if (article.querySelector('.html-article, .html-article-frame')) {
     if (!htmlFrame?.isConnected || !htmlOutline.length) return;
-    const title = article.querySelector('h1[id]');
     entries = htmlOutline.map((item, index) => ({
       level: item.level + 1, text: item.text, href: '#' + route + '?id=' + encodeURIComponent(item.id), outline: item.id,
       top: () => htmlFrame.getBoundingClientRect().top + htmlOutline[index].top
     }));
-    if (title) entries.unshift({ level: 1, text: title.textContent.trim(), href: '#' + route, heading: title, top: rect(title) });
   } else {
-    entries = [...article.querySelectorAll('h1[id],h2[id],h3[id]')].map((heading) => ({
+    entries = [...article.querySelectorAll('h2[id],h3[id]')].map((heading) => ({
       level: Number(heading.tagName.slice(1)), text: heading.textContent.trim(),
-      href: '#' + route + '?id=' + encodeURIComponent(heading.id), top: rect(heading)
+      href: '#' + route + '?id=' + encodeURIComponent(heading.id), top: () => heading.getBoundingClientRect().top
     }));
   }
-  // A title alone is no outline.
-  if (!entries.some((entry) => entry.level > 1)) return;
+  if (!entries.length) return;
 
   const nav = document.createElement('nav');
   nav.className = 'page-tree';
@@ -1093,7 +1089,7 @@ async function buildArticleMeta() {
 
 // The interface may be English; articles, their titles, excerpts and tags are Spanish. A file row's size · date line, with
 // its "Notas de la versión" link, is interface text.
-const SPANISH_CONTENT = '[data-article-title],.guide-title,.guide-summary,.item-meta__author,.guide-topic h2,'
+const SPANISH_CONTENT = '.guide-title,.guide-summary,.item-meta__author,.guide-topic h2,'
   + '.guide-topic-jumps a,.tag-list,.library-card>:is(h2,h3),.library-card>p:not([class]),.post-summary,.catalog-item>div>:is(strong,code,p),.download-archive h3';
 
 function markSpanishContent() {
@@ -1664,7 +1660,8 @@ function commandLevels(path, name, kind, unavailable = false) {
   if (path.startsWith('/content/') && !unavailable) {
     const sections = { guide: ['Guías', '#/guides'], tool: ['Herramientas', '#/tools'], announcement: ['Actualizaciones', '#/updates'], release: ['Actualizaciones', '#/updates'] };
     const section = sections[kind];
-    return [home, library, ...(section ? [{ label: section[0], href: section[1] }] : []), { label: name, article: true }];
+    // The crumbs end at the parent section; the h1 and the tab title carry the article title.
+    return [home, library, ...(section ? [{ label: section[0], href: section[1] }] : [])];
   }
   return [home, ...( ['/guides', '/tools', '/updates', '/downloads'].includes(path) ? [library] : []), { label: name }];
 }
@@ -1678,7 +1675,7 @@ function updateCommand(path) {
   const article = path.startsWith('/content/') && !unavailable;
   const name = unavailable ? 'Artículo no disponible' : article ? heading?.textContent.trim() || 'Biblioteca' : pages[path] || heading?.textContent.trim() || 'Biblioteca';
   const levels = commandLevels(path, name, document.querySelector('[data-article-kind]')?.dataset.articleKind, unavailable);
-  const label = (level) => level.article ? level.label : t(level.label);
+  const label = (level) => t(level.label);
   const link = (level) => {
     const node = document.createElement(level.href ? 'a' : 'span');
     if (level.href) node.href = level.href;
@@ -1712,13 +1709,15 @@ function updateCommand(path) {
       box.append(node, sep);
     });
   }
-  const current = document.createElement('span');
-  current.setAttribute('aria-current', 'page');
-  if (article) current.dataset.articleTitle = '';
-  current.textContent = label(levels.at(-1));
+  // An article ends at its section, a page the reader is not on: a link, and no current crumb.
+  const current = article ? link(levels.at(-1)) : document.createElement('span');
+  if (!article) {
+    current.setAttribute('aria-current', 'page');
+    current.textContent = label(levels.at(-1));
+  }
   box.append(current);
   // The phone back link goes to the nearest level that is a page.
-  const parent = levels.slice(0, -1).findLast((level) => level.href), back = document.querySelector('.command-parent');
+  const parent = (article ? levels : levels.slice(0, -1)).findLast((level) => level.href), back = document.querySelector('.command-parent');
   // The home has no parent page: no back link on the phone.
   back.hidden = !parent || path === '/';
   if (parent) {
@@ -1789,14 +1788,10 @@ document.addEventListener('click', async (event) => {
     if (pageTreeLink.closest('.page-tree').dataset.layout === 'inline') pageTreeLink.closest('details').open = false;
     // HTML article tree: scroll the reader and focus the heading; the Docsify route (location.hash) stays as it is.
     const entry = pageTreeItems.find(({ link }) => link === pageTreeLink);
-    if ((entry?.outline || entry?.heading) && !event.button && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+    if (entry?.outline && !event.button && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
       event.preventDefault();
       scrollReaderTo(entry.top());
-      if (entry.outline) sendHtmlFrame('athena:focus', entry.outline);
-      else {
-        if (!entry.heading.hasAttribute('tabindex')) entry.heading.setAttribute('tabindex', '-1');
-        entry.heading.focus({ preventScroll: true });
-      }
+      sendHtmlFrame('athena:focus', entry.outline);
     }
   }
 

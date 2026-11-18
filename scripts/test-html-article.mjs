@@ -278,11 +278,12 @@ assert.equal(tree().children[0].tagName, 'details');
 assert.equal(tree().children[0].children[0].tagName, 'summary');
 assert.equal(tree().children[0].children[0].textContent, 'En esta página');
 assert.equal(tree().dataset.layout, 'inline', 'Below 900px the tree is the closed box above the article.');
+// Round 5 #36: the tree starts at the frame's h2 items; the reader title is not repeated in it.
 assert.deepEqual(links().map(({ level, text }) => [level, text]), [
-  ['page-tree__level-1', 'Demos en vivo'], ['page-tree__level-2', 'Uno'], ['page-tree__level-3', 'Dos'],
+  ['page-tree__level-2', 'Uno'], ['page-tree__level-3', 'Dos'],
   ['page-tree__level-2', ('Tres '.repeat(80)).trim().slice(0, 200)], ['page-tree__level-2', '<img src=x onerror=alert(1)>']
 ]);
-assert.equal(links()[1].href, '#/content/demos?id=uno');
+assert.equal(links()[0].href, '#/content/demos?id=uno');
 assert.ok(tree().querySelector('ol').children.every(li => li.children[0].innerHTML === ''), 'Tree text is textContent only.');
 
 // Current link: frame top plus item top, the Markdown rule (the last heading at or above 120px).
@@ -311,24 +312,20 @@ scrolls.length = 0;
 frame.contentWindow.messages.length = 0;
 tree().children[0].open = true;
 const hash = context.location.hash;
-assert.equal(clickLink(3).prevented, true);
+assert.equal(clickLink(2).prevented, true);
 assert.equal(JSON.stringify(scrolls), JSON.stringify([{ top: 500 + 100 + 900 - 72 }]));
 assert.equal(JSON.stringify(frame.contentWindow.messages), JSON.stringify([{ type: 'athena:focus', value: 'tres', target: '*' }]));
 assert.equal(context.location.hash, hash);
 assert.equal(tree().children[0].open, false, 'The inline box closes after a choice.');
-assert.equal(clickLink(0).prevented, true, 'The title link scrolls to the reader title.');
-assert.equal(scrolls.at(-1).top, 500 - 400 - 72);
-assert.equal(activeElement, title);
-assert.equal(title.attributes.tabindex, '-1');
-assert.equal(clickLink(2, { ctrlKey: true }).prevented, undefined, 'A modified click keeps the browser behavior.');
+assert.equal(clickLink(1, { ctrlKey: true }).prevented, undefined, 'A modified click keeps the browser behavior.');
 
 // Mutation in the frame (for example the language switch) sends new text: the tree is rebuilt with it.
 outline([heading('uno', 'One', 1, 0), heading('dos', 'Two', 2, 10)]);
 assert.notEqual(tree(), firstTree);
-assert.deepEqual(links().map(({ text }) => text), ['Demos en vivo', 'One', 'Two']);
+assert.deepEqual(links().map(({ text }) => text), ['One', 'Two']);
 // At most 100 items.
 outline(Array.from({ length: 150 }, (_, n) => heading('h' + n, 'H ' + n, 1, n * 10)));
-assert.equal(links().length, 101);
+assert.equal(links().length, 100);
 assert.equal(links().at(-1).text, 'H 99');
 // Empty list (or the opt-out meta): no tree, no empty column.
 outline([]);

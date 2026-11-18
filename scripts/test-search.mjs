@@ -324,15 +324,15 @@ assert.equal(context.findSnippet(htmlEntry, context.searchTerms('pagina')).headi
   context.document.querySelector = querySelector;
 }
 
-// Crumb parents come from the article kind, not from the current section.
+// Crumb parents come from the article kind, not from the current section. Round 5 #36: an article's crumbs end at its
+// parent section (the h1 and document.title carry the title), so the title is not repeated in the bar.
 for (const [kind, parent] of [['guide', '#/guides'], ['tool', '#/tools'], ['announcement', '#/updates'], ['release', '#/updates'], ['page', undefined]]) {
   const levels = context.commandLevels('/content/example', '<Exact title>', kind);
-  assert.equal(levels.at(-2).href, parent);
-  assert.equal(levels.at(-1).label, '<Exact title>');
-  // Biblioteca has no page, so it is text; every other level above the current one is a link.
-  assert.ok(levels.slice(0, -1).every((level) => Boolean(level.href) === (level.label !== 'Biblioteca')));
+  assert.equal(levels.at(-1).href, parent);
+  assert.ok(levels.every((level) => level.label !== '<Exact title>'), 'No crumb repeats the article title.');
+  // Biblioteca has no page, so it is text; every other level is a link.
+  assert.ok(levels.every((level) => Boolean(level.href) === (level.label !== 'Biblioteca')));
   assert.equal(levels[1].label, 'Biblioteca');
-  assert.ok(!levels.at(-1).href);
 }
 assert.equal(context.commandLevels('/content/private', 'Artículo no disponible', 'guide', true).length, 2, 'Unavailable content must disclose no section.');
 // The phone back link goes to the nearest page; the home has none (round 4 #13).
@@ -346,6 +346,21 @@ assert.equal(context.commandLevels('/content/private', 'Artículo no disponible'
   assert.equal(back.hidden, true, 'The home has no back link.');
   context.updateCommand('/guides');
   assert.ok(!back.hidden && back.href === '#/' && back.label.textContent === 'Athena', 'A section goes back to the home.');
+  // Round 5 #36: on an article the last crumb is its section, a link, and nothing is marked current; the phone back link
+  // still names the section; the tab title is the article title.
+  const crumbs = [];
+  box.replaceChildren = (...nodes) => { crumbs.splice(0, crumbs.length, ...nodes); };
+  box.append = (...nodes) => crumbs.push(...nodes);
+  context.document.createElement = (tag) => ({ tagName: tag.toUpperCase(), dataset: {}, attributes: {}, setAttribute(name, value) { this.attributes[name] = value; }, append() {} });
+  const h1 = { textContent: ' Guía de colas ' };
+  const kindMarker = { dataset: { articleKind: 'guide' } };
+  context.document.querySelector = (selector) => ({ '.command-crumbs': box, '.command-parent': back, '.markdown-section h1': h1, '[data-article-kind]': kindMarker })[selector] || null;
+  context.updateCommand('/content/guia-de-colas');
+  const shown = crumbs.filter((node) => node.attributes['aria-hidden'] !== 'true' && node.tagName !== 'DETAILS');
+  assert.deepEqual(shown.map((node) => [node.tagName, node.textContent, node.href]), [['A', 'Athena', '#/'], ['SPAN', 'Biblioteca', undefined], ['A', 'Guías', '#/guides']]);
+  assert.ok(crumbs.every((node) => !node.attributes['aria-current']), 'The section is a link to a page the reader is not on.');
+  assert.deepEqual([back.hidden, back.href, back.label.textContent], [false, '#/guides', 'Guías']);
+  assert.equal(context.document.title, 'Guía de colas · Athena');
   Object.assign(context.document, { querySelector, createElement });
 }
 // A Descargas section link: when Docsify focuses the section, the focus moves to its heading (round 4 #6).
@@ -494,7 +509,7 @@ let outlineHeadings = [outlineHeading];
 const outlineArticle = {
   parentElement: { clientWidth: 1000 },
   querySelector: () => null,
-  querySelectorAll: () => outlineHeadings,
+  querySelectorAll: (selector) => outlineHeadings.filter((heading) => selector.split(',').includes(heading.tagName.toLowerCase() + '[id]')),
   before(nav) { nav.parentElement = this.parentElement; nav.remove = () => { pageTree = null; }; pageTree = nav; }
 };
 context.document.createElement = (tag) => new Element(tag);
@@ -511,7 +526,9 @@ for (const width of [700, 899, 900, 1320]) {
   assert.equal(details.open, width >= 900, 'The outline opens only when the content area supports a side column.');
   assert.equal(details.children[0].tagName, 'SUMMARY');
   const link = details.children[1].children[0].children[0];
-  assert.equal(link.href, '#/content/guide?id=reader-guide', 'Tree links use the reader route of the heading id.');
+  // Round 5 #36: the tree starts at h2; the article title (h1) is not repeated in it.
+  assert.equal(details.children[1].children.length, 1);
+  assert.equal(link.href, '#/content/guide?id=steps', 'Tree links use the reader route of the heading id.');
   assert.equal(link.getAttribute('aria-current'), 'location');
   details.open = !details.open;
   context.updatePageTreeCurrent();
@@ -910,6 +927,9 @@ assert.doesNotMatch(readerCss, /(^|[},])\s*\.item-meta__kind\{display:none\}/);
   assert.match(readerCss, /\.markdown-section figure\{margin:1\.2em 0\}/);
   assert.match(readerCss, /\.figure-zoom\{[^}]*cursor:zoom-in/);
 }
+// Round 5 #36: with no h1 item the h2 items start at the tree edge and h3 items take one indent.
+assert.match(readerCss, /\.page-tree__level-3\{padding-left:\.8rem\}/);
+assert.doesNotMatch(readerCss, /\.page-tree__level-2\{padding-left/);
 // The active Guías topic has a shape cue, not only gold text (round 4 #23): the editor tabs' 2 px accent bottom rule.
 assert.match(readerCss, /\.guide-topic-jumps a\[aria-current\]\{box-shadow:inset 0 -2px 0 var\(--accent\)/);
 assert.doesNotMatch(readerCss, /mask-image/, 'No reader table is masked.');

@@ -184,7 +184,7 @@
   };
   const sourceText = new WeakMap();
   const sourceAttributes = new WeakMap();
-  const content = '[data-article-title],.guide-title,.guide-summary,.guide-author,.item-meta__author,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div,.image-viewer__caption';
+  const content = '.guide-title,.guide-summary,.guide-author,.item-meta__author,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div,.image-viewer__caption';
   const articleUI = '.article-actions,.article-tools,.article-access,.pdf-viewer__actions,.page-tree summary,.pagination-item,.unavailable-page';
   // Admin user content: titles, names, authors, usernames, the Markdown source and the raw key.
   const adminContent = '#result_list tbody :is(.field-title,.field-name,.field-author,.field-user,.field-username,.field-filename,.field-path),.actionlist .download-file,.actionlist a,.actionlist strong,.directory-table tbody th,.directory-panel header h2,.desk-user,.key-created code,textarea,.readonly a';
