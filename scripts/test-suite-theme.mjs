@@ -20,6 +20,14 @@ for (const [stored, languages, expected] of [[null, ['fr', 'en-US', 'es'], 'en']
 assert.equal(boot.storedValueAfterToggle('dark', 'dark'), null);
 assert.equal(boot.storedValueAfterToggle('en', 'es'), 'en');
 
+// A Descargas file row: the title, file name, note and family heading are content; its size, date and "Notas de la versión"
+// link are interface text, so the translator must not skip the whole row (round 6 #7).
+{
+  const content = read('src/assets/suite-i18n.js').match(/const content = '([^']*)'/)[1].split(',');
+  assert.ok(!content.includes('.catalog-item>div'), 'The whole file row is not content.');
+  for (const part of ['.catalog-item>div>:is(strong', 'code', 'p)', '.download-archive h3']) assert.ok(content.includes(part), part);
+}
+
 // The reader loading shell: a failed script or no render after 10 s turns the status line into an error with a reload link.
 {
   class Script {}

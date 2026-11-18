@@ -119,7 +119,7 @@
     'Pegue una imagen o use Insertar imagen. PNG, JPEG, WebP o GIF, hasta 10 MiB y 20 millones de píxeles, o un video MP4 de hasta 200 MiB. Se conserva el texto seleccionado.': 'Paste an image or use Insert image. PNG, JPEG, WebP or GIF, up to 10 MiB and 20 million pixels, or an MP4 video of up to 200 MiB. Selected text is kept.',
     'Detalles del artículo': 'Article details', 'Información': 'Information', 'Publicación': 'Publishing', 'Archivos': 'Files',
     'Aplicar': 'Apply', 'Resumen': 'Summary', 'Etiquetas': 'Tags', 'Dirección': 'Address',
-    'Separe las etiquetas con comas. La primera etiqueta de tema es la sección del artículo en Guías; una etiqueta nueva crea un tema. Con la etiqueta primeros-pasos, el artículo aparece en Primeros pasos en el inicio.': 'Separate tags with commas. The first topic tag is the article\'s section in Guides; a new tag creates a topic. With the primeros-pasos tag, the article appears in First steps on the home page.', 'Primeros pasos': 'Getting started', 'Se conserva después de crear el artículo para mantener sus enlaces.': 'Kept after the article is created, so its links keep working.',
+    'Separe las etiquetas con comas. La primera etiqueta de tema es la sección del artículo en Guías; una etiqueta nueva crea un tema. Con la etiqueta primeros-pasos, el artículo aparece en Primeros pasos en el inicio.': 'Separate tags with commas. The first topic tag is the article\'s section in Guides; a new tag creates a topic. With the primeros-pasos tag, the article appears in Getting started on the home page.', 'Primeros pasos': 'Getting started', 'Se conserva después de crear el artículo para mantener sus enlaces.': 'Kept after the article is created, so its links keep working.',
     'Campos de herramienta': 'Tool fields', 'Estado de herramienta': 'Tool status', 'Acceso público': 'Public access',
     'Usuarios seleccionados': 'Selected users', 'Usuarios con acceso': 'Users with access', 'Restringido': 'Restricted', 'Artículo restringido': 'Restricted article',
     'Solo se usa con «Usuarios seleccionados».': 'Used only with “Selected users”.',
@@ -184,7 +184,7 @@
   };
   const sourceText = new WeakMap();
   const sourceAttributes = new WeakMap();
-  const content = '.guide-title,.guide-summary,.guide-author,.item-meta__author,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div,.image-viewer__caption';
+  const content = '.guide-title,.guide-summary,.guide-author,.item-meta__author,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div>:is(strong,code,p),.download-archive h3,.image-viewer__caption';
   const articleUI = '.article-actions,.article-tools,.article-access,.page-tree summary,.pagination-item,.unavailable-page';
   // Admin user content: titles, names, authors, usernames, the Markdown source and the raw key.
   const adminContent = '#result_list tbody :is(.field-title,.field-name,.field-author,.field-user,.field-username,.field-filename,.field-path),.actionlist .download-file,.actionlist a,.actionlist strong,.directory-table tbody th,.directory-panel header h2,.desk-user,.key-created code,textarea,.readonly a';
