@@ -231,8 +231,10 @@
     }
     // Django label suffixes ("Título:") and joined state lines ("Publicado · Público") translate when every part does.
     if (text.endsWith(':') && dictionary[text.slice(0, -1)]) return dictionary[text.slice(0, -1)] + ':';
+    // Each part may be a dictionary entry or a pattern ("descargó · hace 3 días").
     const parts = text.split(' · ');
-    if (parts.length > 1 && parts.every((part) => dictionary[part])) return parts.map((part) => dictionary[part]).join(' · ');
+    const translated = parts.length > 1 ? parts.map(english) : [];
+    if (translated.length && translated.every((part, index) => part !== parts[index])) return translated.join(' · ');
     return text;
   }
   const t = (text) => document.documentElement.lang === 'en' ? english(text) : text;
