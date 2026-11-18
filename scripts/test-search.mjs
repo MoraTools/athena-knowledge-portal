@@ -1087,6 +1087,10 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
   assert.deepEqual(result.children.map((node) => node.className), ['search-result__body', 'search-result__tail', 'search-result__meta'],
     'Title and summary, then chips, then the meta line.');
   assert.equal(resultMeta.children[0].className, 'item-meta__kind');
+  // Round 5 #38, contract 4: a result's topic chips open their Guías topic, as on every other reader surface.
+  const resultChips = result.children[1].children[0];
+  assert.deepEqual(resultChips.children.map((chip) => [chip.tagName, chip.className, chip.href, chip.children[0].tagName, chip.textContent]),
+    [['A', 'tag-chip', '#/guides?id=guide-topic-rpa', 'SPAN', 'RPA'], ['A', 'tag-chip', '#/guides?id=guide-topic-colas', 'SPAN', 'Colas']]);
   // Round 5 #18, contract 6: a download result shows its size in the interface number format; its fixed summary is
   // interface text (suite-i18n translates it), and its section and type chips are no topic links.
   const download = { route: '/downloads/plantilla', kind: 'download', title: 'Plantilla base 3.2.0', summary: 'Archivo aprobado en Framework.', size: 9011,

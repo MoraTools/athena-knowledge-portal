@@ -798,7 +798,13 @@ function createSearchResult(entry, terms) {
     chips.forEach((value) => {
       const tag = document.createElement('span');
       tag.textContent = value;
-      tags.append(tag);
+      // Contract 4: a topic chip opens its Guías topic; a download's section and file type are no topics.
+      if (entry.kind === 'download') return tags.append(tag);
+      const link = document.createElement('a');
+      link.className = 'tag-chip';
+      link.href = '#/guides?id=' + guideTopicId(normalize(value));
+      link.append(tag);
+      tags.append(link);
     });
     tail.append(tags);
   }
