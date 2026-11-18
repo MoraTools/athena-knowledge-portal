@@ -418,9 +418,63 @@ class TagTests(TestCase):
         options = re.findall(r'<option value="([^"]*)">', html)
         self.assertEqual(options, ['Demos', 'Excel', 'excel tips', 'Plantilla base'])
 
-    def test_tag_help_names_the_guides_section_and_new_topics(self):
-        self.assertIn('La primera etiqueta de tema es la sección del artículo en Guías; una etiqueta nueva crea un tema.',
-                      self.form().fields['tags'].help_text)
+    def test_tag_help_is_short_and_tema_names_the_section(self):
+        from .forms import AdminArticleForm
+        self.assertEqual(self.form().fields['tags'].help_text, 'Separe las etiquetas con comas. Con la etiqueta primeros-pasos, '
+                                                               'el artículo aparece en Primeros pasos en el inicio.')
+        form = AdminArticleForm(instance=Article(), actor=self.editor)
+        self.assertEqual(form.fields['topic'].label, 'Tema (sección en Guías)')
+
+    def topic_form(self, typed, topic, saved, kind='guide', other=''):
+        # #43: Tema is the first topic tag of a guide; Etiquetas holds the other tags.
+        from .forms import AdminArticleForm
+        article = Article.objects.create(title='Tema', slug=f'tema-{Article.objects.count()}', body='x', kind=kind, tags=saved)
+        form = AdminArticleForm({'tags': typed, 'topic': topic, 'topic_other': other, 'kind': kind,
+                                 'loaded_revision': article.updated_at.isoformat()}, instance=article, actor=self.editor)
+        form.is_valid()
+        return form
+
+    def test_tema_splits_the_first_topic_tag_of_a_guide(self):
+        from .forms import AdminArticleForm
+        guide = Article.objects.create(title='G', slug='g', body='x', tags=['Colas', 'Excel', 'primeros-pasos'])
+        form = AdminArticleForm(instance=guide, actor=self.editor)
+        self.assertEqual((form['topic'].value(), form['tags'].value()), ('Colas', 'Excel, primeros-pasos'))
+        # The existing topics (the first topic tag of each readable guide, never a restricted one), then Otro tema.
+        options = re.findall(r'<option value="([^"]*)"', str(form['topic']))
+        self.assertEqual(options, ['', 'Colas', 'Demos', 'Excel', '__other__'])
+        # Other kinds keep every tag in Etiquetas.
+        tool = Article.objects.create(title='T', slug='t', body='x', kind='tool', tags=['Colas', 'Excel'])
+        form = AdminArticleForm(instance=tool, actor=self.editor)
+        self.assertEqual((form['topic'].value(), form['tags'].value()), (None, 'Colas, Excel'))
+
+    def test_tema_is_stored_first_and_never_twice(self):
+        saved = ['Colas', 'Excel', 'primeros-pasos']
+        self.assertEqual(self.topic_form('primeros-pasos', 'Excel', saved).cleaned_data['tags'], ['Excel', 'primeros-pasos'])
+        self.assertEqual(self.topic_form('excel, primeros-pasos', 'Excel', saved).cleaned_data['tags'], ['Excel', 'primeros-pasos'])
+        self.assertEqual(self.topic_form('Excel, primeros-pasos', '__other__', saved, other=' Nuevo  tema ').cleaned_data['tags'],
+                         ['Nuevo tema', 'Excel', 'primeros-pasos'])
+        # No edit: the same list in the same order, a placement tag before the topic keeps its place.
+        self.assertEqual(self.topic_form('primeros-pasos, Excel', 'Colas', ['primeros-pasos', 'Colas', 'Excel'])
+                         .cleaned_data['tags'], ['primeros-pasos', 'Colas', 'Excel'])
+        # An empty Tema stores the tags as typed: the first topic tag of Etiquetas is the section, as before.
+        self.assertEqual(self.topic_form('Excel, Colas', '', saved).cleaned_data['tags'], ['Excel', 'Colas'])
+        # A tool keeps its tags as typed.
+        self.assertEqual(self.topic_form('Colas, Excel', '', ['Colas', 'Excel'], kind='tool').cleaned_data['tags'],
+                         ['Colas', 'Excel'])
+
+    def test_tema_row_is_in_details_above_etiquetas(self):
+        self.client.force_login(User.objects.create_superuser('root'))
+        guide = Article.objects.create(title='G', slug='g', body='x', tags=['Colas', 'Excel'])
+        page = self.client.get(f'/admin/athena/article/{guide.pk}/change/').content.decode()
+        self.assertLess(page.index('name="topic"'), page.index('name="topic_other"'))
+        self.assertLess(page.index('name="topic_other"'), page.index('name="tags"'))
+        self.assertIn('<option value="Colas" selected>Colas</option>', page)
+        self.assertRegex(page, r'name="tags" value="Excel"')
+        # A view-only page has no Tema controls: the stored tags show as they are.
+        viewer = User.objects.create_user('viewer', is_staff=True)
+        viewer.user_permissions.set(permissions(['athena.view_article']))
+        self.client.force_login(viewer)
+        self.assertNotIn('name="topic"', self.client.get(f'/admin/athena/article/{guide.pk}/change/').content.decode())
 
     def test_article_list_filters_by_a_readable_tag(self):
         self.client.force_login(self.editor)

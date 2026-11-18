@@ -377,16 +377,20 @@
         option.disabled = used.has(tag.toLowerCase());
       }
     });
+    // The kind hook: tool fields, the Versión file line, and Tema (Guías takes its sections only from guides).
     function showToolFields() {
       const kind = value('kind', form.dataset.articleKind);
       toolFields.open = kind === 'tool' || Boolean(toolFields.querySelector('.errors'));
       const release = document.getElementById('desk-release');
       if (release) release.hidden = kind !== 'release';
+      const topic = document.getElementById('id_topic'), topicOther = document.getElementById('id_topic_other');
+      if (topic) topic.closest('.form-row').hidden = kind !== 'guide';
+      if (topicOther) topicOther.closest('.form-row').hidden = kind !== 'guide' || topic?.value !== '__other__';
     }
     showToolFields();
     form.addEventListener('change', event => {
       markDirty();
-      if (event.target.name === 'kind') showToolFields();
+      if (event.target.name === 'kind' || event.target.name === 'topic') showToolFields();
       updatePreview();
     });
 

@@ -375,7 +375,7 @@ class ArticleAdmin(RowControlsAdmin):
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ['last_updated', 'current_pdf']
     fieldsets = [
-        ('Información', {'fields': ['title', 'format', 'body', 'summary', 'author', 'kind', 'tags', 'slug',
+        ('Información', {'fields': ['title', 'format', 'body', 'summary', 'author', 'kind', 'topic', 'topic_other', 'tags', 'slug',
                                      'status', 'url', 'download_file']}),
         ('Publicación', {'fields': ['published', 'access', 'allowed_users', 'share_image', 'date', 'last_updated']}),
         ('Archivos', {'fields': ['markdown_file', 'pdf_file', 'current_pdf', 'remove_pdf', 'pdf_only']}),
@@ -493,8 +493,8 @@ class ArticleAdmin(RowControlsAdmin):
                                                         **(extra_context or {})})
 
     def get_fieldsets(self, request, obj=None):
-        if obj and not self.has_change_permission(request, obj):  # Upload fields mean nothing on a read-only page.
-            uploads = {'markdown_file', 'pdf_file', 'remove_pdf'}
+        if obj and not self.has_change_permission(request, obj):  # Uploads and Tema (a form-only field) mean nothing read-only.
+            uploads = {'markdown_file', 'pdf_file', 'remove_pdf', 'topic', 'topic_other'}
             return [(name, {**options, 'fields': [f for f in options['fields'] if f not in uploads]})
                     for name, options in self.fieldsets]
         return self.fieldsets

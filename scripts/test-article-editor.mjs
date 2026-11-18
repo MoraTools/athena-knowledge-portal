@@ -106,7 +106,10 @@ function editor({ readOnly = false, serverError = null, format = null, previewUr
       querySelector() { return null; }, querySelectorAll() { return []; },
       append() {}, scrollIntoView() {}, focus() { if (!this.unfocusable) focused = this; },
       contains(target) { for (let node = target; node; node = node.parent) if (node === this) return true; return false; },
-      closest(selector) { for (let node = this; node; node = node.parent) if (selector === '.desk-detail-panel' && node.panel) return node; return null; },
+      closest(selector) {
+        for (let node = this; node; node = node.parent) if (selector === '.desk-detail-panel' ? node.panel : selector === '.form-row' && node.row) return node;
+        return null;
+      },
       showModal() { this.open = true; },
       close() {
         if (!this.open) return;
@@ -358,6 +361,28 @@ for (const how of ['escape', 'dismiss', 'cancel', 'apply']) {
   assert.equal(state.nodes.get('desk-state').innerHTML, chips);
   state.flushClose();
   assert.equal(state.focused(), state.chipsOpener);
+}
+// #43 with the #5 snapshot: the Tema row shows only for a guide, its text field only for "Otro tema…"; Esc puts back
+// the old Tema and the old Etiquetas.
+for (const kind of ['guide', 'tool']) {
+  const state = editor({ tags: 'Excel, primeros-pasos' });
+  const row = name => Object.assign(state.element(`row-${name}`, state.panels[0]), { row: true });
+  const topic = state.fields.topic = Object.assign(state.element('id_topic', row('topic')), { name: 'topic', value: 'Colas' });
+  const other = state.fields.topic_other = Object.assign(state.element('id_topic_other', row('topic_other')), { name: 'topic_other' });
+  state.fields.kind.value = kind;
+  await state.form.fire('change', { target: state.fields.kind });
+  assert.equal(topic.parent.hidden, kind !== 'guide', kind);
+  assert.equal(other.parent.hidden, true, kind);
+  if (kind !== 'guide') continue;
+  await state.mainOpener.fire('click');
+  topic.value = '__other__';
+  await state.form.fire('change', { target: topic });
+  assert.equal(other.parent.hidden, false);
+  other.value = 'Nuevo tema';
+  state.fields.tags.value = 'Excel, primeros-pasos, Colas';
+  assert.equal((await state.dialog.fire('cancel')).defaultPrevented, false);
+  state.dialog.close();
+  assert.deepEqual([topic.value, other.value, state.fields.tags.value, other.parent.hidden], ['Colas', '', 'Excel, primeros-pasos', true]);
 }
 // #41: the Descargas file line shows only while Tipo is Versión.
 {

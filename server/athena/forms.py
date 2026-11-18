@@ -7,7 +7,7 @@ from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from .models import ApiKey, Article, readable_articles
+from .models import PLACEMENT_TAGS, ApiKey, Article, readable_articles, topic_id
 
 
 EMAIL_UNAVAILABLE = ('El servicio de correo de Athena aún no está configurado. Por ahora no se pueden ingresar ni guardar correos. '
@@ -89,7 +89,7 @@ class ArticleForm(forms.ModelForm):
                                     help_text='Opcional. Reemplaza el contenido. Máximo 1 MiB.')
     pdf_file = forms.FileField(label='Adjuntar PDF', required=False, help_text='Opcional. Máximo 25 MiB.')
     remove_pdf = forms.BooleanField(label='Quitar PDF actual', required=False)
-    tags = forms.CharField(label='Etiquetas', required=False, widget=TagsInput, help_text='Separe las etiquetas con comas. La primera etiqueta de tema es la sección del artículo en Guías; una etiqueta nueva crea un tema. Con la etiqueta primeros-pasos, el artículo aparece en Primeros pasos en el inicio.')
+    tags = forms.CharField(label='Etiquetas', required=False, widget=TagsInput, help_text='Separe las etiquetas con comas. Con la etiqueta primeros-pasos, el artículo aparece en Primeros pasos en el inicio.')
     access = forms.ChoiceField(label='Acceso', required=False, choices=ACCESS_CHOICES, help_text=(
         'Público: si está publicado, cualquier persona lo lee sin una cuenta. Con cuenta: cualquier usuario que ingresa. '
         'Usuarios seleccionados: solo los usuarios de la lista y los superusuarios. Las imágenes y los PDF siguen este acceso.'))
@@ -190,8 +190,20 @@ class ArticleForm(forms.ModelForm):
         return data
 
 
+OTHER_TOPIC = '__other__'
+
+
+def first_topic(tags):
+    """Index of the first topic tag (the Guías section of a guide), or None."""
+    return next((index for index, tag in enumerate(tags) if tag.lower() not in PLACEMENT_TAGS), None)
+
+
 class AdminArticleForm(ArticleForm):
     loaded_revision = forms.CharField(required=False, max_length=50, widget=forms.HiddenInput)
+    # Tema is the first topic tag of a guide, shown apart from the other tags; the stored list keeps its one shape.
+    topic = forms.ChoiceField(label='Tema (sección en Guías)', required=False,
+                              help_text='La sección de la guía en Guías. Otro tema… crea una sección nueva.')
+    topic_other = forms.CharField(label='Tema nuevo', required=False, max_length=100)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -199,9 +211,38 @@ class AdminArticleForm(ArticleForm):
             self.initial['loaded_revision'] = self.instance.updated_at.isoformat()
         if 'body' not in self.fields:
             self.fields.pop('loaded_revision', None)
+        if 'tags' not in self.fields:  # A view-only page shows the stored tags as they are.
+            self.fields.pop('topic', None)
+            self.fields.pop('topic_other', None)
+            return
+        # The existing topics: the section of each guide the editor can read (a restricted article's tags stay private).
+        guides = readable_articles(self.actor, Article.objects.filter(kind='guide').exclude(pk=self.instance.pk)) if self.actor else Article.objects.none()
+        topics = {}
+        for tags in [*guides.values_list('tags', flat=True), self.instance.tags if self.instance.kind == 'guide' else []]:
+            index = first_topic(tags)
+            if index is not None:
+                topics.setdefault(topic_id(tags[index]), self.tag_spellings.get(tags[index].casefold(), tags[index]))
+        self.fields['topic'].choices = [('', 'Sin tema'), *[(tag, tag) for tag in sorted(topics.values(), key=str.casefold)],
+                                        (OTHER_TOPIC, 'Otro tema…')]
+        index = first_topic(self.instance.tags)
+        if self.instance.pk and self.instance.kind == 'guide' and index is not None:
+            tags = self.instance.tags
+            self.initial['topic'] = topics[topic_id(tags[index])]
+            self.initial['tags'] = ', '.join(tags[:index] + tags[index + 1:])
 
     def clean(self):
         data = super().clean()
+        topic = data.get('topic_other') if data.get('topic') == OTHER_TOPIC else data.get('topic')
+        topic = ' '.join((topic or '').split())
+        if topic and 'tags' in data:
+            # Tema replaces the old first topic tag at its place (after the placement tags that stood before it);
+            # a tag equal to Tema by topic key is dropped from the others, so it is never stored twice.
+            topic = self.tag_spellings.get(topic.casefold(), topic)
+            others = [tag for tag in data['tags'] if topic_id(tag) != topic_id(topic)]
+            before, at = first_topic(self.instance.tags) or 0, 0
+            while at < min(before, len(others)) and others[at].lower() in PLACEMENT_TAGS:
+                at += 1
+            data['tags'] = others[:at] + [topic] + others[at:]
         if self.instance.pk and 'loaded_revision' in self.fields:
             # Django's native change POST holds this lock until the article and its related rows are saved.
             current = Article.objects.select_for_update().only('updated_at').get(pk=self.instance.pk)
