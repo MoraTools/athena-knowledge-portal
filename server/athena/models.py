@@ -1,6 +1,7 @@
 import hashlib
 import re
 import secrets
+import unicodedata
 import uuid
 from datetime import timedelta
 from pathlib import PurePath
@@ -21,6 +22,22 @@ def token_expiry():
 
 # Tags that place an article (Primeros pasos on the home) and are no subject: no chip, no topic. Same set as src/app.js.
 PLACEMENT_TAGS = ('primeros-pasos',)
+
+
+def topic_id(tag):
+    """The Guías section id of a tag, as src/app.js guideTopicId(normalize(tag)) gives it."""
+    key = ' '.join(re.sub('[\u0300-\u036f]', '', unicodedata.normalize('NFD', tag)).lower().split())
+    return 'guide-topic-' + re.sub(r'[^a-z0-9]+', '-', key).strip('-') if key else 'guide-untagged'
+
+
+def release_key(title):
+    """A Versión article and a Download match when their titles are equal after trim and case fold."""
+    return title.strip().casefold()
+
+
+def download_family(title):
+    """The package family of a file: its title before the first version number ('Plantilla base 3.2.0' gives 'Plantilla base')."""
+    return re.split(r'\s+v?\d+(?:\.\d+)*\b', title.strip(), maxsplit=1)[0]
 
 
 class Article(models.Model):
@@ -96,6 +113,11 @@ class Article(models.Model):
     @property
     def topic_tags(self):
         return [tag for tag in self.tags if tag.lower() not in PLACEMENT_TAGS]
+
+    @property
+    def topic_links(self):
+        """(tag, Guías topic id) of each topic tag, for the chips that open the topic filter."""
+        return [(tag, topic_id(tag)) for tag in self.topic_tags]
 
     @property
     def download_row_id(self):

@@ -13,7 +13,6 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, render
-from django.template.defaultfilters import filesizeformat
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape
@@ -22,8 +21,8 @@ from markdown_it import MarkdownIt
 
 from .admin import role_label
 from .forms import SignInForm
-from .models import (ApiKey, Article, Download, DownloadEvent, ManagedImage, PLACEMENT_TAGS, readable_articles,
-                     visible_articles)
+from .models import (ApiKey, Article, Download, DownloadEvent, ManagedImage, PLACEMENT_TAGS, download_family,
+                     readable_articles, release_key, visible_articles)
 from .notify import notify_download
 
 
@@ -229,11 +228,11 @@ class HtmlText(HTMLParser):
             out_prose.extend(prose)
 
     def count(self, tag, step):
+        if step < 0 and tag in self.BLOCKS:
+            self.out()[1].append(BLOCK_END)  # In both modes, so an excerpt never joins two blocks.
         if self.open is not None and (tag in self.BLOCKS or tag in self.LABELS):
             key = 'block' if tag in self.BLOCKS else 'label'
             self.open[key] = max(0, self.open[key] + step)  # A stray end tag never goes below zero.
-            if step < 0 and key == 'block':
-                self.out()[1].append(BLOCK_END)
 
     def handle_starttag(self, tag, attrs):
         self.count(tag, 1)
@@ -355,16 +354,27 @@ def download_entry(download):
     section = download.get_section_display()
     return {
         'title': download.title, 'kind': 'download', 'section': section,
-        'summary': f'Archivo aprobado de {filesizeformat(download.size)} en {section}.',
+        # One fixed sentence per section, which suite-i18n.js translates; the reader formats size in its language.
+        'summary': f'Archivo aprobado en {section}.', 'size': download.size,
         'author': '', 'date': '', 'tags': [section, Path(download.filename).suffix.lstrip('.').upper()],
         'route': '/downloads/' + download.slug, 'pdf': '', 'text': f'{download.filename} {download.note}',
         'prose': download.note, 'headings': [],
     }
 
 
+def release_rows():
+    """{release_key(title): Descargas row id} of the published files; of two files with one title, the newest."""
+    return {release_key(d.title): 'download-file-' + d.slug
+            for d in Download.objects.filter(published=True).order_by('created_at', 'pk').only('title', 'slug')}
+
+
 def search_index(request):
     entries = [search_entry(a) for a in visible_articles(request.user).defer('pdf')]
     if request.user.is_authenticated:
+        rows = release_rows()
+        for entry in entries:
+            if entry['kind'] == 'release' and release_key(entry['title']) in rows:
+                entry['download'] = rows[release_key(entry['title'])]
         entries += [download_entry(d) for d in Download.objects.filter(published=True)]
     return JsonResponse(entries, safe=False)
 
@@ -649,7 +659,11 @@ class SignInView(LoginView):
 
 @login_required
 def downloads_page(request):
-    published = Download.objects.filter(published=True)
+    published = list(Download.objects.filter(published=True))
+    notes = {release_key(title): slug for title, slug in visible_articles(request.user).filter(kind='release')
+             .order_by('updated_at', 'pk').values_list('title', 'slug')}
+    for item in published:  # Contract 2: the release notes of a file and the family Versiones anteriores groups by.
+        item.notes_slug, item.family = notes.get(release_key(item.title), ''), download_family(item.title)
     sections = [(key, label, [d for d in published if d.section == key]) for key, label in Download.SECTIONS]
     current = current_framework()
     return render(request, 'downloads.md', {
@@ -661,7 +675,12 @@ def downloads_page(request):
 
 def library(request, section):
     kinds = {'guides': ['guide'], 'tools': ['tool'], 'updates': ['announcement', 'release']}
-    articles = visible_articles(request.user).filter(kind__in=kinds[section]).defer('body', 'pdf').order_by('-updated_at', 'title')
+    articles = list(visible_articles(request.user).filter(kind__in=kinds[section]).defer('body', 'pdf').order_by('-updated_at', 'title'))
+    if section == 'updates' and request.user.is_authenticated:
+        rows = release_rows()
+        for article in articles:  # A Versión card links its file; otherwise the approved download_file, as other cards.
+            article.download_row = (article.kind == 'release' and rows.get(release_key(article.title))
+                                    or article.download_file and article.download_row_id)
     tags = sorted({tag for article in articles for tag in article.tags})
     return render(request, 'library.md', {'section': section, 'articles': articles, 'tags': tags},
                   content_type='text/markdown; charset=utf-8')

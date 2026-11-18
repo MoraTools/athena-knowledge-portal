@@ -636,7 +636,7 @@ class PortalTests(TestCase):
         self.assertNotIn('<tema>', public)
         self.client.force_login(self.reader)
         private = self.client.get('/guides.md').content.decode()
-        self.assertIn('href="#/downloads">Descarga aprobada', private)
+        self.assertIn('href="#/downloads?id=download-file-approved-zip">Ver en Descargas', private)
         # Round 4 #3 (contract 1): the row meta line; .guide-author stays for the reader script until it reads .item-meta.
         self.assertRegex(private, r'<p class="item-meta"><span class="item-meta__kind">Guía</span>'
                                   r'<span class="item-meta__author guide-author">Equipo &lt;A&gt;</span>'
@@ -693,14 +693,14 @@ class PortalTests(TestCase):
         tools = self.client.get('/tools.md').content.decode()
         self.assertLess(tools.index('#/content/new-tool'), tools.index('#/content/old-tool'))
         # Round 4 #3 (contract 1): the list meta line of every reader list, kind, author, date.
-        self.assertIn('<p class="item-meta"><span class="item-meta__kind">Herramienta</span><span class="item-meta__author">A</span>'
+        self.assertIn('<p class="item-meta"><span class="item-meta__author">A</span>'
                       '<span class="item-meta__date">Actualizado <time datetime="2026-10-20">2026-10-20</time></span></p>', tools)
         self.assertNotIn('2020-01-01', tools)
         updates = self.client.get('/updates.md').content.decode()
         slugs = re.findall(r'<h3><a href="#/content/([\w-]+)">', updates)
         self.assertEqual(slugs, ['a-release', 'b-release', 'first-guide'])  # Equal updates fall back to the title.
         self.assertIn('<time datetime="2026-09-01"><span class="day">01</span>', updates)
-        # The date column is the only date: the meta line has type and author, and the title is the only link.
+        # The meta line is the list meta line (round 5 #1); the title is the only link.
         self.assertNotIn('01/09/2026', updates)
         self.assertNotIn('>Leer</a>', updates)
         self.assertNotIn('<p class="post-actions">', updates)
@@ -754,10 +754,10 @@ class PortalTests(TestCase):
         Article.objects.create(title='Start news', slug='start-news', kind='announcement', summary='S', author='A',
                                tags=['primeros-pasos', 'Avisos'], url='https://example.test/news', published=True, is_public=True)
         tools = self.client.get('/tools.md').content.decode()
-        self.assertIn('<p class="tag-list"><span>Colas</span></p>', tools)
+        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/guides?id=guide-topic-colas"><span>Colas</span></a></p>', tools)
         self.assertIn('data-search="Start tool A S Primeros-Pasos Colas"', tools)  # Matching still finds it.
         updates = self.client.get('/updates.md').content.decode()
-        self.assertIn('<p class="tag-list"><span>Avisos</span></p>', updates)
+        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/guides?id=guide-topic-avisos"><span>Avisos</span></a></p>', updates)
         self.assertIn('<p class="post-actions"><a class="post-link" href="https://example.test/news" target="_blank" rel="noreferrer">Sitio oficial</a></p>', updates)
 
     def test_updates_are_announcements_and_releases_only(self):
@@ -778,11 +778,54 @@ class PortalTests(TestCase):
         Article.objects.create(title='Start guide', slug='start-guide', kind='guide', summary='S', author='A',
                                tags=['Primeros-Pasos', 'Colas'], published=True, is_public=True)
         guides = self.client.get('/guides.md').content.decode()
-        self.assertIn('<p class="tag-list"><span>Colas</span></p>', guides)
+        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/guides?id=guide-topic-colas"><span>Colas</span></a></p>', guides)
         self.assertIn('data-search="Start guide A S Primeros-Pasos Colas"', guides)  # Matching still finds it.
         html = article_html(Article(title='T', slug='t', author='Ana', body='# T', tags=['primeros-pasos', 'Colas']),
                             'https://athena.test')
         self.assertIn('<p class="article-meta">Guía · Ana · Colas</p>', html)
+
+    def test_tag_chips_link_to_the_guides_topic(self):
+        # Round 5 #38 (contract 4): every server chip opens the Guías topic filter with the reader's topic id.
+        for slug, kind in [('chip-guide', 'guide'), ('chip-tool', 'tool'), ('chip-news', 'announcement')]:
+            Article.objects.create(title=slug, slug=slug, kind=kind, summary='S', author='A', status='stable' if kind == 'tool' else '',
+                                   tags=['primeros-pasos', 'Gestión  de Colas', 'A|B'], published=True, is_public=True)
+        chips = ('<p class="tag-list"><a class="tag-chip" href="#/guides?id=guide-topic-gestion-de-colas"><span>Gestión  de Colas</span></a>'
+                 '<a class="tag-chip" href="#/guides?id=guide-topic-a-b"><span>A|B</span></a></p>')
+        for path in ['/guides.md', '/tools.md', '/updates.md']:
+            self.assertIn(chips, self.client.get(path).content.decode(), path)
+
+    def test_list_rows_share_one_order_and_meta_voice(self):
+        # Round 5 #1: tool cards leave out the kind; the Actualizaciones card has the .item-meta line after its chips.
+        Article.objects.create(title='T', slug='t-tool', kind='tool', status='stable', summary='S', author='A', tags=['X'],
+                               published=True, is_public=True)
+        Article.objects.create(title='N', slug='n-news', kind='announcement', summary='S', author='Luis', tags=['Y'],
+                               published=True, is_public=True)
+        tools = self.client.get('/tools.md').content.decode()
+        self.assertNotIn('item-meta__kind', tools)
+        self.assertRegex(tools, r'(?s)<h2><a href="#/content/t-tool">T</a></h2><p>S</p>\n<p class="status status-stable">Estable</p>\n'
+                                r'<p class="tag-list">.*?</p>\n<p class="item-meta"><span class="item-meta__author">A</span>')
+        updates = self.client.get('/updates.md').content.decode()
+        self.assertNotIn('post-meta', updates)
+        self.assertRegex(updates, r'(?s)<h3><a href="#/content/n-news">N</a></h3><p class="post-summary">S</p>\s*'
+                                  r'<p class="tag-list">.*?</p>\n<p class="item-meta"><span class="item-meta__kind">Anuncio</span>'
+                                  r'<span class="item-meta__author">Luis</span><span class="item-meta__date">Actualizado <time')
+
+    def test_guide_download_link_opens_its_file_row(self):
+        # Round 5 #22 (contract 3): guide rows and update cards use the tool card link.
+        for slug, kind in [('dl-guide', 'guide'), ('dl-news', 'announcement')]:
+            Article.objects.create(title=slug, slug=slug, kind=kind, summary='S', author='A', download_file='faro.zip', published=True)
+        self.client.force_login(self.reader)
+        for path in ['/guides.md', '/updates.md']:
+            page = self.client.get(path).content.decode()
+            self.assertIn('href="#/downloads?id=download-file-faro-zip">Ver en Descargas</a>', page, path)
+            self.assertNotIn('Descarga aprobada', page, path)
+
+    def test_markdown_prose_keeps_block_ends(self):
+        # Round 5 #17: a callout and the next paragraph are two blocks in the excerpt source, as in HTML articles.
+        from .views import search_entry
+        entry = search_entry(Article(title='T', slug='t', kind='guide', summary='s', author='a', published=True,
+                                     updated_at=timezone.now(), body='# T\n\n> **Importante** No reintente.\n\nCuando cambia.'))
+        self.assertEqual(entry['prose'], 'T Importante No reintente.\nCuando cambia.')
 
     def test_article_tools_edit_and_export_links(self):
         export = '<a class="copy-page copy-page--ghost" href="/content/first-guide.pdf" download>'
@@ -1418,6 +1461,48 @@ class DownloadTests(TestCase):
         self.assertEqual(self.client.put(url, '{}', content_type='application/json', **write)['Allow'], 'PATCH, DELETE')
 
 
+    def test_release_and_download_link_both_ways(self):
+        # Round 5 #35 (contract 2): a Versión article and a file with the same title (trim, case fold) link both ways.
+        Download.objects.create(title='Plantilla base 3.1.0', section='previous', file=ContentFile(b'o', name='base-310.zip'))
+        Download.objects.create(title='Plantilla base 3.2.0', section='previous', file=ContentFile(b'p', name='base-320-rc.zip'))
+        new = Download.objects.create(title=' plantilla BASE 3.2.0 ', section='framework', file=ContentFile(b'n', name='base-320.zip'))
+        Download.objects.create(title='Plantilla base 3.2.0', section='framework', published=False,
+                                file=ContentFile(b'h', name='base-320-hidden.zip'))  # Two published files of one title: the newest.
+        Download.objects.create(title='Paquete de utilidades de Excel 2.0.0', section='packages', file=ContentFile(b'e', name='excel.zip'))
+        Article.objects.create(title='Plantilla base 3.2.0', slug='base-320', kind='release', summary='S', author='A',
+                               body='Notas.', published=True, is_public=True)
+        Article.objects.create(title='Paquete de utilidades de Excel 2.0.0', slug='excel-draft', kind='release', summary='S',
+                               author='A', body='Notas.', published=False)
+        Article.objects.create(title='Plantilla base 3.1.0', slug='base-310-guide', kind='guide', summary='S', author='A',
+                               body='Guía.', published=True)  # Only a Versión article is release notes.
+        index = self.client.get('/search-index.json').content.decode()
+        self.assertEqual([e['title'] for e in json.loads(index)], ['Plantilla base 3.2.0'])  # Visitors: no file, no row link.
+        self.assertNotIn('download', index)
+        visitor_updates = self.client.get('/updates.md').content.decode()
+        self.assertNotIn('download', visitor_updates)
+        self.assertNotIn('Ver en Descargas', visitor_updates)
+        self.client.force_login(self.reader)
+        entries = {(e['kind'], e['title']): e for e in self.client.get('/search-index.json').json()}
+        self.assertEqual(entries['release', 'Plantilla base 3.2.0']['download'], 'download-file-' + new.slug)
+        self.assertNotIn('download', entries['guide', 'Plantilla base 3.1.0'])
+        updates = self.client.get('/updates.md').content.decode()
+        self.assertIn(f'<a class="post-link" href="#/downloads?id=download-file-{new.slug}">Ver en Descargas</a>', updates)
+        context = self.client.get('/downloads.md').context
+        items = {item.title: item for _, _, items in context['sections'] for item in items}
+        self.assertEqual([(t, items[t].notes_slug, items[t].family) for t in sorted(items, key=str.strip)], [
+            ('Framework actual', '', 'Framework actual'),
+            ('Paquete de utilidades de Excel 2.0.0', '', 'Paquete de utilidades de Excel'),  # The notes are a draft.
+            ('Plantilla base 3.1.0', '', 'Plantilla base'),
+            ('Plantilla base 3.2.0', 'base-320', 'Plantilla base'),
+            (' plantilla BASE 3.2.0 ', 'base-320', 'plantilla BASE')])
+
+    def test_download_search_entry_has_size_and_a_fixed_summary(self):
+        # Round 5 #18 (contract 6): the reader formats the size; the summary has one form per section, no size.
+        self.client.force_login(self.reader)
+        entry = next(e for e in self.client.get('/search-index.json').json() if e['kind'] == 'download')
+        self.assertEqual((entry['size'], entry['summary']), (len(self.data), 'Archivo aprobado en Framework.'))
+
+
 class RobotsTests(TestCase):
     def test_site_is_not_indexable(self):
         response = self.client.get('/robots.txt')
@@ -1616,24 +1701,24 @@ class ReaderPageTests(TestCase):
         # The text is the stored body; the sections follow the reader's body, with its title heading and PDF link.
         self.assertEqual(entry['text'], 'Intro con negrita y código. Instalar Paso uno. $ruta = "C:\\\\Bots" visible '
                                         'Detalles a b 1 2 Notas & avisos Cita final.')
-        self.assertEqual(entry['prose'], 'Intro con negrita y …. Instalar Paso uno. visible Detalles a b 1 2 Notas & avisos Cita final.')
+        self.assertEqual(entry['prose'], 'Intro con negrita y ….\nInstalar Paso uno.\nvisible\nDetalles a b 1\n2\nNotas & avisos Cita final.')
         self.assertEqual(entry['headings'], [
             {'level': 1, 'raw': 'Guía &lt;A&amp;B&gt;', 'title': 'Guía <A&B>', 'text': 'Intro con negrita y código.',
              'prose': 'Intro con negrita y ….'},
             {'level': 2, 'raw': 'Instalar', 'title': 'Instalar', 'text': 'Paso uno. $ruta = "C:\\\\Bots" visible',
-             'prose': 'Paso uno. visible'},
-            {'level': 2, 'raw': 'Detalles', 'title': 'Detalles', 'text': 'a b 1 2', 'prose': 'a b 1 2'},
+             'prose': 'Paso uno.\nvisible'},
+            {'level': 2, 'raw': 'Detalles', 'title': 'Detalles', 'text': 'a b 1 2', 'prose': 'a b 1\n2'},
             {'level': 3, 'raw': 'Notas &amp; avisos', 'title': 'Notas & avisos', 'text': 'Cita final. Abrir PDF original',
-             'prose': 'Cita final. Abrir PDF original'}])
+             'prose': 'Cita final.\nAbrir PDF original'}])
 
     def test_search_prose_skips_code_and_keeps_text_after_unclosed_code(self):
         from .views import html_texts
-        self.assertEqual(html_texts('<p>a <code>x</code> b</p><pre><code>y</code></pre><p>c</p>'), ('a x b y c', 'a … b c'))  # "…" only for inline code
+        self.assertEqual(html_texts('<p>a <code>x</code> b</p><pre><code>y</code></pre><p>c</p>'), ('a x b y c', 'a … b\nc'))  # "…" only for inline code
         # Hidden text stays out of both; code inside hidden text and hidden text inside code too.
         self.assertEqual(html_texts('<p>a <span aria-hidden="true">h <code>x</code></span> <code>y <button>z</button></code> b</p>'),
                          ('a y b', 'a … b'))
         # An HTML article with an unclosed code element loses no prose after it.
-        self.assertEqual(html_texts('<p>a <code>x</p><h2>Later</h2><p>text</p>'), ('a x Later text', 'a x Later text'))
+        self.assertEqual(html_texts('<p>a <code>x</p><h2>Later</h2><p>text</p>'), ('a x Later text', 'a x\nLater text'))
         self.assertEqual(html_texts('<pre>a <span aria-hidden="true">h</pre> b'), ('a h b', 'b'))
 
     def test_html_article_prose_is_paragraph_text_only(self):

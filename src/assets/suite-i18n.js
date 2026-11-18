@@ -218,6 +218,7 @@
     [/^Clave de API · (.+) · (.+) · vence$/s, (name, scope) => `API key · ${name} · ${english(scope)} · expires`],
     [/^Ver las (\S+) guías de (.+)$/s, (n, topic) => `See all ${n} guides on ${topic}`],
     [/^Ampliar imagen: (.+)$/s, (alt) => `Zoom image: ${alt}`],
+    [/^Archivo aprobado en (.+)\.$/s, (section) => `Approved file in ${english(section)}.`],
     [/^› (.+)$/s, (rest) => `› ${english(rest)}`], [/^· (.+)$/s, (rest) => `· ${english(rest)}`],
     [/^Subiendo (\d+) imág?(?:en|enes)\. Puede seguir escribiendo; espere para guardar\.$/, (n) => `Uploading ${plural(n, 'image')}. You can keep writing; wait before you save.`],
     [/^(.+) importado\. Puede editar el Markdown antes de guardar\.$/s, (name) => `${name} imported. You can edit the Markdown before you save.`],
