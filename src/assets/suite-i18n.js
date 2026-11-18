@@ -26,7 +26,7 @@
     'Todavía no hay artículos públicos. Puede ingresar si tiene una cuenta.': 'There are no public articles yet. You can sign in if you have an account.',
     '¿Documentó una solución que el equipo puede volver a usar?': 'Did you document a fix the team can use again?', 'Cómo contribuir': 'How to contribute',
     'Nuevo artículo': 'New article', 'Buscar guías': 'Search guides', 'Título, autor, resumen o etiqueta': 'Title, author, summary or tag',
-    'Etiqueta': 'Tag', 'Secciones': 'Sections', 'Más en': 'More in', 'Enter para buscar': 'Enter to search', 'Notas de la versión': 'Release notes', 'Todas': 'All', 'Todo': 'All', 'Temas de las guías': 'Guide topics', 'Todos los temas': 'All topics', 'Sin etiqueta': 'Untagged',
+    'Etiqueta': 'Tag', 'Secciones': 'Sections', 'Más en': 'More in', ', tema de Guías': ', Guides topic', ', buscar en Athena': ', search Athena', 'Enter para buscar': 'Enter to search', 'Notas de la versión': 'Release notes', 'Todas': 'All', 'Todo': 'All', 'Temas de las guías': 'Guide topics', 'Todos los temas': 'All topics', 'Sin etiqueta': 'Untagged',
     'No hay guías que coincidan con estos filtros.': 'No guides match these filters.',
     'No hay herramientas que coincidan con este filtro.': 'No tools match this filter.',
     'No hay actualizaciones que coincidan con este filtro.': 'No updates match this filter.',
@@ -184,7 +184,7 @@
   };
   const sourceText = new WeakMap();
   const sourceAttributes = new WeakMap();
-  const content = '.guide-title,.guide-summary,.guide-author,.item-meta__author,.guide-topic h2,.guide-topic-jumps a,.tag-list,.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div>:is(strong,code,p),.download-archive h3,.image-viewer__caption';
+  const content = '.guide-title,.guide-summary,.guide-author,.item-meta__author,.guide-topic h2,.guide-topic-jumps a,.tag-list span:not(.status,.visually-hidden),.search-result__body h2,.search-result__summary,.search-result__excerpt,.library-card>h2,.library-card>p:not([class]),.post-summary,.catalog-item>div>:is(strong,code,p),.download-archive h3,.image-viewer__caption';
   const articleUI = '.article-actions,.article-tools,.article-access,.page-tree summary,.pagination-item,.unavailable-page';
   // Admin user content: titles, names, authors, usernames, the Markdown source and the raw key.
   const adminContent = '#result_list tbody :is(.field-title,.field-name,.field-author,.field-user,.field-username,.field-filename,.field-path),.actionlist .download-file,.actionlist a,.actionlist strong,.directory-table tbody th,.directory-panel header h2,.desk-user,.key-created code,textarea,.readonly a';

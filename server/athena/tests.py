@@ -761,11 +761,11 @@ class PortalTests(TestCase):
                                tags=['primeros-pasos', 'Avisos'], url='https://example.test/news', published=True, is_public=True)
         tools = self.client.get('/tools.md').content.decode()
         # No guide has these tags, so the chips open the search (contract 7).
-        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/search?q=Colas"><span>Colas</span></a></p>', tools)
+        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/search?q=Colas"><span>Colas</span><span class="visually-hidden">, buscar en Athena</span></a></p>', tools)
         self.assertIn('data-search="Start tool A S Primeros-Pasos Colas"', tools)  # Matching still finds it.
         updates = self.client.get('/updates.md').content.decode()
-        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/search?q=Avisos"><span>Avisos</span></a></p>', updates)
-        self.assertIn('<p class="post-actions"><a class="post-link" href="https://example.test/news" target="_blank" rel="noreferrer">Sitio oficial</a></p>', updates)
+        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/search?q=Avisos"><span>Avisos</span><span class="visually-hidden">, buscar en Athena</span></a></p>', updates)
+        self.assertIn('<p class="card-links"><a href="https://example.test/news" target="_blank" rel="noreferrer">Sitio oficial</a></p>', updates)
 
     def test_updates_are_announcements_and_releases_only(self):
         # Round 3 #26: one set for the page, its crumb and the search type (announcement, release).
@@ -785,11 +785,29 @@ class PortalTests(TestCase):
         Article.objects.create(title='Start guide', slug='start-guide', kind='guide', summary='S', author='A',
                                tags=['Primeros-Pasos', 'Colas'], published=True, is_public=True)
         guides = self.client.get('/guides.md').content.decode()
-        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/guides?id=guide-topic-colas"><span>Colas</span></a></p>', guides)
+        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/guides?id=guide-topic-colas"><span>Colas</span><span class="visually-hidden">, tema de Guías</span></a></p>', guides)
         self.assertIn('data-search="Start guide A S Primeros-Pasos Colas"', guides)  # Matching still finds it.
         html = article_html(Article(title='T', slug='t', author='Ana', body='# T', tags=['primeros-pasos', 'Colas']),
                             'https://athena.test')
         self.assertIn('<p class="article-meta">Guía · Ana · Colas</p>', html)
+
+    def test_cards_have_status_first_in_the_chip_row_and_one_link_row(self):
+        # Round 6 #1, #18 (contract 1): the status chip leads the chip row; place links are plain links in one row.
+        Article.objects.create(title='T', slug='t-tool', kind='tool', status='alpha', summary='S', author='A', tags=['X'],
+                               url='https://example.test/t', download_file='t.zip', pdf_name='t.pdf', published=True, is_public=True)
+        Article.objects.create(title='N', slug='n-news', kind='announcement', summary='S', author='A', tags=['Y'],
+                               published=True, is_public=True)
+        self.client.force_login(self.reader)
+        tools = self.client.get('/tools.md').content.decode()
+        self.assertIn('<p class="tag-list"><span class="status status-alpha">Alfa</span><a class="tag-chip"', tools)
+        self.assertIn('</p>\n<p class="card-links"><a href="https://example.test/t" target="_blank" rel="noreferrer">Sitio oficial</a>'
+                      '<a href="#/downloads?id=download-file-t-zip">Ver en Descargas</a>'
+                      '<a href="/pdf/t-tool.pdf" target="_blank" rel="noreferrer">Abrir PDF original</a></p>\n<p class="item-meta">', tools)
+        updates = self.client.get('/updates.md').content.decode()
+        for page in (tools, updates):
+            for old in ('post-link', 'post-actions', 'pdf-link', '<p class="status'):
+                self.assertNotIn(old, page)
+        self.assertNotIn('card-links', updates)  # No link: no empty row.
 
     def test_chips_open_the_topic_only_when_a_readable_guide_has_the_tag(self):
         # Round 5 contract 7: a chip opens the Guías topic when a published guide the reader can read has the tag,
@@ -801,17 +819,19 @@ class PortalTests(TestCase):
         Article.objects.create(title='Tool', slug='tool-x', kind='tool', status='stable', summary='S', author='A',
                                tags=['colas', 'Sin guía', 'Solo borrador'], published=True, is_public=True)
         tools = self.client.get('/tools.md').content.decode()
-        self.assertIn('<a class="tag-chip" href="#/guides?id=guide-topic-colas"><span>colas</span></a>', tools)
-        self.assertIn('<a class="tag-chip" href="#/search?q=Sin+gu%C3%ADa"><span>Sin guía</span></a>', tools)
-        self.assertIn('<a class="tag-chip" href="#/search?q=Solo+borrador"><span>Solo borrador</span></a>', tools)
+        # Round 6 #29 (contract 2): a hidden word names where the chip goes.
+        topic, search = '<span class="visually-hidden">, tema de Guías</span>', '<span class="visually-hidden">, buscar en Athena</span>'
+        self.assertIn(f'<a class="tag-chip" href="#/guides?id=guide-topic-colas"><span>colas</span>{topic}</a>', tools)
+        self.assertIn(f'<a class="tag-chip" href="#/search?q=Sin+gu%C3%ADa"><span>Sin guía</span>{search}</a>', tools)
+        self.assertIn(f'<a class="tag-chip" href="#/search?q=Solo+borrador"><span>Solo borrador</span>{search}</a>', tools)
 
     def test_tag_chips_link_to_the_guides_topic(self):
         # Round 5 #38 (contract 4): every server chip opens the Guías topic filter with the reader's topic id.
         for slug, kind in [('chip-guide', 'guide'), ('chip-tool', 'tool'), ('chip-news', 'announcement')]:
             Article.objects.create(title=slug, slug=slug, kind=kind, summary='S', author='A', status='stable' if kind == 'tool' else '',
                                    tags=['primeros-pasos', 'Gestión  de Colas', 'A|B'], published=True, is_public=True)
-        chips = ('<p class="tag-list"><a class="tag-chip" href="#/guides?id=guide-topic-gestion-de-colas"><span>Gestión  de Colas</span></a>'
-                 '<a class="tag-chip" href="#/guides?id=guide-topic-a-b"><span>A|B</span></a></p>')
+        chips = ('<a class="tag-chip" href="#/guides?id=guide-topic-gestion-de-colas"><span>Gestión  de Colas</span><span class="visually-hidden">, tema de Guías</span></a>'
+                 '<a class="tag-chip" href="#/guides?id=guide-topic-a-b"><span>A|B</span><span class="visually-hidden">, tema de Guías</span></a></p>')
         for path in ['/guides.md', '/tools.md', '/updates.md']:
             self.assertIn(chips, self.client.get(path).content.decode(), path)
 
@@ -823,8 +843,8 @@ class PortalTests(TestCase):
                                published=True, is_public=True)
         tools = self.client.get('/tools.md').content.decode()
         self.assertNotIn('item-meta__kind', tools)
-        self.assertRegex(tools, r'(?s)<h2><a href="#/content/t-tool">T</a></h2><p>S</p>\n<p class="status status-stable">Estable</p>\n'
-                                r'<p class="tag-list">.*?</p>\n<p class="item-meta"><span class="item-meta__author">A</span>')
+        self.assertRegex(tools, r'(?s)<h2><a href="#/content/t-tool">T</a></h2><p>S</p>\n<p class="tag-list"><span class="status status-stable">Estable</span>'
+                                r'.*?</p>\n<p class="item-meta"><span class="item-meta__author">A</span>')
         updates = self.client.get('/updates.md').content.decode()
         self.assertNotIn('post-meta', updates)
         self.assertRegex(updates, r'(?s)<h3><a href="#/content/n-news">N</a></h3><p class="post-summary">S</p>\s*'
@@ -1511,7 +1531,7 @@ class DownloadTests(TestCase):
         self.assertEqual(entries['release', 'Plantilla base 3.2.0']['download'], 'download-file-' + new.slug)
         self.assertNotIn('download', entries['guide', 'Plantilla base 3.1.0'])
         updates = self.client.get('/updates.md').content.decode()
-        self.assertIn(f'<a class="post-link" href="#/downloads?id=download-file-{new.slug}">Ver en Descargas</a>', updates)
+        self.assertIn(f'<p class="card-links"><a href="#/downloads?id=download-file-{new.slug}">Ver en Descargas</a></p>', updates)
         context = self.client.get('/downloads.md').context
         items = {item.title: item for _, _, items in context['sections'] for item in items}
         self.assertEqual([(t, items[t].notes_slug, items[t].family) for t in sorted(items, key=str.strip)], [
@@ -1535,9 +1555,22 @@ class DownloadTests(TestCase):
         response = self.client.get('/downloads.md')
         items = [item for key, _, items in response.context['sections'] if key == 'previous' for item in items]
         self.assertEqual({(item.family, item.family_key) for item in items}, {('CONECTOR', 'conector')})
+        # Round 6 #34 (contract 3): families sort by the section of their newest file, then by name.
+        self.assertEqual({item.family_sort for item in items}, {'03-conector'})
         page = response.content.decode()
         self.assertEqual(re.findall(r'<h3>([^<]+)</h3>', page), ['CONECTOR'])  # One group, newest first in it.
         self.assertLess(page.index('c12.zip'), page.index('c10.zip'))
+
+    def test_download_families_sort_by_the_section_of_their_newest_file(self):
+        # Round 6 #34 (contract 3): Download.SECTIONS index of the newest file, zero-padded, "-", family_key.
+        for title, section, name in [('Zeta 1.0', 'previous', 'z10.zip'), ('Alfa 1.0', 'previous', 'a10.zip'),
+                                     ('Zeta 2.0', 'packages', 'z20.zip'), ('Beta 1.0', 'previous', 'b10.zip')]:
+            Download.objects.create(title=title, section=section, file=ContentFile(b'f', name=name))
+        self.client.force_login(self.reader)
+        items = {item.title: item.family_sort for _, _, items in self.client.get('/downloads.md').context['sections']
+                 for item in items}
+        self.assertEqual(items, {'Framework actual': '00-framework actual', 'Zeta 1.0': '01-zeta', 'Zeta 2.0': '01-zeta',
+                                 'Alfa 1.0': '03-alfa', 'Beta 1.0': '03-beta'})
 
     def test_download_search_entry_has_size_and_a_fixed_summary(self):
         # Round 5 #18 (contract 6): the reader formats the size; the summary has one form per section, no size.
@@ -1837,7 +1870,15 @@ class ReaderPageTests(TestCase):
         html = article_html(Article(title='T', slug='t', author='A', body=f'# T\n\nUse `{short}` or `{long}`.\n\n```\n{long}\n```'),
                             'https://athena.test')
         self.assertIn(f'<p>Use <code>{short}</code> or <code class="long">{long}</code>.</p>', html)
-        self.assertIn(f'<pre><code class="long">{long}', html)  # Inside pre the rule never applies.
+        self.assertIn(f'<pre><code>{long}', html)  # A code block is no inline code.
+
+    def test_pdf_long_code_breaks_after_a_slash_and_table_headers_use_the_reader_type(self):
+        # Round 6 #27, #20 (contract 4): long inline code breaks after "/" first; th is Inter 14px/1.3 weight 600.
+        path = 'plantillas/base/configuracion/ambientes/pruebas.json'
+        html = article_html(Article(title='T', slug='t', author='A', body=f'# T\n\nAbra `{path}` y `a/b`.'), 'https://athena.test')
+        self.assertIn('<code class="long">plantillas/<wbr>base/<wbr>configuracion/<wbr>ambientes/<wbr>pruebas.json</code>', html)
+        self.assertIn('<code>a/b</code>', html)  # Short code has no break.
+        self.assertIn('th { font: 600 14px/1.3 Inter, sans-serif }', html)
         self.assertIn(':not(pre) > code { white-space: nowrap }', html)
 
     def test_pdf_footer_prints_the_share_link_whole_on_its_own_line(self):

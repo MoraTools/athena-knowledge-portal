@@ -459,6 +459,7 @@ pre code { padding: 0 }
 img { max-width: 100%; break-inside: avoid }
 table { border-collapse: collapse; margin: .8em 0 }
 th, td { border: .5pt solid var(--border-strong); padding: .3em .5em; text-align: left; vertical-align: top }
+th { font: 600 14px/1.3 Inter, sans-serif }
 blockquote { margin: .8em 0; padding: 0 1em; border-left: 3pt solid var(--border); color: var(--text-muted) }
 """)
 
@@ -490,7 +491,9 @@ def article_html(article, origin):
     body = re.sub(r'\bhref="([^"]*)"', lambda m: f'href="{export_href(m[1], escape(origin))}"', body)
     # Short inline code stays on one line, as in the reader; a long value may wrap anywhere.
     # 24 characters: the same number as markLongCode in src/app.js (round 5 contract 1).
-    body = re.sub(r'<code>([^<]*)</code>', lambda m: f'<code class="long">{m[1]}</code>' if len(unescape(m[1])) > 24 else m[0], body)
+    # Contract 4 (round 6): a long value breaks after "/" first, anywhere only inside a segment longer than the line.
+    body = re.sub(r'(?<!<pre>)<code>([^<]*)</code>', lambda m: f'<code class="long">{m[1].replace("/", "/<wbr>")}</code>'
+                  if len(unescape(m[1])) > 24 else m[0], body)
     # The reader's meta line under the h1 (type · author · Actualizado <date> · tags), and the share address in the footer.
     meta = [article.get_kind_display(), article.author]
     if article.updated_at:
@@ -669,12 +672,16 @@ def downloads_page(request):
     published = list(Download.objects.filter(published=True))
     notes = {release_key(title): slug for title, slug in visible_articles(request.user).filter(kind='release')
              .order_by('updated_at', 'pk').values_list('title', 'slug')}
-    spelling = {}  # Families equal after case fold are one group, named as the newest file names it.
+    # Families equal after case fold are one group, named as the newest file names it; contract 3 (round 6): groups sort
+    # by the section of that newest file, then by name.
+    newest, order = {}, [key for key, _ in Download.SECTIONS]
     for item in sorted(published, key=lambda item: (item.created_at, item.pk)):
         item.family_key = download_family(item.title).casefold()
-        spelling[item.family_key] = download_family(item.title)
+        newest[item.family_key] = item
     for item in published:  # Contract 2: the release notes of a file and the family Versiones anteriores groups by.
-        item.notes_slug, item.family = notes.get(release_key(item.title), ''), spelling[item.family_key]
+        last = newest[item.family_key]
+        item.notes_slug, item.family = notes.get(release_key(item.title), ''), download_family(last.title)
+        item.family_sort = f'{order.index(last.section):02d}-{item.family_key}'
     sections = [(key, label, [d for d in published if d.section == key]) for key, label in Download.SECTIONS]
     current = current_framework()
     return render(request, 'downloads.md', {
@@ -696,8 +703,9 @@ def library(request, section):
     topics = {topic_id(tag) for tags in visible_articles(request.user).filter(kind='guide').values_list('tags', flat=True)
               for tag in tags if tag.lower() not in PLACEMENT_TAGS}
     for article in articles:
-        article.chips = [(tag, f'#/guides?id={topic}' if topic in topics else '#/search?' + urlencode({'q': tag}))
-                         for tag, topic in article.topic_links]
+        # Contract 2 (round 6): a hidden word names where the chip goes.
+        article.chips = [(tag, f'#/guides?id={topic}', ', tema de Guías') if topic in topics else
+                         (tag, '#/search?' + urlencode({'q': tag}), ', buscar en Athena') for tag, topic in article.topic_links]
     tags = sorted({tag for article in articles for tag in article.tags})
     return render(request, 'library.md', {'section': section, 'articles': articles, 'tags': tags},
                   content_type='text/markdown; charset=utf-8')

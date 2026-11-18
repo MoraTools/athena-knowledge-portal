@@ -26,6 +26,8 @@ assert.equal(boot.storedValueAfterToggle('en', 'es'), 'en');
   const content = read('src/assets/suite-i18n.js').match(/const content = '([^']*)'/)[1].split(',');
   assert.ok(!content.includes('.catalog-item>div'), 'The whole file row is not content.');
   for (const part of ['.catalog-item>div>:is(strong', 'code', 'p)', '.download-archive h3']) assert.ok(content.includes(part), part);
+  // Round 6 contract 2: the status chip and the hidden chip destination in a tag row are interface text.
+  assert.ok(!content.includes('.tag-list') && content.includes('.tag-list span:not(.status'), 'Only the tag names in a tag row are content.');
 }
 
 // The reader loading shell: a failed script or no render after 10 s turns the status line into an error with a reload link.
