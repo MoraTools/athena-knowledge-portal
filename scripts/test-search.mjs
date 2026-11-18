@@ -1012,7 +1012,11 @@ assert.doesNotMatch(readerCss, /\.search-result>\.search-result__meta\{order:-1\
 assert.match(readerCss, /\.catalog-item>div\{display:flex;flex-direction:column;align-items:flex-start;gap:2px\}/);
 assert.doesNotMatch(readerCss, /\.catalog-item>div::before|\.catalog-item>div>code\{order/);
 // Round 5 #6: the section focus ring stays inside the column, clear of the heading text.
-assert.match(readerCss, /\.download-section>h2\{padding:var\(--s-1\) var\(--space-1\)\}\.download-section>h2:focus-visible\{outline-offset:-2px\}/);
+// Round 5 A4: the section title starts at the page text edge (no inline padding); the inset ring stays in the column, and the
+// block padding keeps it clear of the text.
+assert.match(readerCss, /\.download-section>h2\{padding:var\(--s-1\) 0\}\.download-section>h2:focus-visible\{outline-offset:-2px\}/);
+// The release notes link wraps as one part, never inside its words.
+assert.match(readerCss, /\.catalog-item small a\{white-space:nowrap\}/);
 {
   const downloadsMd = readFileSync(new URL('../server/athena/templates/downloads.md', import.meta.url), 'utf8');
   // Round 5 #23: the Descargas sections use the Guías phone box (one native box, open as a row on wider readers).
@@ -1103,7 +1107,7 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
   context.fetch = async (url) => ({ ok: url === '/search-index.json', json: async () => [
     { route: '#/content/other', kind: 'tool', title: 'Other', author: 'X', date: '2026-01-01', tags: [] },
     { route: '#/content/guide', kind: 'guide', title: 'Guide', author: 'Ana Pérez', date: '2026-11-15', tags: ['primeros-pasos', 'RPA', 'Colas'] },
-    { route: '#/content/tool', kind: 'tool', title: 'Tool', author: 'X', date: '2026-01-01', tags: ['Colas'] },
+    { route: '#/content/tool', kind: 'tool', title: 'Tool', author: 'X', date: '2026-01-01', tags: ['Colas', 'Macros'] },
     { route: '#/content/release', kind: 'release', title: 'Plantilla base 3.2.0', author: 'X', date: '2026-01-01', tags: [], download: 'download-file-plantilla-base-3-2-0' },
     { route: '#/content/rpa-1', kind: 'guide', title: 'RPA uno', summary: 'Resumen uno', author: 'Bea', date: '2026-02-01', tags: ['RPA'] },
     { route: '#/content/rpa-tool', kind: 'tool', title: 'Herramienta RPA', summary: 'No es guía', author: 'X', date: '2026-02-01', tags: ['RPA'] },
@@ -1133,11 +1137,15 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
   context.location.hash = '#/content/tool';
   section.childNodes = [title];
   await context.buildArticleMeta();
-  assert.deepEqual(section.children[1].children.at(-1).children.map((link) => link.href), ['#/search?q=Colas'], 'Other kinds keep the search link.');
+  // Round 5 A4, contract 7: a chip opens its Guías topic only when a guide in the index has the tag (compared by topic
+  // key), whatever the entry kind; any other tag searches Athena.
+  assert.deepEqual(section.children[1].children.at(-1).children.map((link) => link.href), ['#/guides?id=guide-topic-colas', '#/search?q=Macros'],
+    'A tool tag that a guide has opens the topic; a tool tag with no guide searches.');
   // Search results use the same meta order as the article head.
+  const loadedIndex = await vm.runInContext('loadSearchIndex()', context);
   context.document.createTextNode = (text) => ({ textContent: text });
   const result = context.createSearchResult(context.prepareSearchEntry({ route: '#/content/guide', kind: 'guide', title: 'Guide', summary: 'S',
-    author: 'Ana Pérez', date: '2026-11-15', tags: ['RPA', 'primeros-pasos', 'Colas'], text: '', prose: '', headings: [] }), ['guide']);
+    author: 'Ana Pérez', date: '2026-11-15', tags: ['RPA', 'primeros-pasos', 'Colas'], text: '', prose: '', headings: [] }), ['guide'], loadedIndex);
   const resultMeta = result.children.find((node) => node.className === 'search-result__meta');
   assert.deepEqual(resultMeta.children.map((node) => node.textContent), ['Guía', 'Ana Pérez', 'Actualizado ' + vm.runInContext("formatDate('2026-11-15')", context)]);
   // Round 5 #1: one order in every list row (title, summary, chips, meta line); the kind is a meta item, not a gold kicker.
@@ -1148,6 +1156,10 @@ assert.equal(tables[0].tBodies[0].rows[0].textContent, '1', 'A new Docsify rende
   const resultChips = result.children[1].children[0];
   assert.deepEqual(resultChips.children.map((chip) => [chip.tagName, chip.className, chip.href, chip.children[0].tagName, chip.textContent]),
     [['A', 'tag-chip', '#/guides?id=guide-topic-rpa', 'SPAN', 'RPA'], ['A', 'tag-chip', '#/guides?id=guide-topic-colas', 'SPAN', 'Colas']]);
+  const toolResult = context.createSearchResult(context.prepareSearchEntry({ route: '#/content/tool', kind: 'tool', title: 'Tool', summary: 'S',
+    author: 'X', date: '2026-01-01', tags: ['colas', 'Macros'], text: '', prose: '', headings: [] }), ['tool'], loadedIndex);
+  assert.deepEqual(toolResult.children[1].children[0].children.map((chip) => chip.href), ['#/guides?id=guide-topic-colas', '#/search?q=Macros'],
+    'Contract 7 in results: the topic only when a guide has the tag.');
   // Round 5 #18, contract 6: a download result shows its size in the interface number format; its fixed summary is
   // interface text (suite-i18n translates it), and its section and type chips are no topic links.
   const download = { route: '/downloads/plantilla', kind: 'download', title: 'Plantilla base 3.2.0', summary: 'Archivo aprobado en Framework.', size: 9011,

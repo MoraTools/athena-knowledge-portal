@@ -774,7 +774,18 @@ function stateLink(label, href) {
   return link;
 }
 
-function createSearchResult(entry, terms) {
+// Contract 7: a topic chip opens its Guías topic only when a guide in the index has the tag (compared by topic key);
+// any other tag searches Athena. The guide topic keys are built once per loaded index.
+const guideTopicKeys = new WeakMap();
+function chipHref(tag, index) {
+  if (!guideTopicKeys.has(index)) {
+    guideTopicKeys.set(index, new Set(index.filter((item) => item.kind === 'guide').flatMap((item) => (item.tags || []).filter(isTopicTag).map(normalize))));
+  }
+  const key = normalize(tag);
+  return guideTopicKeys.get(index).has(key) ? '#/guides?id=' + guideTopicId(key) : buildSearchHash(tag, '');
+}
+
+function createSearchResult(entry, terms, index) {
   const article = document.createElement('article');
   article.className = 'search-result';
 
@@ -793,11 +804,11 @@ function createSearchResult(entry, terms) {
     chips.forEach((value) => {
       const tag = document.createElement('span');
       tag.textContent = value;
-      // Contract 4: a topic chip opens its Guías topic; a download's section and file type are no topics.
+      // Contracts 4 and 7: a chip is a link to its topic or a search; a download's section and file type are no topics.
       if (entry.kind === 'download') return tags.append(tag);
       const link = document.createElement('a');
       link.className = 'tag-chip';
-      link.href = '#/guides?id=' + guideTopicId(normalize(value));
+      link.href = chipHref(value, index);
       link.append(tag);
       tags.append(link);
     });
@@ -913,7 +924,7 @@ async function renderSearchPage() {
       return;
     }
     const fragment = document.createDocumentFragment();
-    matches.forEach(({ entry }) => fragment.append(createSearchResult(entry, terms)));
+    matches.forEach(({ entry }) => fragment.append(createSearchResult(entry, terms, index)));
     results.replaceChildren(fragment);
   } catch {
     if (version !== searchRenderVersion || !results.isConnected) return;
@@ -1053,13 +1064,13 @@ async function buildArticleMeta() {
   meta.append(...metaItems(entry));
   const topicTags = entry.tags.filter(isTopicTag);
   if (topicTags.length) {
-    // A guide tag opens Guías filtered to that tag; tags of other kinds search Athena.
+    // Contract 7: the tag's Guías topic when a guide has the tag, else a search of Athena.
     const tags = document.createElement('span');
     tags.className = 'article-meta__tags';
     tags.lang = 'es';
     topicTags.forEach((tag) => {
       const link = document.createElement('a');
-      link.href = entry.kind === 'guide' ? '#/guides?id=' + guideTopicId(normalize(tag)) : buildSearchHash(tag, '');
+      link.href = chipHref(tag, index);
       // The link is the touch target; the chip inside it keeps the chip size.
       const chip = document.createElement('span');
       chip.textContent = tag;

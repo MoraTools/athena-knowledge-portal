@@ -283,13 +283,13 @@ body.article-view .markdown-section>table{width:fit-content;min-width:min(var(--
 @container reader (max-width:600px){.catalog-item{grid-template-columns:minmax(0,1fr);justify-items:start}.download-permalink{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-1)}}
 .catalog-item>div>p{margin:0;color:var(--muted);font-size:.9rem}
 /* The section focus ring stays inside the column and clear of the heading text (a jump link focuses the h2). */
-.download-section>h2{padding:var(--s-1) var(--space-1)}.download-section>h2:focus-visible{outline-offset:-2px}
+.download-section>h2{padding:var(--s-1) 0}.download-section>h2:focus-visible{outline-offset:-2px}
 .download-controls{margin:0 0 var(--space-2)}.download-jumps a{max-width:none}.download-controls .result-count{margin:0 0 var(--space-1)}
 /* The archive summary says what a click does: show the files, or hide them again. */
 .download-archive[open] .archive-closed,.download-archive:not([open]) .archive-open{display:none}
 .catalog-item code{display:block;background:transparent;color:var(--code);padding:0;font-size:.72rem;overflow-wrap:anywhere}
 .catalog-item strong{overflow-wrap:anywhere}
-.catalog-item small{margin:0;font:13px/1.4 var(--font-mono);font-variant-numeric:tabular-nums}
+.catalog-item small{margin:0;font:13px/1.4 var(--font-mono);font-variant-numeric:tabular-nums}.catalog-item small a{white-space:nowrap}
 .folder-files{list-style:none;margin:.85rem 0 0;padding:0}.folder-files li{display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0}.folder-files li small{flex:none;margin:0}
 @container reader (min-width:900px){body.has-page-tree .content{display:grid;grid-template-columns:minmax(0,1fr) 216px;align-items:start;gap:var(--space-3);max-width:var(--content-max);padding:var(--space-3) var(--space-3) var(--space-5)}body.has-page-tree .markdown-section{grid-column:1;grid-row:1;max-width:none;padding:0}body.has-page-tree .markdown-section>table{max-width:calc(100% - var(--space-3))}.page-tree{grid-column:2;grid-row:1;position:sticky;top:calc(52px + var(--space-3));max-height:calc(100vh - 100px);margin:0;overflow:auto;background:transparent}}
 @media (min-width:1600px){body.has-page-tree .content{margin:0 auto}}
