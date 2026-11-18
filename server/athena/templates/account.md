@@ -1,6 +1,6 @@
 # {{ user.get_username }}
 
-<p class="account-meta">{{ role }} · Última sesión {% if user.last_login %}<time datetime="{{ user.last_login|date:'c' }}">{{ user.last_login|date:'d/m/Y H:i' }}</time>{% else %}<span>nunca</span>{% endif %}</p>
+<p class="item-meta"><span>{{ role }}</span><span>Última sesión {% if user.last_login %}<time datetime="{{ user.last_login|date:'c' }}">{{ user.last_login|date:'d/m/Y H:i' }}</time>{% else %}nunca{% endif %}</span></p>
 
 <div class="account-grid{% if not keys and not perms.athena.add_apikey %} no-keys{% endif %}">
 <section class="account-panel">
@@ -13,12 +13,6 @@
 {% if not keys and not perms.athena.add_apikey %}<p>Una clave de API permite que un script o un agente use Athena con su cuenta; la entrega un administrador.</p>
 {% else %}<p>Una clave de API permite que un script o un agente use Athena con su cuenta. No la necesita para leer guías ni descargar archivos.</p>
 {% if keys %}<table><thead><tr><th>Nombre</th><th>Permiso</th><th>Vence</th></tr></thead><tbody>{% for key in keys %}<tr><td>{{ key.name }}</td><td>{{ key.get_scope_display }}</td><td data-sort-value="{{ key.expires_at|date:'c' }}">{{ key.expires_at|date:'d/m/Y' }}</td></tr>{% endfor %}</tbody></table>{% else %}<p>Todavía no tiene claves de API.</p>{% endif %}
-{% if perms.athena.add_apikey %}<div class="account-actions"><a class="account-button" href="/admin/athena/apikey/add/">Crear clave</a><a class="account-button" href="/#/api">API para agentes</a></div>{% else %}<p>Pida una clave a un administrador.</p>{% endif %}{% endif %}
+{% if perms.athena.add_apikey %}<div class="account-actions"><a class="account-button" href="/admin/athena/apikey/add/">Nueva clave de API</a><a href="/#/api">API para agentes</a></div>{% else %}<p>Pida una clave a un administrador.</p>{% endif %}{% endif %}
 </section>
 </div>
-{% if is_admin %}
-<section class="account-admin">
-<h2>Administración</h2>
-<div class="account-actions"><a class="account-button" href="/admin/athena/article/">Artículos</a>{% if perms.athena.view_apikey %}<a class="account-button" href="/admin/athena/apikey/">Claves de API</a>{% endif %}<a class="account-button" href="/admin/athena/download/">Archivos de descarga</a>{% if perms.auth.view_user %}<a class="account-button" href="/admin/auth/user/">Usuarios</a>{% endif %}</div>
-</section>
-{% endif %}

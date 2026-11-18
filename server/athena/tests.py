@@ -1003,7 +1003,7 @@ class PortalTests(TestCase):
         self.assertEqual(self.client.post(change, data).status_code, 403)
         self.assertEqual(self.client.get('/content/first-guide.md').status_code, 404)  # No drafts.
         self.assertEqual(self.client.get('/admin/auth/user/').status_code, 403)
-        self.assertIn('Editor · Última sesión', self.client.get('/account.md').content.decode())  # admin.role_label
+        self.assertIn('<span>Editor</span><span>Última sesión', self.client.get('/account.md').content.decode())  # admin.role_label
         self.assertIn('[Administración](/admin/', self.client.get('/_sidebar.md').content.decode())
 
         editor = self.directory_admin('editor', ['articles'])
@@ -1079,14 +1079,16 @@ class PortalTests(TestCase):
         self.assertEqual([group for group, _ in sidebar_links(self.reader)], ['Biblioteca', 'Participar', 'Cuenta'])
         self.client.force_login(self.admin)
         self.assertIn('- Administración\n  - [Administración](/admin/ ":ignore")\n  - [API para agentes](/api.md)\n'
-                      '  - [Archivos de descarga](/admin/athena/download/ ":ignore")\n', self.client.get('/_sidebar.md').content.decode())
+                      '  - [Artículos](/admin/athena/article/ ":ignore")\n  - [Archivos de descarga](/admin/athena/download/ ":ignore")\n'
+                      '  - [Descargas registradas](/admin/athena/downloadevent/ ":ignore")\n  - [Claves de API](/admin/athena/apikey/ ":ignore")\n',
+                      self.client.get('/_sidebar.md').content.decode())  # Round 6 #6: one order by use.
         self.assertEqual(sidebar_links(self.admin)[:3], [
             ('Biblioteca', [('Inicio', '/'), ('Guías', '/#/guides'), ('Actualizaciones', '/#/updates'),
                             ('Herramientas', '/#/tools'), ('Descargas', '/#/downloads')]),
             ('Participar', [('Contribuir', '/#/content/contributing')]), ('Cuenta', [('Mi cuenta', '/#/account')]),
         ])
         self.assertEqual(sidebar_links(self.admin)[3][1][:3], [('Administración', '/admin/'), ('API para agentes', '/#/api'),
-                                                             ('Archivos de descarga', '/admin/athena/download/')])
+                                                             ('Artículos', '/admin/athena/article/')])
         item = '<a class="rail-item" href="{}"{}><span class="rail-label">{}</span></a>'.format
         reader_links = [item('/', '', 'Inicio'), item('/#/guides', '', 'Guías'), item('/#/content/contributing', '', 'Contribuir'),
                         item('/#/account', '', 'Mi cuenta')]
@@ -1157,7 +1159,8 @@ class PortalTests(TestCase):
         self.assertEqual(response['Content-Type'], 'text/markdown; charset=utf-8')
         page = response.content.decode()
         self.assertTrue(page.startswith('# reader\n'), page)
-        self.assertIn('Lector · Última sesión', page)
+        # Round 6 #35: the list meta line (sentence case, mono), as every reader list.
+        self.assertIn('<p class="item-meta"><span>Lector</span><span>Última sesión <time datetime="', page)
         self.assertIn('<td>test</td><td>Lectura</td>', page)
         self.assertRegex(page, r'<td data-sort-value="\d{4}-\d{2}-\d{2}T[^"]+">\d{2}/\d{2}/\d{4}</td>')
         self.assertNotIn('admin-key', page)  # Only the user's own keys.
@@ -1171,13 +1174,15 @@ class PortalTests(TestCase):
         self.assertRegex(page, r'<button class="account-button" type="submit">Cerrar sesión</button>')
         self.client.force_login(self.admin)
         page = self.client.get('/account.md').content.decode()
-        self.assertIn('Administrador · Última sesión', page)
+        self.assertIn('<p class="item-meta"><span>Administrador</span><span>Última sesión', page)
         self.assertIn('href="/accounts/password_change/">Cambiar contraseña</a>', page)
         self.assertIn('admin-key', page)
-        self.assertIn('href="/admin/athena/apikey/add/">Crear clave</a>', page)
-        for link in ['/admin/athena/article/', '/admin/athena/apikey/', '/admin/athena/download/', '/admin/auth/user/']:
-            self.assertIn(f'href="{link}"', page)
-        self.assertIn('<a class="account-button" href="/#/api">API para agentes</a>', page)  # The page's one name.
+        # Round 6 #6: the create action has the name of the page it opens; the API guide is one text link; the rail is
+        # the one admin navigation, so the page has no Administración row.
+        self.assertIn('<div class="account-actions"><a class="account-button" href="/admin/athena/apikey/add/">Nueva clave de API</a>'
+                      '<a href="/#/api">API para agentes</a></div>', page)
+        for gone in ['Crear clave', 'account-admin', '<h2>Administración</h2>', 'href="/admin/athena/article/"', 'href="/admin/auth/user/"']:
+            self.assertNotIn(gone, page)
         self.assertIn('<div class="account-grid">', page)
         # A reader without keys: one sentence (what a key is for, who gives one) in the narrow panel.
         ApiKey.objects.filter(user=self.reader).delete()
@@ -1896,6 +1901,43 @@ class ReaderPageTests(TestCase):
         link = [float(y) for y, word in words if word == f'https://athena.test/s/{slug}']
         self.assertEqual(len(link), 1, [word for _, word in words if 'athena' in word or 'registros' in word])
         self.assertEqual([word for y, word in words if abs(float(y) - link[0]) < 1 and 'athena' not in word], [])
+
+    def pdf_words(self, body, **fields):
+        from weasyprint import HTML
+        if not shutil.which('pdftotext'):
+            self.skipTest('pdftotext is not installed')
+        article = Article(title='T', slug='t', author='A', published=True, body=body, **fields)
+        pdf = HTML(string=article_html(article, 'https://athena.test'), url_fetcher=pdf_fetcher()).write_pdf()
+        boxes = subprocess.run(['pdftotext', '-bbox', '-', '-'], input=pdf, capture_output=True, check=True).stdout.decode()
+        # (page number, xMin, yMin, xMax, word)
+        return [(page, float(x0), float(y0), float(x1), word) for page, text in enumerate(boxes.split('<page ')[1:], 1)
+                for x0, y0, x1, word in re.findall(r'<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="[\d.]+">([^<]*)</word>', text)]
+
+    def test_pdf_footer_sits_on_the_text_column_edges(self):
+        # Round 6 #24: the footer starts where the text starts and the page count ends at the right text edge.
+        words = self.pdf_words('# T\n\n' + 'Texto de una línea completa con palabras hasta el borde derecho. ' * 6)
+        body = [w for w in words if w[2] < 700]
+        footer = [w for w in words if w[2] > 780]
+        self.assertAlmostEqual(min(w[1] for w in body), min(w[1] for w in footer), delta=0.5)
+        self.assertAlmostEqual(max(w[3] for w in footer), 595.28 - 56.69, delta=0.5)  # A4 width minus the 2 cm margin.
+        self.assertLessEqual(max(w[3] for w in body), 595.28 - 56.69 + 0.5)
+
+    def test_pdf_lead_in_stays_with_its_block_and_long_code_breaks(self):
+        # Round 6 #23: a paragraph before a code block or table goes to the next page with it; a long block does not
+        # jump to a new page and leave a gap, it breaks inside.
+        code = '```\n' + '\n'.join(f'linea{i}' for i in range(8)) + '\n```'
+        table = '| A | B |\n|---|---|\n' + '\n'.join(f'| fila{i} | x |' for i in range(6))
+        filler = self.pdf_words('# T\n\n' + '\n\n'.join(f'Relleno {i}.' for i in range(80)))
+        fit = sum(1 for w in filler if w[0] == 1 and w[4] == 'Relleno')  # Filler paragraphs on page 1.
+        for block, first in [(code, 'linea0'), (table, 'A')]:
+            for lines in (fit - 4, fit - 2):  # The lead-in falls near the end of page 1.
+                with self.subTest(block=first, lines=lines):
+                    words = self.pdf_words('# T\n\n' + '\n\n'.join(f'Relleno {i}.' for i in range(lines))
+                                           + f'\n\nEntrada al bloque:\n\n{block}\n\nFin.')
+                    lead = next(w[0] for w in words if w[4] == 'Entrada')
+                    self.assertEqual(lead, next(w[0] for w in words if w[4] == first and w[0] >= lead))
+        words = self.pdf_words('# T\n\nInicio.\n\n```\n' + '\n'.join(f'larga{i}' for i in range(90)) + '\n```')
+        self.assertEqual(next(w[0] for w in words if w[4] == 'larga0'), 1)
 
     def test_pdf_export_has_the_reader_meta_line_and_address(self):
         from weasyprint import HTML

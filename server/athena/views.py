@@ -446,7 +446,7 @@ PDF_STYLE = (''.join(re.findall(r'@font-face\{[^}]*\}', SUITE_TOKENS)).replace("
     font: 8pt/1.5 "DejaVu Sans Mono", monospace; color: var(--text-muted); text-align: right } }
 body > h1:first-of-type { string-set: title content() }
 .article-meta { margin: -.2em 0 1.4em; font: 9pt/1.5 "DejaVu Sans Mono", monospace; color: var(--text-muted) }
-body { font: 10.5pt/1.55 Inter, sans-serif; color: var(--text) }
+body { margin: 0; font: 10.5pt/1.55 Inter, sans-serif; color: var(--text) }  /* The text column is the page area, as the footer. */
 h1, h2, h3, h4, h5, h6 { color: var(--text); font-weight: 650; line-height: 1.3; margin: 1.2em 0 .5em; break-after: avoid }
 h1, h2 { font-family: Cormorant, serif; font-weight: 600 }
 h1 { font-size: 26pt; line-height: 1.15; margin-top: 0 } h2 { font-size: 18pt } h3 { font-size: 12.5pt } h4, h5, h6 { font-size: 11pt }
@@ -454,7 +454,9 @@ a { color: var(--accent-text) }
 code, pre { font-family: "DejaVu Sans Mono", monospace; font-size: 9pt; background: var(--surface-strong) }
 code { padding: 0 .2em }
 :not(pre) > code { white-space: nowrap } :not(pre) > code.long { white-space: normal; overflow-wrap: anywhere }
-pre { padding: .6em .8em; border: 1px solid var(--border); border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid }
+pre { padding: .6em .8em; border: 1px solid var(--border); border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere;
+  orphans: 4; widows: 4 }  /* A long block breaks inside instead of leaving a gap; a short one stays whole. */
+p:has(+ pre), p:has(+ figure), p:has(+ table) { break-after: avoid }  /* A lead-in goes with its block. */
 pre code { padding: 0 }
 img { max-width: 100%; break-inside: avoid }
 table { border-collapse: collapse; margin: .8em 0 }
@@ -716,7 +718,6 @@ def account_markdown(request):
     """Mi cuenta, rendered by Docsify at /#/account; the logout form posts with the token rendered here."""
     user = request.user
     return render(request, 'account.md', {
-        'is_admin': user.is_staff,
         'role': role_label(user),
         'keys': ApiKey.objects.filter(user=user).order_by('expires_at'),
     }, content_type='text/markdown; charset=utf-8')
@@ -746,6 +747,10 @@ SIDEBAR_GROUP = {'/content/contributing.md': 'Participar', '/account.md': 'Cuent
                  '/admin/': 'Administración', '/api.md': 'Administración'}
 
 
+# The Athena admin pages by use; the other apps follow in the admin's order.
+ADMIN_ORDER = ['Article', 'Download', 'DownloadEvent', 'ApiKey']
+
+
 def sidebar_markdown(request):
     """The portal rail as nested markdown groups; src/app.js renders it in the reader, sidebar_links in the admin."""
     from django.contrib import admin
@@ -768,9 +773,10 @@ def sidebar_markdown(request):
         links += ['[Ingresar](/accounts/login/)']
     if user.is_staff:
         links += ['[Administración](/admin/ ":ignore")', '[API para agentes](/api.md)']
-        # The admin pages the user may open, as the admin lists them: the same items on reader and admin pages.
-        links += [f'[{model["name"]}]({model["admin_url"]} ":ignore")'
-                  for app in admin.site.get_app_list(request) for model in app['models'] if model['admin_url']]
+        # The admin pages the user may open (ADMIN_ORDER first): the same items on reader and admin pages.
+        models = [model for app in admin.site.get_app_list(request) for model in app['models'] if model['admin_url']]
+        models.sort(key=lambda model: ADMIN_ORDER.index(model['object_name']) if model['object_name'] in ADMIN_ORDER else len(ADMIN_ORDER))
+        links += [f'[{model["name"]}]({model["admin_url"]} ":ignore")' for model in models]
     groups = {group: [] for group in SIDEBAR_GROUPS}
     for link in links:
         href = SIDEBAR_LINK.match(link)[2]

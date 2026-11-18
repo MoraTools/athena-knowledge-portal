@@ -86,6 +86,9 @@ class RestrictedArticleTests(TestCase):
                 self.assertEqual(items, re.findall(r'<span class="rail-label">([^<]+)</span>', group[:group.index('</ul>')]))
                 self.assertIn('Artículos', items)
                 self.assertEqual('Usuarios' in items, user.is_superuser)  # An editor has no user permission.
+                # Round 6 #6: one order by use for the Athena pages, then the other apps.
+                self.assertEqual(items, ['Administración', 'API para agentes', 'Artículos'] + (
+                    ['Archivos de descarga', 'Descargas registradas', 'Claves de API', 'Usuarios'] if user.is_superuser else []))
 
     def test_chip_of_a_restricted_guide_tag_follows_the_reader(self):
         # Round 5 contract 7: only a reader who can read the restricted guide gets the topic link for its tag.
