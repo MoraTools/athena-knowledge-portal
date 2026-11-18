@@ -590,27 +590,37 @@ const pdfLink = (href, replaceWith) => ({
 const externalPdf = pdfLink('https://example.test/reference.pdf', () => { citationsReplaced += 1; });
 const crossArticlePdf = pdfLink('/pdf/other.pdf', () => { citationsReplaced += 1; });
 const ownPdf = pdfLink('/pdf/guide.pdf', (value) => { viewer = value; });
-context.document.querySelector = (selector) => selector === '.markdown-section .pdf-viewer' ? viewer : null;
+// Round 5 #41: with the original PDF embedded, Exportar PDF (the export of the same guide) leaves the actions.
+let exportRemoved = 0;
+const exportLink = { remove() { exportRemoved += 1; } };
+// The PDF actions live in one place: the article actions row above the title.
+const articleActions = { children: [], prepend(node) { this.children.unshift(node); } };
+context.document.querySelector = (selector) => ({ '.markdown-section .pdf-viewer': viewer, '.markdown-section .article-actions': articleActions })[selector] || null;
 context.document.querySelectorAll = (selector) => selector === '.markdown-section .article-pdf a[href]'
-  ? [externalPdf, crossArticlePdf, ownPdf] : [];
+  ? [externalPdf, crossArticlePdf, ownPdf] : selector === '.markdown-section a[href="/content/guide.pdf"]' ? [exportLink] : [];
 context.buildPdfViewer();
+assert.equal(exportRemoved, 1, 'One PDF to keep: the original.');
 assert.equal(citationsReplaced, 0);
 assert.equal(viewer.className, 'pdf-viewer');
-assert.equal(viewer.children[1].src, '/pdf/guide.pdf#zoom=page-width&pagemode=none&view=FitH&navpanes=0', 'The viewer opens at page width.');
-assert.deepEqual(viewer.children[0].children.map((link) => [link.textContent, link.href, link.target, link.className]),
-  [['Descargar PDF original', '/pdf/guide.pdf?download=1', undefined, 'download-link'], ['Abrir PDF original', '/pdf/guide.pdf', '_blank', 'pdf-link']],
-  'Both actions name the original; Descargar PDF original is the gold primary, Abrir PDF original the secondary.');
+assert.equal(viewer.children.length, 1, 'The viewer holds only the frame: no action row of its own.');
+assert.equal(viewer.children[0].src, '/pdf/guide.pdf#zoom=page-width&pagemode=none&view=FitH&navpanes=0', 'The viewer opens at page width.');
+const pdfAction = articleActions.children[0];
+assert.deepEqual([articleActions.children.length, pdfAction.tagName, pdfAction.className, pdfAction.href, pdfAction.target, pdfAction.attributes.has('download'), pdfAction.children.at(-1).textContent],
+  [1, 'A', 'copy-page download-link', '/pdf/guide.pdf?download=1', undefined, true, 'Descargar PDF original'],
+  'Round 5 #41: one gold Descargar PDF original, first in the article actions; the viewer already opens the file (no Abrir PDF original).');
 const originalViewer = viewer;
 context.buildPdfViewer();
 assert.equal(viewer, originalViewer, 'Repeated sync keeps one viewer.');
 viewer = null;
 ownPdf.closest = () => null;
 context.buildPdfViewer();
-assert.equal(viewer.children[1].src.split('#')[0], '/pdf/guide.pdf', 'A link outside a paragraph cannot stop view sync.');
+assert.equal(viewer.children[0].src.split('#')[0], '/pdf/guide.pdf', 'A link outside a paragraph cannot stop view sync.');
 viewer = null;
-context.document.querySelectorAll = () => [externalPdf, crossArticlePdf];
+exportRemoved = 0;
+context.document.querySelectorAll = (selector) => selector === '.markdown-section .article-pdf a[href]' ? [externalPdf, crossArticlePdf] : [exportLink];
 context.buildPdfViewer();
 assert.equal(viewer, null, 'An article without its own attachment does not embed another PDF.');
+assert.equal(exportRemoved, 0, 'A guide whose PDF is not embedded keeps Exportar PDF.');
 // A PDF-only guide (no text besides its head) has no Copiar página; a guide with text keeps it.
 for (const [text, expected] of [['', true], ['Texto de la guía', false]]) {
   let copyRemoved = false;
@@ -618,7 +628,7 @@ for (const [text, expected] of [['', true], ['Texto de la guía', false]]) {
   const article = { children: [node(true, 'Guía'), node(true, 'Copiar enlace'), node(false, text)],
     querySelector: (selector) => selector === '.article-actions button.copy-page:not(.copy-link)' ? { remove() { copyRemoved = true; } } : null };
   viewer = null;
-  context.document.querySelectorAll = () => [ownPdf];
+  context.document.querySelectorAll = (selector) => (selector.includes('.article-pdf') ? [ownPdf] : []);
   context.document.querySelector = (selector) => ({ '.markdown-section .pdf-viewer': viewer, '.markdown-section': article })[selector] || null;
   context.buildPdfViewer();
   assert.equal(copyRemoved, expected, text ? 'A guide with text keeps Copiar página.' : 'A PDF-only guide has no Copiar página.');

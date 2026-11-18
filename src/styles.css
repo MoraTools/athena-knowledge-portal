@@ -197,7 +197,6 @@ html:has(.image-viewer[open]){overflow:hidden}
   .image-viewer__caption{flex:1;min-width:0;padding:0;border:0;font-size:13px;line-height:1.4}
 }
 .pdf-viewer{margin:var(--space-3) 0}
-.pdf-viewer__actions{display:flex;flex-wrap:wrap;gap:var(--space-1);margin:0 0 var(--space-2)}
 .pdf-viewer iframe{display:block;width:100%;height:max(480px,calc(100vh - 160px));border:1px solid var(--line);background:var(--field-bg)}
 /* A PDF or a table uses the full reader column (the browser viewer then opens at page width); the prose around it keeps 70ch. */
 /* The measure is computed in the section's own font (a registered length), so headings wrap where the prose does. */

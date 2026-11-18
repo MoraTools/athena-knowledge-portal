@@ -977,26 +977,25 @@ function buildPdfViewer() {
   if (!link) return;
   const viewer = document.createElement('section');
   viewer.className = 'pdf-viewer';
-  const actions = document.createElement('p');
-  actions.className = 'pdf-viewer__actions';
-  // Both actions name the attached file "PDF original" (as cards and search do); Descargar is the view's one gold primary.
-  [['Descargar PDF original', src + '?download=1', ''], ['Abrir PDF original', src, '_blank']].forEach(([label, href, target]) => {
-    const a = document.createElement('a');
-    a.className = target ? 'pdf-link' : 'download-link';
-    a.href = href;
-    a.textContent = t(label);
-    if (target) {
-      a.target = target;
-      a.rel = 'noreferrer';
-    }
-    actions.append(a);
-  });
+  // One PDF action, the view's gold primary, first in the article actions (one place for the actions): the viewer below
+  // already opens the file (no "Abrir PDF original"), and the original is the PDF to keep, so the export of this guide
+  // (Exportar PDF) leaves the actions. The download attribute gives it the phone word "PDF" (labelArticleActions).
+  const download = document.createElement('a');
+  download.className = 'copy-page download-link';
+  download.href = src + '?download=1';
+  download.setAttribute('download', '');
+  download.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11m-5-4 5 5 5-5"/><path d="M4 20h16"/></svg>';
+  const label = document.createElement('span');
+  label.textContent = t('Descargar PDF original');
+  download.append(label);
+  document.querySelectorAll(`.markdown-section a[href="${route}.pdf"]`).forEach((item) => item.remove());
+  (document.querySelector('.markdown-section .article-actions') || viewer).prepend(download);
   const frame = document.createElement('iframe');
   // Page width without the thumbnail pane: Chromium and Edge read view/navpanes, Firefox reads zoom/pagemode.
   frame.src = src + '#zoom=page-width&pagemode=none&view=FitH&navpanes=0';
   frame.title = t('Documento PDF');
   frame.loading = 'lazy';
-  viewer.append(actions, frame);
+  viewer.append(frame);
   (link.closest('.article-pdf') || link).replaceWith(viewer);
   // A PDF-only guide has no text of its own, so it has no page to copy.
   const article = document.querySelector('.markdown-section');
