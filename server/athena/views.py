@@ -439,9 +439,11 @@ PDF_FONTS = {(FONT_DIR / name).as_uri(): FONT_DIR / name for name in re.findall(
 PDF_STYLE = (''.join(re.findall(r'@font-face\{[^}]*\}', SUITE_TOKENS)).replace("url('/fonts/", f"url('{FONT_DIR.as_uri()}/")
              + ':root{' + re.search(r':root:not\(\[data-theme\]\)[^{]*\{([^}]*)\}', SUITE_TOKENS)[1] + '}' + """
 @page { size: A4; margin: 2cm;
-  @bottom-left { content: string(title); font: 8pt "DejaVu Sans Mono", monospace; color: var(--text-muted) }
-  @bottom-right { content: string(address) counter(page) " / " counter(pages); font: 8pt "DejaVu Sans Mono", monospace;
-    color: var(--text-muted); text-align: right } }
+  /* The share link has a line of its own and never wraps, so it is never broken inside the slug; a longer line is cut. */
+  @bottom-left { content: string(title) "\\A" string(address); white-space: pre; overflow: hidden; text-overflow: ellipsis;
+    vertical-align: top; padding-top: 6mm; font: 8pt/1.5 "DejaVu Sans Mono", monospace; color: var(--text-muted) }
+  @bottom-right { content: counter(page) " / " counter(pages); white-space: pre; vertical-align: top; padding-top: 6mm;
+    font: 8pt/1.5 "DejaVu Sans Mono", monospace; color: var(--text-muted); text-align: right } }
 body > h1:first-of-type { string-set: title content() }
 .article-meta { margin: -.2em 0 1.4em; font: 9pt/1.5 "DejaVu Sans Mono", monospace; color: var(--text-muted) }
 body { font: 10.5pt/1.55 Inter, sans-serif; color: var(--text) }
@@ -487,7 +489,8 @@ def article_html(article, origin):
     body = PDF_VIDEO.sub(video_link, MARKDOWN.render(article_body(article)))
     body = re.sub(r'\bhref="([^"]*)"', lambda m: f'href="{export_href(m[1], escape(origin))}"', body)
     # Short inline code stays on one line, as in the reader; a long value may wrap anywhere.
-    body = re.sub(r'<code>([^<]*)</code>', lambda m: f'<code class="long">{m[1]}</code>' if len(unescape(m[1])) > 40 else m[0], body)
+    # 24 characters: the same number as markLongCode in src/app.js (round 5 contract 1).
+    body = re.sub(r'<code>([^<]*)</code>', lambda m: f'<code class="long">{m[1]}</code>' if len(unescape(m[1])) > 24 else m[0], body)
     # The reader's meta line under the h1 (type · author · Actualizado <date> · tags), and the share address in the footer.
     meta = [article.get_kind_display(), article.author]
     if article.updated_at:
@@ -495,9 +498,13 @@ def article_html(article, origin):
         meta.append(f'Actualizado {day.day} {READER_MONTHS[day.month - 1]} {day.year}')
     meta.append(', '.join(article.topic_tags))
     body = body.replace('</h1>', f'</h1>\n<p class="article-meta">{escape(" · ".join(filter(None, meta)))}</p>', 1)
-    address = f'{origin}/s/{article.slug} · '.replace('\\', '\\\\').replace('"', '\\"')
+    address = f'{origin}/s/{article.slug}'
+    # A long link gets a smaller footer, so it fits the 170 mm text width (a mono glyph is 0.602 em) down to 5 pt.
+    size = max(5, min(8, 170 / 25.4 * 72 / (0.602 * len(address))))
+    address = address.replace('\\', '\\\\').replace('"', '\\"')
     return (f'<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>{escape(article.title)}</title>'
             f'<meta name="author" content="{escape(article.author)}"><style>{PDF_STYLE}html {{ string-set: address "{address}" }}'
+            f'@page {{ @bottom-left {{ font-size: {size:.2f}pt }} @bottom-right {{ font-size: {size:.2f}pt }} }}'
             f'</style></head><body>{body}</body></html>')
 
 

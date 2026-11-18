@@ -1124,6 +1124,8 @@ class PortalTests(TestCase):
         self.assertNotIn('/admin/', page)
         # Docsify injects this form; it posts normally with the token rendered here.
         self.assertRegex(page, r'<form method="post" action="/accounts/logout/"><input type="hidden" name="csrfmiddlewaretoken" value="\w+">')
+        # Round 5 #25: signing out loses nothing, so it has the secondary style of "Cambiar contraseña"; red is for deletion.
+        self.assertRegex(page, r'<button class="account-button" type="submit">Cerrar sesión</button>')
         self.client.force_login(self.admin)
         page = self.client.get('/account.md').content.decode()
         self.assertIn('Administrador · Última sesión', page)
@@ -1781,20 +1783,37 @@ class ReaderPageTests(TestCase):
         pdf = b''.join(response.streaming_content)
         if shutil.which('pdftotext'):
             text = subprocess.run(['pdftotext', '-', '-'], input=pdf, capture_output=True, check=True).stdout.decode()
-            self.assertIn('https://athena.test/s/privada · 1 / 1', text)
+            self.assertIn('Privada\nhttps://athena.test/s/privada\n\n1 / 1', text)  # Round 5 #2: the link on its own line.
             self.assertNotIn('#/content/', text)
-        self.assertIn('string-set: address "https://athena.test/s/privada · "', article_html(article, 'https://athena.test'))
+        self.assertIn('string-set: address "https://athena.test/s/privada"', article_html(article, 'https://athena.test'))
         share = self.client.get('/s/privada')
         self.assertEqual((share.status_code, share['Location']), (302, '/#/content/privada'))
 
     def test_pdf_short_inline_code_stays_on_one_line(self):
         # Round 4 #29: short inline code does not break at its hyphen; a long value may wrap; blocks are untouched.
-        long = 'x' * 41
-        html = article_html(Article(title='T', slug='t', author='A', body=f'# T\n\nUse `run-tests` or `{long}`.\n\n```\n{long}\n```'),
+        # Round 5 #10 (contract 1): "long" is over 24 characters, the reader's markLongCode number.
+        short, long = 'y' * 24, 'x' * 25
+        html = article_html(Article(title='T', slug='t', author='A', body=f'# T\n\nUse `{short}` or `{long}`.\n\n```\n{long}\n```'),
                             'https://athena.test')
-        self.assertIn(f'<p>Use <code>run-tests</code> or <code class="long">{long}</code>.</p>', html)
+        self.assertIn(f'<p>Use <code>{short}</code> or <code class="long">{long}</code>.</p>', html)
         self.assertIn(f'<pre><code class="long">{long}', html)  # Inside pre the rule never applies.
         self.assertIn(':not(pre) > code { white-space: nowrap }', html)
+
+    def test_pdf_footer_prints_the_share_link_whole_on_its_own_line(self):
+        # Round 5 #2: the /s/<slug> link is one unbroken line of its own under the title, also with a long title.
+        from weasyprint import HTML
+        if not shutil.which('pdftotext'):
+            self.skipTest('pdftotext is not installed')
+        # 129 characters: wider than the page at 8 pt, so the footer font gets smaller and the link stays whole.
+        slug = 'guia-completa-de-la-plantilla-base-estructura-colas-credenciales-y-registros-del-equipo-de-automatizacion'
+        article = Article(title='Guía completa de la plantilla base: estructura, colas, credenciales y registros del equipo',
+                          slug=slug, author='A', body='# Guía\n\nTexto')
+        pdf = HTML(string=article_html(article, 'https://athena.test'), url_fetcher=pdf_fetcher()).write_pdf()
+        boxes = subprocess.run(['pdftotext', '-bbox', '-', '-'], input=pdf, capture_output=True, check=True).stdout.decode()
+        words = re.findall(r'<word xMin="[\d.]+" yMin="([\d.]+)" xMax="[\d.]+" yMax="[\d.]+">([^<]*)</word>', boxes)
+        link = [float(y) for y, word in words if word == f'https://athena.test/s/{slug}']
+        self.assertEqual(len(link), 1, [word for _, word in words if 'athena' in word or 'registros' in word])
+        self.assertEqual([word for y, word in words if abs(float(y) - link[0]) < 1 and 'athena' not in word], [])
 
     def test_pdf_export_has_the_reader_meta_line_and_address(self):
         from weasyprint import HTML
@@ -1805,9 +1824,9 @@ class ReaderPageTests(TestCase):
         self.assertIn('<h1>Guía</h1>\n<p class="article-meta">Guía · Ana &amp; Co · Actualizado 27 sept 2026 · Colas, Excel</p>', html)
         article.author, article.tags, article.updated_at = '', [], datetime(2026, 11, 14, 15, tzinfo=LIMA)
         self.assertIn('<p class="article-meta">Guía · Actualizado 14 nov 2026</p>', article_html(article, 'https://athena.test'))
-        self.assertIn('html { string-set: address "https://athena.test/s/guia · " }', html)  # Round 4 #40: the share link.
-        self.assertIn('@bottom-left { content: string(title);', html)  # The title next to the address.
-        self.assertIn('content: string(address) counter(page)', html)
+        self.assertIn('html { string-set: address "https://athena.test/s/guia" }', html)  # Round 4 #40: the share link.
+        self.assertIn('@bottom-left { content: string(title) "\\A" string(address); white-space: pre;', html)  # Round 5 #2.
+        self.assertIn('@bottom-right { content: counter(page) " / " counter(pages);', html)
         # Theme A: the local Inter and Cormorant files, and no colour outside the suite tokens.
         style = html[html.index('<style>'):html.index('</style>')]
         self.assertNotRegex(style[style.index('@page'):], r'#[0-9a-fA-F]{3}')

@@ -6,7 +6,7 @@
 <section class="account-panel">
 <h2>Sesión</h2>
 <p>Cambie su contraseña o cierre la sesión en este navegador. Cambiar la contraseña cierra sus otras sesiones y revoca sus claves de API.</p>
-<div class="account-actions"><a class="account-button" href="/accounts/password_change/">Cambiar contraseña</a><form method="post" action="/accounts/logout/">{% csrf_token %}<button class="account-button danger" type="submit">Cerrar sesión</button></form></div>
+<div class="account-actions"><a class="account-button" href="/accounts/password_change/">Cambiar contraseña</a><form method="post" action="/accounts/logout/">{% csrf_token %}<button class="account-button" type="submit">Cerrar sesión</button></form></div>
 </section>
 <section class="account-panel">
 <h2>Mis claves de API</h2>
