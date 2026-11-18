@@ -36,8 +36,9 @@ def release_key(title):
 
 
 def download_family(title):
-    """The package family of a file: its title before the first version number ('Plantilla base 3.2.0' gives 'Plantilla base')."""
-    return re.split(r'\s+v?\d+(?:\.\d+)*\b', title.strip(), maxsplit=1)[0]
+    """The package family of a file: its title before the first version with a dot ('Plantilla base 3.2.0' gives
+    'Plantilla base'); a title without one is its own family ('Office 365 conector')."""
+    return re.split(r'\s+v?\d+(?:\.\d+)+\b', title.strip(), maxsplit=1)[0]
 
 
 class Article(models.Model):

@@ -4,7 +4,7 @@ import re
 from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -22,7 +22,7 @@ from markdown_it import MarkdownIt
 from .admin import role_label
 from .forms import SignInForm
 from .models import (ApiKey, Article, Download, DownloadEvent, ManagedImage, PLACEMENT_TAGS, download_family,
-                     readable_articles, release_key, visible_articles)
+                     readable_articles, release_key, topic_id, visible_articles)
 from .notify import notify_download
 
 
@@ -669,8 +669,12 @@ def downloads_page(request):
     published = list(Download.objects.filter(published=True))
     notes = {release_key(title): slug for title, slug in visible_articles(request.user).filter(kind='release')
              .order_by('updated_at', 'pk').values_list('title', 'slug')}
+    spelling = {}  # Families equal after case fold are one group, named as the newest file names it.
+    for item in sorted(published, key=lambda item: (item.created_at, item.pk)):
+        item.family_key = download_family(item.title).casefold()
+        spelling[item.family_key] = download_family(item.title)
     for item in published:  # Contract 2: the release notes of a file and the family Versiones anteriores groups by.
-        item.notes_slug, item.family = notes.get(release_key(item.title), ''), download_family(item.title)
+        item.notes_slug, item.family = notes.get(release_key(item.title), ''), spelling[item.family_key]
     sections = [(key, label, [d for d in published if d.section == key]) for key, label in Download.SECTIONS]
     current = current_framework()
     return render(request, 'downloads.md', {
@@ -688,6 +692,12 @@ def library(request, section):
         for article in articles:  # A Versión card links its file; otherwise the approved download_file, as other cards.
             article.download_row = (article.kind == 'release' and rows.get(release_key(article.title))
                                     or article.download_file and article.download_row_id)
+    # Contract 7: a chip opens its Guías topic only when a guide this reader can read has the tag; else the search.
+    topics = {topic_id(tag) for tags in visible_articles(request.user).filter(kind='guide').values_list('tags', flat=True)
+              for tag in tags if tag.lower() not in PLACEMENT_TAGS}
+    for article in articles:
+        article.chips = [(tag, f'#/guides?id={topic}' if topic in topics else '#/search?' + urlencode({'q': tag}))
+                         for tag, topic in article.topic_links]
     tags = sorted({tag for article in articles for tag in article.tags})
     return render(request, 'library.md', {'section': section, 'articles': articles, 'tags': tags},
                   content_type='text/markdown; charset=utf-8')

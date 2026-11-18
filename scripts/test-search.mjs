@@ -106,11 +106,11 @@ for authenticated in (False, True):
                       })})
 pages.append({'name': 'downloads.md', 'markdown': render_to_string('downloads.md', {
     'sections': [('framework', 'Framework', [SimpleNamespace(title='File', filename='file.zip', size=100, section='framework',
-                                                          slug='file', note='Download note', family='File', notes_slug='file-notes')]),
+                                                          slug='file', note='Download note', family='File', family_key='file', notes_slug='file-notes')]),
                  ('previous', 'Versiones anteriores', [
-                     SimpleNamespace(title='Paquete 2.0', filename='p2.zip', size=10, section='previous', slug='p2', note='', family='Paquete', notes_slug=''),
-                     SimpleNamespace(title='Old', filename='old.zip', size=10, section='previous', slug='old', note='', family='Old', notes_slug=''),
-                     SimpleNamespace(title='Paquete 1.0', filename='p1.zip', size=10, section='previous', slug='p1', note='', family='Paquete', notes_slug='')])],
+                     SimpleNamespace(title='Paquete 2.0', filename='p2.zip', size=10, section='previous', slug='p2', note='', family='Paquete', family_key='paquete', notes_slug=''),
+                     SimpleNamespace(title='Old', filename='old.zip', size=10, section='previous', slug='old', note='', family='Old', family_key='old', notes_slug=''),
+                     SimpleNamespace(title='Paquete 1.0', filename='p1.zip', size=10, section='previous', slug='p1', note='', family='Paquete', family_key='paquete', notes_slug='')])],
     'latest_url': 'https://athena.test/downloads/framework/latest'
 })})
 print(json.dumps({'entries': entries, 'pages': pages}))
@@ -982,7 +982,7 @@ assert.match(readerCss, /\.download-section>h2\{padding:var\(--s-1\) var\(--spac
   assert.match(downloadsMd, /<details class="guide-topic-picker"><summary><span>Secciones<\/span> <span>\(\{\{ sections\|length \}\}\)<\/span><\/summary><nav class="download-jumps"/);
   // Round 5 #35, contract 2: a file row links its release notes; Versiones anteriores is grouped by package family.
   assert.match(downloadsMd, /\{% if item\.notes_slug %\} · <a href="#\/content\/\{\{ item\.notes_slug \}\}">Notas de la versión<\/a>\{% endif %\}<\/small>/);
-  assert.match(downloadsMd, /\{% regroup items\|dictsort:'family' by family as groups %\}/);
+  assert.match(downloadsMd, /\{% regroup items\|dictsort:'family_key' by family as groups %\}/);
   assert.match(downloadsMd, /\{% if key == 'previous' %\}<h3>\{\{ group\.grouper \}\}<\/h3>\{% endif %\}/);
 }
 // Round 5 #13: at 360 px and below the article h1 is 28/34; nothing else in the phone head changes.

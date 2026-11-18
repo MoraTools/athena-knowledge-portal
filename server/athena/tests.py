@@ -760,10 +760,11 @@ class PortalTests(TestCase):
         Article.objects.create(title='Start news', slug='start-news', kind='announcement', summary='S', author='A',
                                tags=['primeros-pasos', 'Avisos'], url='https://example.test/news', published=True, is_public=True)
         tools = self.client.get('/tools.md').content.decode()
-        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/guides?id=guide-topic-colas"><span>Colas</span></a></p>', tools)
+        # No guide has these tags, so the chips open the search (contract 7).
+        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/search?q=Colas"><span>Colas</span></a></p>', tools)
         self.assertIn('data-search="Start tool A S Primeros-Pasos Colas"', tools)  # Matching still finds it.
         updates = self.client.get('/updates.md').content.decode()
-        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/guides?id=guide-topic-avisos"><span>Avisos</span></a></p>', updates)
+        self.assertIn('<p class="tag-list"><a class="tag-chip" href="#/search?q=Avisos"><span>Avisos</span></a></p>', updates)
         self.assertIn('<p class="post-actions"><a class="post-link" href="https://example.test/news" target="_blank" rel="noreferrer">Sitio oficial</a></p>', updates)
 
     def test_updates_are_announcements_and_releases_only(self):
@@ -789,6 +790,20 @@ class PortalTests(TestCase):
         html = article_html(Article(title='T', slug='t', author='Ana', body='# T', tags=['primeros-pasos', 'Colas']),
                             'https://athena.test')
         self.assertIn('<p class="article-meta">Guía · Ana · Colas</p>', html)
+
+    def test_chips_open_the_topic_only_when_a_readable_guide_has_the_tag(self):
+        # Round 5 contract 7: a chip opens the Guías topic when a published guide the reader can read has the tag,
+        # otherwise the Athena search for the tag.
+        Article.objects.create(title='Guía colas', slug='guia-colas', kind='guide', summary='S', author='A', tags=['Colas'],
+                               published=True, is_public=True)
+        Article.objects.create(title='Borrador', slug='borrador-x', kind='guide', summary='S', author='A', tags=['Solo borrador'],
+                               published=False, is_public=True)
+        Article.objects.create(title='Tool', slug='tool-x', kind='tool', status='stable', summary='S', author='A',
+                               tags=['colas', 'Sin guía', 'Solo borrador'], published=True, is_public=True)
+        tools = self.client.get('/tools.md').content.decode()
+        self.assertIn('<a class="tag-chip" href="#/guides?id=guide-topic-colas"><span>colas</span></a>', tools)
+        self.assertIn('<a class="tag-chip" href="#/search?q=Sin+gu%C3%ADa"><span>Sin guía</span></a>', tools)
+        self.assertIn('<a class="tag-chip" href="#/search?q=Solo+borrador"><span>Solo borrador</span></a>', tools)
 
     def test_tag_chips_link_to_the_guides_topic(self):
         # Round 5 #38 (contract 4): every server chip opens the Guías topic filter with the reader's topic id.
@@ -1502,9 +1517,27 @@ class DownloadTests(TestCase):
         self.assertEqual([(t, items[t].notes_slug, items[t].family) for t in sorted(items, key=str.strip)], [
             ('Framework actual', '', 'Framework actual'),
             ('Paquete de utilidades de Excel 2.0.0', '', 'Paquete de utilidades de Excel'),  # The notes are a draft.
-            ('Plantilla base 3.1.0', '', 'Plantilla base'),
-            ('Plantilla base 3.2.0', 'base-320', 'Plantilla base'),
+            ('Plantilla base 3.1.0', '', 'plantilla BASE'),  # One spelling per family: the newest file's.
+            ('Plantilla base 3.2.0', 'base-320', 'plantilla BASE'),
             (' plantilla BASE 3.2.0 ', 'base-320', 'plantilla BASE')])
+
+    def test_download_family_cuts_only_at_a_dotted_version(self):
+        # Round 5 #35 (advisor C3): a family ends before a version with a dot; families equal after case fold are one group.
+        from .models import download_family
+        for title, family in [('Office 365 conector 1.2', 'Office 365 conector'), ('Office 365 conector', 'Office 365 conector'),
+                              ('Ejercicio 1', 'Ejercicio 1'), ('Plantilla base v3.2.0', 'Plantilla base'),
+                              ('Paquete de correo 1.2.1 (parche)', 'Paquete de correo')]:
+            with self.subTest(title=title):
+                self.assertEqual(download_family(title), family)
+        for title, name in [('Conector 1.0', 'c10.zip'), ('conector 1.1', 'c11.zip'), ('CONECTOR 1.2', 'c12.zip')]:
+            Download.objects.create(title=title, section='previous', file=ContentFile(b'c', name=name))
+        self.client.force_login(self.reader)
+        response = self.client.get('/downloads.md')
+        items = [item for key, _, items in response.context['sections'] if key == 'previous' for item in items]
+        self.assertEqual({(item.family, item.family_key) for item in items}, {('CONECTOR', 'conector')})
+        page = response.content.decode()
+        self.assertEqual(re.findall(r'<h3>([^<]+)</h3>', page), ['CONECTOR'])  # One group, newest first in it.
+        self.assertLess(page.index('c12.zip'), page.index('c10.zip'))
 
     def test_download_search_entry_has_size_and_a_fixed_summary(self):
         # Round 5 #18 (contract 6): the reader formats the size; the summary has one form per section, no size.

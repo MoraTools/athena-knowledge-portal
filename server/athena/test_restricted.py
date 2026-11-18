@@ -87,6 +87,21 @@ class RestrictedArticleTests(TestCase):
                 self.assertIn('Artículos', items)
                 self.assertEqual('Usuarios' in items, user.is_superuser)  # An editor has no user permission.
 
+    def test_chip_of_a_restricted_guide_tag_follows_the_reader(self):
+        # Round 5 contract 7: only a reader who can read the restricted guide gets the topic link for its tag.
+        self.restricted.tags = ['Informes privados']
+        self.restricted.save()
+        Article.objects.create(title='Herramienta', slug='herramienta', kind='tool', status='stable', summary='S', author='A',
+                               tags=['Informes privados'], published=True)
+        topic = '<a class="tag-chip" href="#/guides?id=guide-topic-informes-privados">'
+        search = '<a class="tag-chip" href="#/search?q=Informes+privados">'
+        for user, link in [(self.reader, search), (self.editor, search), (self.listed, topic), (self.root, topic)]:
+            with self.subTest(user=user.username):
+                self.login(user)
+                tools = self.client.get('/tools.md').content.decode()
+                self.assertIn(link, tools)
+                self.assertNotIn(topic if link == search else search, tools)
+
     def test_model_validation_and_defaults(self):
         article = Article(title='A', slug='a', summary='S', author='A', body='Text', is_public=True, is_restricted=True)
         with self.assertRaises(ValidationError) as error:
