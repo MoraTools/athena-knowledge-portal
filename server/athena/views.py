@@ -728,9 +728,11 @@ SIDEBAR_GROUP = {'/content/contributing.md': 'Participar', '/account.md': 'Cuent
                  '/admin/': 'Administración', '/api.md': 'Administración'}
 
 
-def sidebar_markdown(user):
+def sidebar_markdown(request):
     """The portal rail as nested markdown groups; src/app.js renders it in the reader, sidebar_links in the admin."""
+    from django.contrib import admin
     global _sidebar_cache
+    user = request.user
     file = settings.BASE_DIR / 'dist/_sidebar.md'
     mtime = file.stat().st_mtime
     if _sidebar_cache[0] != mtime:
@@ -748,17 +750,21 @@ def sidebar_markdown(user):
         links += ['[Ingresar](/accounts/login/)']
     if user.is_staff:
         links += ['[Administración](/admin/ ":ignore")', '[API para agentes](/api.md)']
+        # The admin pages the user may open, as the admin lists them: the same items on reader and admin pages.
+        links += [f'[{model["name"]}]({model["admin_url"]} ":ignore")'
+                  for app in admin.site.get_app_list(request) for model in app['models'] if model['admin_url']]
     groups = {group: [] for group in SIDEBAR_GROUPS}
     for link in links:
-        groups[SIDEBAR_GROUP.get(SIDEBAR_LINK.match(link)[2], 'Biblioteca')].append(link)
+        href = SIDEBAR_LINK.match(link)[2]
+        groups[SIDEBAR_GROUP.get(href, 'Administración' if href.startswith('/admin/') else 'Biblioteca')].append(link)
     return ''.join(f'- {group}\n' + ''.join(f'  - {link}\n' for link in items)
                    for group, items in groups.items() if items)
 
 
-def sidebar_links(user):
+def sidebar_links(request):
     """[(group, [(label, href), ...]), ...]; Docsify routes a /page.md link to /#/page."""
     groups = []
-    for line in sidebar_markdown(user).splitlines():
+    for line in sidebar_markdown(request).splitlines():
         if line.startswith('- '):
             groups.append((line[2:], []))
         else:
@@ -821,7 +827,7 @@ def static_portal(request, path='index.html'):
     if '..' in Path(path).parts or not file.resolve().is_relative_to(root) or not file.is_file():
         raise Http404
     if path == '_sidebar.md':
-        return HttpResponse(sidebar_markdown(request.user), content_type='text/markdown; charset=utf-8')
+        return HttpResponse(sidebar_markdown(request), content_type='text/markdown; charset=utf-8')
     if path == 'api.md':
         return api_docs(request)
     response = FileResponse(file.open('rb'), content_type=mimetypes.guess_type(file)[0] or 'application/octet-stream')

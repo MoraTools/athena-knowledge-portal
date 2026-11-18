@@ -69,6 +69,24 @@ class RestrictedArticleTests(TestCase):
     def render_pdf(command, **kwargs):
         Path(command[-1]).write_bytes(b'%PDF-1.4\n%%EOF')
 
+    def test_reader_rail_lists_the_admin_rail_items(self):
+        # Round 5 #47: on reader pages staff see the Administración items of their admin rail; others see none.
+        for user in (self.root, self.editor, self.listed_editor, self.reader, self.listed, None):  # Root first: no shared answer.
+            with self.subTest(user=user and user.username):
+                self.login(user)
+                response = self.client.get('/_sidebar.md')
+                self.assertIn('Cookie', response.get('Vary', ''))  # One answer per session, never from a shared cache.
+                sidebar = response.content.decode()
+                items = re.findall(r'\[([^\]]+)\]', sidebar.split('- Administración\n')[1]) if '- Administración\n' in sidebar else []
+                if user is None or not user.is_staff:
+                    self.assertEqual(items, [])
+                    continue
+                page = self.client.get('/admin/').content.decode()
+                group = page[page.index('>Administración</p>'):]
+                self.assertEqual(items, re.findall(r'<span class="rail-label">([^<]+)</span>', group[:group.index('</ul>')]))
+                self.assertIn('Artículos', items)
+                self.assertEqual('Usuarios' in items, user.is_superuser)  # An editor has no user permission.
+
     def test_model_validation_and_defaults(self):
         article = Article(title='A', slug='a', summary='S', author='A', body='Text', is_public=True, is_restricted=True)
         with self.assertRaises(ValidationError) as error:

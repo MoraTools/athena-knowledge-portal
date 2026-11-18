@@ -17,13 +17,19 @@ from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.http import FileResponse
-from django.test import Client, TestCase, override_settings
+from django.test import Client, RequestFactory, TestCase, override_settings
 from django.utils import timezone
 
 from .admin import since
 from .forms import ArticleForm, DirectoryUserForm, EMAIL_UNAVAILABLE
 from .models import ApiKey, Article, Download, LoginAttempt, visible_articles
-from .views import article_html, pdf_fetcher, sidebar_links
+from .views import article_html, pdf_fetcher, sidebar_links as request_sidebar_links
+
+
+def sidebar_links(user):
+    request = RequestFactory().get('/')
+    request.user = user
+    return request_sidebar_links(request)
 
 LIMA = timezone.get_fixed_timezone(-300)  # settings.TIME_ZONE has no daylight saving time.
 
@@ -1037,13 +1043,15 @@ class PortalTests(TestCase):
         self.assertNotIn('[Administración](/admin/', sidebar)
         self.assertEqual([group for group, _ in sidebar_links(self.reader)], ['Biblioteca', 'Participar', 'Cuenta'])
         self.client.force_login(self.admin)
-        self.assertTrue(self.client.get('/_sidebar.md').content.decode().endswith(
-            '- Administración\n  - [Administración](/admin/ ":ignore")\n  - [API para agentes](/api.md)\n'))
-        self.assertEqual(sidebar_links(self.admin), [
+        self.assertIn('- Administración\n  - [Administración](/admin/ ":ignore")\n  - [API para agentes](/api.md)\n'
+                      '  - [Archivos de descarga](/admin/athena/download/ ":ignore")\n', self.client.get('/_sidebar.md').content.decode())
+        self.assertEqual(sidebar_links(self.admin)[:3], [
             ('Biblioteca', [('Inicio', '/'), ('Guías', '/#/guides'), ('Actualizaciones', '/#/updates'),
                             ('Herramientas', '/#/tools'), ('Descargas', '/#/downloads')]),
             ('Participar', [('Contribuir', '/#/content/contributing')]), ('Cuenta', [('Mi cuenta', '/#/account')]),
-            ('Administración', [('Administración', '/admin/'), ('API para agentes', '/#/api')])])
+        ])
+        self.assertEqual(sidebar_links(self.admin)[3][1][:3], [('Administración', '/admin/'), ('API para agentes', '/#/api'),
+                                                             ('Archivos de descarga', '/admin/athena/download/')])
         item = '<a class="rail-item" href="{}"{}><span class="rail-label">{}</span></a>'.format
         reader_links = [item('/', '', 'Inicio'), item('/#/guides', '', 'Guías'), item('/#/content/contributing', '', 'Contribuir'),
                         item('/#/account', '', 'Mi cuenta')]
