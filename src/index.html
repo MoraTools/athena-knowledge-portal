@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <script src="/assets/boot.js"></script>
+  {% if not user.is_authenticated %}<script src="/assets/public-entry.js"></script>{% endif %}
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f3f1">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#191715">
   <link rel="stylesheet" href="/assets/suite-tokens.css">

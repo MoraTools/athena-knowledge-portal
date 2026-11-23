@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 from unittest.mock import patch
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
@@ -115,6 +116,19 @@ class PublicArticleTests(TestCase):
         Article.objects.update(is_public=False)
         self.assertContains(self.client.get('/README.md'), 'Todavía no hay artículos públicos')
         self.assertEqual(self.client.get('/search-index.json').json(), [])
+
+    def test_public_entry_button_and_reader_script(self):
+        login = self.client.get('/accounts/login/')
+        self.assertContains(login, '<a class="public-entry-button" href="/?biblioteca=publica">'
+                                   'Ver artículos públicos</a>', html=True)
+        script = '<script src="/assets/public-entry.js"></script>'
+        self.assertContains(self.client.get('/'), script)
+        self.assertEqual(self.client.get('/assets/public-entry.js').status_code, 200)
+        self.client.force_login(self.reader)
+        self.assertNotContains(self.client.get('/'), script)
+
+    def test_session_cookie_age_is_thirty_days(self):
+        self.assertEqual(settings.SESSION_COOKIE_AGE, 30 * 24 * 60 * 60)
 
     def test_admin_controls_follow_existing_edit_permissions(self):
         article = self.articles[True, False]

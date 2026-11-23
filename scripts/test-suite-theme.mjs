@@ -77,6 +77,45 @@ for (const path of ['src/index.html', 'src/request-access.html', 'server/athena/
   assert.equal((source.match(/data-suite-toggle=/g) || []).length, 2, path + ': exactly two toggles');
   assert(!/<script(?![^>]*\bsrc=)[^>]*>\s*\S/.test(source), path + ': external scripts only');
 }
+// Anonymous home entry must leave direct article links alone, including share link targets.
+{
+  const source = read('src/assets/public-entry.js');
+  function open(path, mark = null, blocked = false) {
+    const location = new URL(path, 'https://athena.example.test');
+    const redirects = [];
+    let hashchange;
+    location.replace = (target) => redirects.push(target);
+    const storage = {
+      getItem: (key) => key === 'athena.public' ? mark : null,
+      setItem: (key, value) => { assert.equal(key, 'athena.public'); mark = value; }
+    };
+    vm.runInNewContext(source, {
+      URL, location,
+      get sessionStorage() { if (blocked) throw new Error('Storage blocked'); return storage; },
+      history: { replaceState: (_state, _title, url) => { location.href = url; } },
+      addEventListener: (event, handler) => { assert.equal(event, 'hashchange'); hashchange = handler; }
+    });
+    return { location, redirects, mark: () => mark, goHome() { location.hash = '#/'; hashchange(); } };
+  }
+  const login = ['/accounts/login/'];
+  for (const hash of ['', '#', '#/', '#/README', '#/README.md']) assert.deepEqual(open('/' + hash).redirects, login);
+  const article = open('/#/content/public-article');
+  assert.deepEqual(article.redirects, []);
+  article.goHome();
+  assert.deepEqual(article.redirects, login);
+  assert.deepEqual(open('/#/search?q=recorder').redirects, []);
+  const visitor = open('/?keep=1&biblioteca=otra&biblioteca=publica#/content/public-article');
+  assert.equal(visitor.location.href, 'https://athena.example.test/?keep=1#/content/public-article');
+  assert.equal(visitor.mark(), '1');
+  visitor.goHome();
+  assert.deepEqual(visitor.redirects, []);
+  assert.deepEqual(open('/', visitor.mark()).redirects, []);
+  assert.deepEqual(open('/', null, true).redirects, login);
+  const blocked = open('/?biblioteca=publica', null, true);
+  assert.equal(blocked.location.search, '');
+  blocked.goHome();
+  assert.deepEqual(blocked.redirects, []);
+}
 // Account pages: one wordmark. With the rail (signed in) the rail lockup is the wordmark; the page header shows only without it.
 assert.match(read('server/athena/templates/base.html'), /\{% if not user\.is_authenticated %\}<header class="account-header">/);
 // The password page command bar is a reader command bar: on a phone it has the reader's 16 px side padding (accounts.css loads later).
@@ -95,7 +134,7 @@ const tokenSource = read('src/assets/suite-tokens.css');
 const nonTokenSource = tokenSource.replace(/(?:@media[^{}]*\{)?[^{}]*\{[^{}]*--(?:rail|bg):[^{}]*\}/g, '');
 assert(!/#[\da-f]{3,8}\b|\brgba?\(/i.test(nonTokenSource), 'Color literals belong only to theme token blocks');
 assert(!/data-variant|URLSearchParams|document\.cookie/.test(bootSource + read('src/assets/suite.js')), 'No preview state or cookies');
-console.log('Suite preferences, browser fallbacks, reset rules, head ordering, CSP and token boundaries passed.');
+console.log('Suite preferences, browser fallbacks, reset rules, public entry, head ordering, CSP and token boundaries passed.');
 
 const urlIndex = process.argv.indexOf('--url');
 if (urlIndex === -1) process.exit(0);
@@ -145,7 +184,7 @@ try {
   }
   async function ready(path) {
     for (let i = 0; i < 100; i++) {
-      const done = await evaluate(`document.readyState === 'complete' && !!window.AthenaI18n && ${path.startsWith('/#') ? "!!document.querySelector('.markdown-section h1')" : 'true'}`);
+      const done = await evaluate(`document.readyState === 'complete' && !!window.AthenaI18n && ${path.includes('#/') ? "!!document.querySelector('.markdown-section h1')" : 'true'}`);
       if (done) { await evaluate('document.fonts.ready'); await delay(150); return; }
       await delay(100);
     }
@@ -202,7 +241,7 @@ try {
   })();
   assert(catalog.length > 100, 'Django Spanish catalogs must load');
   const spanish = await (async () => {
-    await navigate('/#/');
+    await navigate('/?biblioteca=publica#/');
     return evaluate('Object.keys(AthenaI18n.dictionary).filter(x => AthenaI18n.dictionary[x] !== x)');
   })();
   const dictionarySet = JSON.stringify(spanish);
